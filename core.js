@@ -64,7 +64,9 @@ var Core = (function () {
   }
   function publicPerson(p) {
     var fid = displayPhoto(p);
-    return { id: p.id, name: p.name, gender: p.gender, role: p.role, archived: !!p.archived, photoUrl: fid ? A.photoUrl(fid) : '', fid: fid };
+    return { id: p.id, name: p.name, gender: p.gender, hijab: !!p.hijab, role: p.role, archived: !!p.archived, photoUrl: fid ? A.photoUrl(fid) : '', fid: fid,
+      // avatar chibi lobi: versi kecil (sprite) untuk semua; versi besar hanya sampai HP host membuat versi kecilnya
+      chibiUrl: p.spriteId ? A.photoUrl(p.spriteId) : '', chibiFull: p.chibiId && !p.spriteId ? A.photoUrl(p.chibiId) : '' };
   }
   function fullPerson(p) {
     var o = publicPerson(p);
@@ -72,6 +74,7 @@ var Core = (function () {
     o.photoId = p.photoId || ''; o.proId = p.proId || '';
     o.asliUrl = p.photoId ? A.photoUrl(p.photoId) : ''; o.proUrl = p.proId ? A.photoUrl(p.proId) : '';
     o.aiStatus = p.aiStatus || (p.proId ? 'done' : 'none'); o.aiNote = p.aiNote || ''; o.pinDefault = !!p.pinDefault;
+    o.chibiStatus = p.chibiStatus || (p.chibiId ? 'done' : 'none'); o.chibiNote = p.chibiNote || ''; o.chibiAt = p.chibiAt || 0; o.chibiBusyAt = p.chibiBusyAt || 0;
     return o;
   }
 
@@ -94,7 +97,7 @@ var Core = (function () {
   }
   function status() {
     var hasAdmin = people().some(function (p) { return p.role === 'admin' && !p.archived; });
-    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.3', migrated: !!A.prop('MIGRATED_AT') };
+    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.4', migrated: !!A.prop('MIGRATED_AT') };
   }
   function createAdmin(r) {
     return A.lock(function () {
@@ -208,6 +211,44 @@ var Core = (function () {
       throw e;
     });
   }
+  /* avatar chibi lobi: dibuat sekali dari foto pro lewat OpenAI; hanya admin/host yang bisa membuat ulang */
+  function generateChibi(r) {
+    auth(r.token, ['admin', 'host']);
+    var p = person(r.id);
+    if (!p) throw err('NOT_FOUND');
+    if (!p.proId && !p.photoId) throw err('INVALID', 'Belum ada foto untuk dijadikan avatar');
+    if (!A.aiEnabled() || !A.generateChibi) throw err('AI_OFF', 'OPENAI_API_KEY belum diisi');
+    A.lock(function () { var q = person(r.id); q.chibiStatus = 'busy'; q.chibiBusyAt = now(); A.savePerson(q); A.cachePut('PEOPLE', null); });
+    return Promise.resolve().then(function () {
+      return A.generateChibi(p, p.role === 'host' ? 'host' : 'player');
+    }).then(function (out) {
+      return A.lock(function () {
+        var q = person(r.id);
+        A.trash(q.chibiId); A.trash(q.spriteId);
+        q.chibiId = out.id; q.spriteId = ''; q.chibiStatus = 'done'; q.chibiNote = out.note || ''; q.chibiAt = now();
+        A.savePerson(q); bumpPeople();
+        return fullPerson(q);
+      });
+    }, function (e) {
+      A.lock(function () { var q = person(r.id); q.chibiStatus = 'error'; q.chibiNote = String(e.message || e).slice(0, 400); A.savePerson(q); A.cachePut('PEOPLE', null); });
+      throw e;
+    });
+  }
+  /* versi kecil avatar (±320×480, latar transparan) dibuat di HP admin/host, supaya lobi ringan untuk 30 karakter */
+  function saveSprite(r) {
+    auth(r.token, ['admin', 'host']);
+    if (!/^data:image\/(png|webp);base64,/.test(String(r.data || '')) || String(r.data).length > 700000) throw err('INVALID', 'Gambar avatar tidak valid');
+    return A.lock(function () {
+      var q = person(r.id);
+      if (!q || !q.chibiId) throw err('NOT_FOUND', 'Avatar belum dibuat');
+      if (r.chibiId && r.chibiId !== q.chibiId) throw err('STALE', 'Avatar sudah diganti');
+      var id = A.savePhoto(r.data, q.name + '_sprite');
+      A.trash(q.spriteId);
+      q.spriteId = id; A.savePerson(q); bumpPeople();
+      return publicPerson(q);
+    });
+  }
+
   /* profil sendiri: pilihan foto tampil dan unggah foto sendiri */
   function updateMe(r) {
     var actor = auth(r.token);
@@ -313,14 +354,149 @@ var Core = (function () {
     if (!S) return null;
     var o = JSON.parse(JSON.stringify(S));
     o.matches.forEach(function (m) { delete m.snap; });
+    if (o.plan) { o.plan.chatN = (o.plan.chat || []).length; delete o.plan.chat; } // chat lobi hanya lewat plans (anggota)
     return o;
   }
 
+  /* ---------------- rencana sesi & ruang tunggu (lobi) ---------------- */
+  var PLAN_ACTIONS = { rsvp: 1, chat: 1, theme: 1, editPlan: 1, startPlan: 1 };
+  function isMember(token) { if (!token) return false; try { auth(token); return true; } catch (e) { return false; } }
+  function planFields(src, old) {
+    src = src || {}; old = old || {};
+    var v = src.venue || old.venue || {}, str = function (x, n) { return String(x == null ? '' : x).trim().slice(0, n); };
+    var when = Number(src.when != null ? src.when : old.when) || null;
+    var maps = str(v.maps, 400);
+    if (maps && !/^https:\/\//.test(maps)) maps = '';
+    var lat = Number(v.lat), lng = Number(v.lng);
+    return {
+      when: when, whenText: str(src.whenText != null ? src.whenText : old.whenText, 80),
+      venue: { name: str(v.name, 80), address: str(v.address, 160), maps: maps, lat: isFinite(lat) ? lat : null, lng: isFinite(lng) ? lng : null },
+      theme: /^[a-z0-9_-]{1,24}$/.test(String(src.theme || '')) ? src.theme : (old.theme || 'court')
+    };
+  }
+  function planView(S, member) {
+    var p = S.plan || {};
+    var o = { id: S.id, v: S.v || 0, name: S.name, status: S.status, format: S.format, teamMode: S.teamMode,
+      courts: S.courts.filter(function (c) { return c.active; }).length, hosts: S.hosts || [],
+      when: p.when, whenText: p.whenText, venue: p.venue || {}, theme: p.theme || 'court', by: p.by,
+      rsvp: (p.rsvp || []).map(function (x) { return { pid: x.pid, role: x.role, at: x.at }; }), chatN: (p.chat || []).length };
+    if (member) o.chat = (p.chat || []).slice(-100);
+    return o;
+  }
+  function plans(member) {
+    return A.sessions().filter(function (r) { return r.status === 'plan'; })
+      .map(function (r) { return loadS(r.id); }).filter(function (S) { return S && S.plan; })
+      .sort(function (a, b) { return (a.plan.when || 0) - (b.plan.when || 0); })
+      .map(function (S) { return planView(S, member); });
+  }
+  function venueLine(v) { v = v || {}; return [v.name, v.address].filter(Boolean).join(' · '); }
+  /* pasangan tetap yang belum diatur: dipasangkan acak, putra-putri dulu bila bisa (opsi lengkap di Tahap 5) */
+  function autoTeams(ids, P, given) {
+    var used = {}, teams = [];
+    (given || []).forEach(function (t) { if (ids.indexOf(t.a) >= 0 && ids.indexOf(t.b) >= 0 && !used[t.a] && !used[t.b]) { teams.push({ a: t.a, b: t.b }); used[t.a] = used[t.b] = 1; } });
+    var rest = ids.filter(function (id) { return !used[id]; }).sort(function () { return Math.random() - .5; });
+    var L = rest.filter(function (id) { return (P[id] || {}).gender !== 'P'; }), W = rest.filter(function (id) { return (P[id] || {}).gender === 'P'; });
+    while (L.length && W.length) teams.push({ a: L.pop(), b: W.pop() });
+    var left = L.concat(W);
+    while (left.length >= 2) teams.push({ a: left.pop(), b: left.pop() });
+    return teams;
+  }
+  function startPlan(S, P) {
+    var p = S.plan, alive = {};
+    people().forEach(function (x) { if (!x.archived) alive[x.id] = x; });
+    var players = p.rsvp.filter(function (x) { return x.role === 'player' && alive[x.pid] && alive[x.pid].role !== 'host'; }).map(function (x) { return x.pid; });
+    if (players.length < 4) throw err('INVALID', 'Butuh minimal 4 pemain yang hadir untuk memulai');
+    var hostIds = p.rsvp.filter(function (x) { return x.role === 'host' && alive[x.pid]; }).map(function (x) { return x.pid; });
+    var fresh = Engine.newSession({ name: S.name, format: S.format, teamMode: S.teamMode, scoring: S.scoring, rules: S.rules, courts: S.courts, playerIds: players,
+      teams: S.teamMode === 'fixed' ? autoTeams(players, P, p.teams) : [] });
+    S.parts = fresh.parts; S.teams = fresh.teams; S.matches = []; S.seq = 0; S.status = 'live'; S.date = new Date().toISOString();
+    S.calls = {}; S.lastDone = {};
+    setHosts(S, (S.hosts || []).concat(hostIds));
+    p.startedAt = now(); p.prevActive = A.prop('ACTIVE_SID') || '';
+    Engine.fillCourts(S, P);
+    A.setProp('ACTIVE_SID', S.id);
+  }
+  function backToLobby(S) {
+    if (!S.plan || S.status !== 'live') throw err('INVALID', 'Sesi ini tidak dimulai dari lobi');
+    var played = S.matches.some(function (m) { return m.go || (m.tally && m.tally.length) || m.status === 'done'; });
+    if (played) throw err('INVALID', 'Sudah ada match yang dimulai. Lobi tidak bisa dibuka lagi');
+    S.status = 'plan'; S.parts = {}; S.teams = []; S.matches = []; S.seq = 0; S.calls = {}; S.lastDone = {};
+    delete S.plan.startedAt;
+    if (A.prop('ACTIVE_SID') === S.id) {
+      var prev = S.plan.prevActive && loadS(S.plan.prevActive);
+      if (prev && prev.status === 'live') A.setProp('ACTIVE_SID', prev.id); else A.delProp('ACTIVE_SID');
+    }
+  }
+  function applyPlan(S, P, type, d, actor) {
+    var p = S.plan, staff = actor.role === 'admin' || actor.role === 'host';
+    if (type === 'chat') {
+      var text = String(d.text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+      if (!text) throw err('INVALID', 'Pesan kosong');
+      p.chat.push({ id: A.uuid('m_'), pid: actor.id, name: actor.name, role: actor.role === 'user' ? 'player' : 'host', text: text, at: now() });
+      if (p.chat.length > 200) p.chat = p.chat.slice(-200);
+      return null;
+    }
+    if (type === 'rsvp') {
+      var who = person(d.pid || actor.id);
+      if (!who || who.archived) throw err('NOT_FOUND', 'Orang tidak ditemukan');
+      if (!staff && who.id !== actor.id) throw err('FORBIDDEN');
+      p.rsvp = p.rsvp.filter(function (x) { return x.pid !== who.id; });
+      if (d.on !== false) {
+        var role = who.role === 'host' ? 'host' : who.role === 'admin' ? (d.as === 'player' ? 'player' : 'host') : 'player';
+        p.rsvp.push({ pid: who.id, role: role, at: now(), by: actor.id });
+      }
+      return null;
+    }
+    if (!staff) throw err('FORBIDDEN', 'Aksi ini khusus admin atau host');
+    if (type === 'theme') { p.theme = planFields({ theme: d.theme }, p).theme; return null; }
+    if (type === 'editPlan') {
+      var f = planFields(d, p);
+      if (f.when !== p.when) p.reminded = {};
+      p.when = f.when; p.whenText = f.whenText; p.venue = f.venue; p.theme = f.theme;
+      if (d.name) S.name = String(d.name).trim().slice(0, 60) || S.name;
+      return null;
+    }
+    if (type === 'startPlan') { startPlan(S, P); return null; }
+    return null;
+  }
+  /* pengingat 12 jam & 3 jam sebelum main untuk yang sudah hadir; dipanggil server (alarm). Hasil: waktu pengingat berikutnya */
+  function reminders(t) {
+    t = t || now();
+    return A.lock(function () {
+      var next = null;
+      A.sessions().filter(function (r) { return r.status === 'plan'; }).forEach(function (row) {
+        var S = loadS(row.id); if (!S || !S.plan || !S.plan.when) return;
+        var p = S.plan, changed = false; p.reminded = p.reminded || {};
+        [[12, 'h12'], [3, 'h3']].forEach(function (x) {
+          var due = p.when - x[0] * 3600000;
+          if (p.reminded[x[1]]) return;
+          if (t < due) { if (next == null || due < next) next = due; return; }
+          p.reminded[x[1]] = true; changed = true;
+          // rencana dibuat setelah waktu pengingat, atau pengingat terlambat jauh: lewati
+          if ((p.created || 0) > due || t - due > 2 * 3600000 || t >= p.when || !A.notify) return;
+          var left = Math.max(1, Math.round((p.when - t) / 3600000));
+          p.rsvp.forEach(function (x2) {
+            A.notify(x2.pid, { title: left + ' jam lagi main: ' + S.name, body: [p.whenText, venueLine(p.venue)].filter(Boolean).join('\n'),
+              tag: 'rem-' + S.id, url: '/?lobby=' + S.id, maps: (p.venue || {}).maps || '' });
+          });
+        });
+        if (changed) saveS(S);
+      });
+      return next;
+    });
+  }
+  function venueSearch(r) {
+    auth(r.token, ['admin', 'host']);
+    var q = String(r.q || '').trim().slice(0, 120);
+    if (q.length < 3) throw err('INVALID', 'Tulis minimal 3 huruf nama venue');
+    return Promise.resolve(A.geocode ? A.geocode(q) : []);
+  }
+
   /* dashboard publik: tanpa login. Dipanggil berkala oleh semua perangkat. */
-  function poll(r) {
+  function poll(r, member) {
     r = r || {};
     var sid = A.prop('ACTIVE_SID') || '';
-    var out = { now: now(), sid: sid, pv: peopleVersion() };
+    var out = { now: now(), sid: sid, pv: peopleVersion(), plans: plans(member === true || isMember(r.token)) };
     if (sid) {
       var S = loadS(sid);
       if (!S) { out.sid = ''; } else {
@@ -367,6 +543,22 @@ var Core = (function () {
       // host sesi bisa lebih dari satu; masing-masing bisa ditugaskan sebagai wasit di satu court
       setHosts(S, st.hosts || (st.hostId ? [st.hostId] : actor.role === 'host' ? [actor.id] : []));
       S.calls = {}; S.lastDone = {};
+      if (st.plan) {
+        // rencana: buka ruang tunggu dulu; pemain yang dipilih host langsung tercatat hadir
+        var f = planFields(st.plan);
+        if (!f.when) throw err('INVALID', 'Isi tanggal dan jam main');
+        S.parts = {}; S.teams = []; S.status = 'plan';
+        S.plan = { when: f.when, whenText: f.whenText, venue: f.venue, theme: f.theme, by: actor.id, created: now(), reminded: {}, chat: [],
+          teams: S.teamMode === 'fixed' ? (st.teams || []).filter(function (t) { return ids.indexOf(t.a) >= 0 && ids.indexOf(t.b) >= 0; }) : [],
+          rsvp: ids.map(function (pid) { return { pid: pid, role: 'player', at: now(), by: actor.id }; }) };
+        saveS(S, P);
+        if (A.notify) all.forEach(function (x) {
+          if (x.archived || x.id === actor.id) return;
+          A.notify(x.id, { title: 'Sesi baru: ' + S.name, body: [f.whenText, venueLine(f.venue)].filter(Boolean).join(' · ') + '. Buka untuk ikut hadir.',
+            tag: 'plan-' + S.id, url: '/?lobby=' + S.id, join: true });
+        });
+        return { sid: S.id, v: S.v, S: publicS(S), plan: planView(S, true) };
+      }
       Engine.fillCourts(S, P);
       saveS(S, P);
       A.setProp('ACTIVE_SID', S.id);
@@ -401,7 +593,7 @@ var Core = (function () {
     return { voided: m.id };
   }
 
-  var SELF_ACTIONS = { skip: 1, ready: 1, leave: 1 };
+  var SELF_ACTIONS = { skip: 1, ready: 1, leave: 1, rsvp: 1, chat: 1 };
   function act(r) {
     var actor = auth(r.token);
     var type = r.type, d = r.payload || {};
@@ -412,9 +604,17 @@ var Core = (function () {
       var S = loadS(r.sid || A.prop('ACTIVE_SID'));
       if (!S) throw err('NOT_FOUND', 'Sesi tidak ditemukan');
       var P = playersMap();
-      var info = apply(S, P, type, d, actor);
+      var info;
+      if (S.status === 'plan') {
+        if (!PLAN_ACTIONS[type]) throw err('INVALID', 'Sesi ini masih di ruang tunggu');
+        info = applyPlan(S, P, type, d, actor);
+      } else if (type === 'backToLobby') { if (!staff) throw err('FORBIDDEN'); backToLobby(S); }
+      else if (PLAN_ACTIONS[type]) throw err('STALE', 'Sesi sudah dimulai');
+      else info = apply(S, P, type, d, actor);
       saveS(S, P);
-      return { sid: S.id, v: S.v, S: publicS(S), info: info || null };
+      var out = { sid: S.id, v: S.v, S: publicS(S), info: info || null };
+      if (S.plan) out.plan = planView(S, true);
+      return out;
     });
   }
 
@@ -564,7 +764,7 @@ var Core = (function () {
     me: me, changePin: changePin, updateMe: updateMe, listPeople: listPeople, savePerson: savePersonReq, resetPin: resetPin,
     generatePro: generatePro, listSessions: listSessions, openSession: openSession, deleteSession: deleteSession,
     createSession: createSession, act: act, importPerson: importPerson, importSession: importSession, markMigrated: markMigrated,
-    pushSubscribe: pushSubscribe
+    pushSubscribe: pushSubscribe, venueSearch: venueSearch, generateChibi: generateChibi, saveSprite: saveSprite
   };
   function call(fn, req) {
     var f = PUBLIC[fn] || PRIVATE[fn];
@@ -572,6 +772,8 @@ var Core = (function () {
     return f(req || {});
   }
 
-  return { init: init, call: call, DEFAULT_PIN: DEFAULT_PIN, apply: apply, rowsFor: rowsFor };
+  // pollAs & reminders hanya dipanggil server (siaran WebSocket & alarm), tidak lewat API
+  return { init: init, call: call, DEFAULT_PIN: DEFAULT_PIN, apply: apply, rowsFor: rowsFor,
+    pollAs: function (member) { return poll({}, !!member); }, reminders: reminders };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;

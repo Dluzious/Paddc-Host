@@ -144,8 +144,10 @@ function buildPrompt(p, st, withLogo, custom) {
   ].join(' ');
 }
 
-/* images: [foto pemain, logo]. Kalau server menolak dua gambar, dicoba ulang dengan foto saja dan logo dideskripsikan lewat teks. */
-async function callOpenAI(env, A, images, makePrompt) {
+/* images: [foto pemain, logo]. Kalau server menolak dua gambar, dicoba ulang dengan foto saja dan logo dideskripsikan lewat teks.
+   opts.format 'jpeg'|'webp'|'png', opts.transparent: latar transparan (avatar chibi); bila model menolak, diulang tanpa transparan. */
+async function callOpenAI(env, A, images, makePrompt, opts) {
+  opts = opts || {};
   const base = (env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
   const pinned = env.OPENAI_IMAGE_MODEL || '';
   const ok = A.prop('OPENAI_IMAGE_MODEL_OK');
@@ -155,16 +157,18 @@ async function callOpenAI(env, A, images, makePrompt) {
   let lastErr = 'Tidak ada model yang bisa dipakai.';
   for (const model of models) {
     const attempts = images.length > 1 ? [images, [images[0]]] : [images];
+    let transparent = !!opts.transparent;
     for (let a = 0; a < attempts.length; a++) {
       const imgs = attempts[a];
       const fd = new FormData();
       fd.append('model', model);
-      fd.append('prompt', makePrompt(imgs.length > 1));
+      fd.append('prompt', makePrompt(imgs.length > 1, transparent));
       fd.append('n', '1');
       fd.append('size', '1024x1536');
       fd.append('quality', quality);
-      fd.append('output_format', 'jpeg');
-      fd.append('output_compression', '85');
+      fd.append('output_format', opts.format || 'jpeg');
+      if ((opts.format || 'jpeg') !== 'png') fd.append('output_compression', '85');
+      if (transparent) fd.append('background', 'transparent');
       imgs.forEach((im) => fd.append('image[]', new Blob([im.bytes], { type: im.mime }), im.name));
       const res = await fetch(base + '/images/edits', { method: 'POST', headers: { Authorization: 'Bearer ' + env.OPENAI_API_KEY }, body: fd });
       const txt = await res.text();
@@ -173,7 +177,7 @@ async function callOpenAI(env, A, images, makePrompt) {
         try { const j = JSON.parse(txt); b64 = j.data && j.data[0] && j.data[0].b64_json; } catch (e) { /* bukan JSON */ }
         if (b64) {
           if (!pinned) A.setProp('OPENAI_IMAGE_MODEL_OK', model);
-          return { b64, model, withLogo: imgs.length > 1 };
+          return { b64, model, withLogo: imgs.length > 1, transparent };
         }
         lastErr = 'OpenAI tidak mengirim gambar.';
         continue;
@@ -181,6 +185,8 @@ async function callOpenAI(env, A, images, makePrompt) {
       let msg = txt;
       try { msg = JSON.parse(txt).error.message; } catch (e) { /* teks mentah */ }
       lastErr = 'OpenAI ' + res.status + ': ' + String(msg).slice(0, 300);
+      // model tidak mendukung latar transparan: ulangi model yang sama dengan latar polos (dibersihkan di HP host)
+      if (res.status === 400 && transparent && /background|transparen/i.test(msg)) { transparent = false; a--; continue; }
       const modelIssue = [400, 403, 404].indexOf(res.status) >= 0 && /model|does not exist|not supported|unsupported|invalid value|parameter|verified/i.test(msg);
       if (!modelIssue && res.status === 400 && /image/i.test(msg) && a === 0 && attempts.length > 1) continue; // ulangi dengan foto saja
       if (!modelIssue) throw new Error(lastErr);
@@ -203,4 +209,39 @@ export async function generateAI(env, A, p, kind) {
   const note = 'Model: ' + out.model + (out.withLogo ? '' : ' (logo dari teks)') + ' | ' + style.outfit + ', ' + style.color + ' | ' +
     (style.brand ? style.brand + ', ' + style.racket : style.prop) + ' | ' + style.pose;
   return { id, note };
+}
+
+/* ---------------- avatar chibi untuk ruang tunggu ----------------
+   Dibuat SEKALI dari foto pro (atau foto asli), seluruh badan, latar transparan. Disimpan permanen;
+   versi kecil untuk lobi dibuat oleh HP admin/host (Core.saveSprite), jadi membuka lobi tidak memanggil OpenAI. */
+function buildChibiPrompt(p, kind, withLogo, transparent) {
+  const who = p.gender === 'P' ? 'a woman' : 'a man';
+  const hijab = p.gender === 'P' && p.hijab;
+  const host = kind === 'host';
+  const modesty = hijab
+    ? 'She wears a hijab: keep the hijab as in the photo. Fully covered modest sportswear: long sleeves to the wrists, loose fit, long pants or long leggings, no skin on arms or legs.'
+    : 'Sleeves are required (short or long); never sleeveless and never a tank top. If the person wears a hijab or headscarf, keep it and use long sleeves and long pants.';
+  const outfit = host
+    ? 'Outfit: a padel match referee / host uniform: black-and-white vertical striped referee shirt, black trousers, a whistle on a lanyard, holding a small scorecard in one hand. No racket.'
+    : 'Outfit: colorful modern padel sportswear (shirt with sleeves, shorts or skirt, padel shoes). Holding a padel racket (solid perforated paddle without strings) in the right hand.';
+  const logo = withLogo
+    ? 'Image 1 is the person. Image 2 is the PADEL DOC club badge: put it small on the left chest of the shirt, simplified but recognizable.'
+    : 'Put a small round PADEL DOC club badge on the left chest (navy circle with orange and green rings).';
+  return [
+    'Create a cute chibi-style full-body game avatar of the person in the reference photo: big head, small body (about 2.5 heads tall).',
+    'The person is ' + who + '. Keep the face, skin tone, hairstyle and glasses (if any) recognizable as the same person. Do not change age or gender.',
+    'Pose: standing, facing the viewer turned slightly to one side, cheerful expression, whole body visible from head to shoes, centered with a small margin.',
+    outfit, modesty, logo,
+    transparent ? 'Background: fully transparent (no floor, no shadow, no scenery).' : 'Background: plain flat pure white, nothing else (no floor, no shadow, no scenery).',
+    'Style: clean 2D game character illustration, soft cel shading, crisp dark outline, vivid colors. No text other than the badge, no watermark.'
+  ].join(' ');
+}
+export async function generateChibi(env, A, p, kind) {
+  const src = A.photoRow(p.proId) || A.photoRow(p.photoId);
+  if (!src) throw new Error('INVALID: Belum ada foto untuk dijadikan avatar');
+  const photo = { bytes: Buffer.from(src.b64, 'base64'), mime: src.mime, name: 'foto.jpg' };
+  const logo = { bytes: Buffer.from(LOGO_B64, 'base64'), mime: 'image/jpeg', name: 'paddoc-logo.jpg' };
+  const out = await callOpenAI(env, A, [photo, logo], (withLogo, transparent) => buildChibiPrompt(p, kind, withLogo, transparent), { format: 'webp', transparent: true });
+  const id = A.savePhoto('data:image/webp;base64,' + out.b64, p.name + '_chibi');
+  return { id, note: 'Model: ' + out.model + (out.transparent ? '' : ' (latar polos, dibersihkan otomatis)') };
 }

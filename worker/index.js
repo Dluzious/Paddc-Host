@@ -5,13 +5,14 @@
    dengan data di SQLite miliknya: orang, sesi, properti (token login, sesi aktif), dan foto.
    POST /api  {fn, req}  ->  {ok:true, data} | {ok:false, error}
    GET  /ws              ->  WebSocket: server mengirim data terbaru setiap ada perubahan
+                            (HP yang login mengirim "auth <token>" supaya ikut menerima chat lobi)
    GET  /photo/<id>.jpg  ->  file foto
    ============================================================ */
 import { DurableObject } from 'cloudflare:workers';
 import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import Core from '../core.js';
-import { generateAI } from './ai.js';
+import { generateAI, generateChibi } from './ai.js';
 import { newVapidKeys, sendPush } from './push.js';
 
 const MAX_BODY = 8 * 1024 * 1024;
@@ -45,6 +46,37 @@ function json(obj, status) {
 }
 function clone(x) { return x == null ? x : JSON.parse(JSON.stringify(x)); }
 
+/* cari alamat venue: Google Places bila secret GOOGLE_MAPS_API_KEY diisi, selain itu OpenStreetMap (gratis) */
+async function geocode(env, q) {
+  const mapsAt = (lat, lng) => 'https://www.google.com/maps/search/?api=1&query=' + lat + '%2C' + lng;
+  if (env.GOOGLE_MAPS_API_KEY) {
+    const r = await fetch('https://places.googleapis.com/v1/places:searchText', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': env.GOOGLE_MAPS_API_KEY,
+        'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.googleMapsUri' },
+      body: JSON.stringify({ textQuery: q, languageCode: 'id', regionCode: 'ID', maxResultCount: 5 })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error('GEO: Pencarian Google Maps gagal (' + ((j.error || {}).message || r.status) + ')');
+    return (j.places || []).map((x) => {
+      const loc = x.location || {};
+      return { name: (x.displayName || {}).text || q, address: x.formattedAddress || '', lat: loc.latitude, lng: loc.longitude,
+        maps: x.googleMapsUri || mapsAt(loc.latitude, loc.longitude) };
+    });
+  }
+  const base = env.NOMINATIM_URL || 'https://nominatim.openstreetmap.org';
+  const r = await fetch(base + '/search?format=jsonv2&limit=5&countrycodes=id&accept-language=id&q=' + encodeURIComponent(q), {
+    headers: { 'User-Agent': 'PaddocHost/2.4 (+https://paddoc-host.lulunurulula.workers.dev)', Accept: 'application/json' }
+  });
+  if (!r.ok) throw new Error('GEO: Pencarian alamat sedang tidak tersedia (' + r.status + '). Isi alamat & link Maps manual');
+  const list = await r.json();
+  return (Array.isArray(list) ? list : []).map((x) => {
+    const parts = String(x.display_name || '').split(', ');
+    const name = x.name || parts[0] || q;
+    return { name, address: parts.filter((t, i) => !(i === 0 && t === name)).join(', '), lat: +x.lat, lng: +x.lon, maps: mapsAt(x.lat, x.lon) };
+  });
+}
+
 export class PaddocHost extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -66,7 +98,10 @@ export class PaddocHost extends DurableObject {
 
   async fetch(request) {
     const url = new URL(request.url);
-    this.origin = url.origin;
+    if (this.origin !== url.origin) {           // dipakai alarm pengingat (tanpa request) untuk identitas VAPID
+      this.origin = url.origin;
+      this.sql.exec("INSERT INTO props (k, v) VALUES ('ORIGIN', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v", url.origin);
+    }
     if (url.pathname === '/ws') {
       if (request.headers.get('Upgrade') !== 'websocket') return new Response('Butuh WebSocket', { status: 426 });
       const pair = new WebSocketPair();
@@ -89,7 +124,7 @@ export class PaddocHost extends DurableObject {
       this.outbox = [];
       let data = Core.call(body.fn, body.req || {});
       if (data && typeof data.then === 'function') data = await data;
-      if (this.dirty) this.broadcast();
+      if (this.dirty) { this.broadcast(); await this.planReminders(); }
       if (this.outbox.length) await this.flushPush();
       return json({ ok: true, data: data === undefined ? null : data });
     } catch (e) {
@@ -104,12 +139,35 @@ export class PaddocHost extends DurableObject {
     const socks = this.ctx.getWebSockets();
     this.dirty = false;
     if (!socks.length) return;
-    let msg;
+    let pub, mem;
     try {
       Core.init(this.A);
-      msg = JSON.stringify({ type: 'poll', data: Core.call('poll', {}) });
+      pub = JSON.stringify({ type: 'poll', data: Core.pollAs(false) });
     } catch (e) { console.error('broadcast', e); return; }
-    socks.forEach((ws) => { try { ws.send(msg); } catch (e) { /* koneksi sudah putus */ } });
+    socks.forEach((ws) => {
+      try {
+        const member = !!(ws.deserializeAttachment() || {}).member;
+        if (member && !mem) mem = JSON.stringify({ type: 'poll', data: Core.pollAs(true) }); // dengan chat lobi
+        ws.send(member ? mem : pub);
+      } catch (e) { /* koneksi sudah putus */ }
+    });
+  }
+  /* pengingat 12 jam & 3 jam sebelum main: Core menandai yang jatuh tempo, alarm Durable Object untuk yang berikutnya */
+  async planReminders() {
+    try {
+      Core.init(this.A);
+      const next = Core.reminders(Date.now());
+      if (this.dirty) this.broadcast();
+      const cur = await this.ctx.storage.getAlarm();
+      if (next && cur !== next) await this.ctx.storage.setAlarm(next);
+      else if (!next && cur) await this.ctx.storage.deleteAlarm();
+    } catch (e) { console.error('reminders', e && e.stack || e); }
+  }
+  async alarm() {
+    if (!this.origin) this.origin = (this.sql.exec("SELECT v FROM props WHERE k = 'ORIGIN'").toArray()[0] || {}).v || '';
+    this.outbox = []; this.dirty = false;
+    await this.planReminders();
+    if (this.outbox.length) await this.flushPush();
   }
   /* kirim notifikasi push yang dikumpulkan Core (Panggil) ke semua HP milik pemain itu */
   async flushPush() {
@@ -131,7 +189,17 @@ export class PaddocHost extends DurableObject {
     this.sql.exec("INSERT INTO props (k, v) VALUES ('VAPID', ?) ON CONFLICT(k) DO NOTHING", JSON.stringify(keys));
     return JSON.parse(this.sql.exec("SELECT v FROM props WHERE k = 'VAPID'").toArray()[0].v);
   }
-  webSocketMessage() { /* HP hanya mengirim ping, dijawab otomatis */ }
+  /* ping dijawab otomatis; "auth <token>" menandai HP yang login supaya menerima chat lobi */
+  webSocketMessage(ws, msg) {
+    const m = /^auth ([A-Za-z0-9_-]{8,80})$/.exec(String(msg));
+    if (!m) return;
+    try {
+      Core.init(this.A);
+      Core.call('me', { token: m[1] });          // melempar error bila token tidak sah
+      ws.serializeAttachment({ member: true });
+      ws.send(JSON.stringify({ type: 'poll', data: Core.pollAs(true) }));
+    } catch (e) { try { ws.serializeAttachment({ member: false }); } catch (x) { /* abaikan */ } }
+  }
   webSocketClose(ws, code) { try { ws.close(code, 'bye'); } catch (e) { /* sudah tertutup */ } }
 
   servePhoto(id) {
@@ -228,7 +296,9 @@ export class PaddocHost extends DurableObject {
       },
       deletePush: (endpoint) => { sql.exec('DELETE FROM push_subs WHERE endpoint = ?', endpoint); },
       notify: (pid, payload) => { self.outbox.push({ pid, payload }); },
-      generateAI: (p, kind) => generateAI(env, A, clone(p), kind)
+      geocode: (q) => geocode(env, q),
+      generateAI: (p, kind) => generateAI(env, A, clone(p), kind),
+      generateChibi: (p, kind) => generateChibi(env, A, clone(p), kind)
     };
     return A;
   }
