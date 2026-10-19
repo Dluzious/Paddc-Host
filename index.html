@@ -825,6 +825,10 @@ button.cm-p:hover { background: rgba(8,18,34,0.55); }
 .pc-faces .muted { margin-left: 16px; font-size: 13px; }
 .chip.ok { color: #2FAF6B; }
 .venue-res { margin-top: -4px; }
+.chibi-row { display: flex; gap: 12px; align-items: center; }
+.chibi-ph { position: relative; width: 72px; height: 108px; flex: none; display: grid; place-items: center; border-radius: 14px; background: var(--surface-2); color: var(--muted); overflow: hidden; }
+.chibi-ph img { width: 100%; height: 100%; object-fit: contain; object-position: 50% 100%; }
+.chibi-ph .busy { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(6, 12, 22, 0.45); }
 .lobby-undo { flex: none; align-self: center; margin-left: auto; white-space: nowrap; }
 .venue-res .vpin { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--accent); }
 .onboard h1:not(.wordmark) { margin: 0; font-size: 26px; }
@@ -1420,7 +1424,9 @@ function MemoryAdapter(store, persist) {
     return '<div class="auth onboard"><img src="' + LOGO + '" alt="Logo Padel Doc"><h1 class="wordmark">Paddoc <b>Host</b></h1>' + installLobbyCard() +
       (done ? '<p><b>Aplikasi sudah terpasang.</b> Tutup halaman ini, lalu buka <b>Paddoc Host</b> dari layar utama HP.</p>'
         : '<p>Pasang dulu di layar utama HP. Aplikasi hanya bisa dipakai dari layar utama supaya host bisa <b>memanggil kamu lewat notifikasi</b> saat giliran main.</p>' + installSteps()) +
-      '<p class="muted" style="font-size:12px;margin:0">Sudah pernah pasang? Buka <b>Paddoc Host</b> dari layar utama HP.</p></div>';
+      '<p class="muted" style="font-size:12px;margin:0">' + (isIOS()
+        ? 'Sudah pernah pasang? Di iPhone/iPad link selalu terbuka di Safari. Tutup halaman ini dan buka <b>Paddoc Host</b> dari layar utama' + (UI.installLobby ? '; sesi ini ada di beranda.' : '.')
+        : 'Sudah pernah pasang? Buka <b>Paddoc Host</b> dari layar utama HP. Link berikutnya langsung terbuka di aplikasi.') + '</p></div>';
   }
   function viewNotify() {
     return '<div class="auth onboard"><div class="ta-ring">' + icon('bell') + '</div><h1>Izinkan notifikasi</h1>' +
@@ -2116,6 +2122,7 @@ function MemoryAdapter(store, persist) {
       $('#app').innerHTML = '<div id="lobby-root"></div>';
       LOBBY = { sid: pl.id, role: lobbyRole(), inst: Lobby.mount($('#lobby-root'), lobbyState(pl), lobbyHandlers(pl.id)) };
     } else LOBBY.inst.update(lobbyState(pl));
+    if (isStaff()) pl.rsvp.forEach(function (x) { ensureSprite(P(x.pid)); });
   }
   function openLobby(sid) {
     UI.lobbySid = sid;
@@ -2417,9 +2424,11 @@ function MemoryAdapter(store, persist) {
     var list = all.filter(function (p) { return p.role === UI.ptab && (!UI.pq || p.name.toLowerCase().indexOf(UI.pq.toLowerCase()) >= 0); })
       .sort(function (a, b) { return a.name.localeCompare(b.name); });
     var pending = all.filter(function (p) { return p.asliUrl && !p.proUrl && p.aiStatus !== 'processing'; });
+    var noChibi = all.filter(needChibi);
     var h = '<div class="players"><div class="players-h"><h1>Database</h1>' +
       '<input id="pq" class="input" style="max-width:220px" placeholder="Cari nama" value="' + esc(UI.pq) + '">' +
       (DB.ai && pending.length ? '<button class="btn" data-act="aiBatch">' + icon('sparkles') + 'Foto pro AI (' + pending.length + ')</button>' : '') +
+      (DB.ai && noChibi.length ? '<button class="btn" data-act="chibiBatch">' + icon('users') + 'Avatar lobi (' + noChibi.length + ')</button>' : '') +
       '<button class="btn primary" data-act="newPlayer">' + icon('userPlus') + (UI.ptab === 'host' ? 'Tambah host' : 'Tambah pemain') + '</button></div>' +
       segBtns('ptab', tabs, UI.ptab);
     if (!LIVE_MODE) h += '<div class="demo-note">' + icon('info') + '<div>Foto pro AI hanya aktif di versi server, karena API key harus disimpan di server.</div></div>';
@@ -2433,6 +2442,9 @@ function MemoryAdapter(store, persist) {
     return h + staffNav();
   }
 
+  /* "sedang dibuat" kedaluwarsa setelah 5 menit (mis. server sempat mulai ulang) supaya bisa dicoba lagi */
+  function chibiBusy(p) { return p.chibiStatus === 'busy' && Date.now() - (p.chibiBusyAt || Date.now()) < 300000; }
+  function needChibi(p) { return !p.archived && (p.proUrl || p.asliUrl) && !p.chibiUrl && !p.chibiFull && !chibiBusy(p); }
   /* ---------- profil saya ---------- */
   function viewProfile() {
     var u = me();
@@ -2453,6 +2465,9 @@ function MemoryAdapter(store, persist) {
       '<div class="row" style="justify-content:center"><label class="btn" for="pf-cam">' + icon('camera') + 'Ambil foto</label><label class="btn" for="pf-file">' + icon('image') + 'Unggah dari galeri</label></div>' +
       '<input id="pf-cam" type="file" accept="image/*" capture="user" hidden><input id="pf-file" type="file" accept="image/*" hidden>' +
       '<p class="muted" style="margin:0;font-size:13px">Foto yang kamu unggah langsung dipakai sebagai foto tampil. Foto pro AI tetap tersimpan dan bisa dipilih lagi.</p></section>';
+    var chib = p.chibiUrl || p.chibiFull;
+    h += '<section class="card"><h3>' + icon('users') + 'Avatar ruang tunggu</h3><div class="chibi-row"><span class="chibi-ph">' + (chib ? '<img src="' + esc(chib) + '" alt="Avatar kamu">' : icon('users')) + '</span>' +
+      '<p class="muted" style="margin:0;font-size:13px">' + (chib ? 'Karakter ini yang tampil saat kamu hadir di ruang tunggu.' : 'Avatar dibuat oleh admin dari foto pro AI-mu. Sementara itu lobi memakai karakter bawaan.') + '</p></div></section>';
     h += '<section class="card"><h3>' + icon('key') + 'Ganti PIN</h3>' + (p.pinDefault ? '<div class="demo-note">' + icon('alert') + '<div>PIN kamu masih <b>123456</b>. Siapa pun yang tahu username-mu bisa masuk sebagai kamu. Ganti sekarang.</div></div>' : '') +
       '<form id="pinf" class="row"><input id="pin-old" class="input pin" type="password" inputmode="numeric" placeholder="PIN lama" style="flex:1;min-width:120px"><input id="pin-new" class="input pin" type="password" inputmode="numeric" placeholder="PIN baru" style="flex:1;min-width:120px"><button class="btn primary" type="submit">' + icon('check') + 'Simpan PIN</button></form></section>';
     h += '<button class="btn danger block" data-act="logout">' + icon('logout') + 'Keluar dari akun</button></div>';
@@ -3217,6 +3232,12 @@ function MemoryAdapter(store, persist) {
           (cur.proUrl ? '<img src="' + esc(PHOTO_CACHE[cur.proId] || cur.proUrl) + '" alt="Foto pro" data-fid="' + esc(cur.proId || '') + '">' : icon('sparkles') + '<span>' + (p.role === 'host' ? 'Berseragam wasit' : 'Setengah badan,<br>pegang raket padel') + '</span>') +
           (proBusy ? '<span class="busy">' + loaderHTML(true) + '</span>' : '') + '</div></div></div>' +
           '<div class="field"><span class="lbl-sm">Foto yang ditampilkan</span>' + segBtns('x', [['pro', 'Foto pro AI', 'sparkles'], ['asli', 'Foto asli', 'camera']], p.photoPref || 'pro').replace(/data-act="x"/g, 'data-pp="1"') + '</div>';
+        var chib = cur.chibiUrl || cur.chibiFull, chBusy = chibiBusy(cur);
+        h += '<div class="field"><span class="lbl-sm">Avatar ruang tunggu (chibi)</span><div class="chibi-row"><span class="chibi-ph">' +
+          (chib ? '<img src="' + esc(chib) + '" alt="Avatar lobi">' : icon('users')) + (chBusy ? '<span class="busy">' + loaderHTML(true) + '</span>' : '') + '</span>' +
+          '<span class="muted" style="font-size:13px">' + (chBusy ? 'Sedang dibuat, ±1 menit.' : chib ? 'Dipakai di ruang tunggu. Dibuat sekali; membuka lobi tidak membuat ulang.'
+            : cur.chibiStatus === 'error' ? 'Gagal: ' + esc(cur.chibiNote) : cur.proUrl || cur.asliUrl ? 'Belum dibuat. Otomatis dibuat setelah foto pro AI selesai.' : 'Butuh foto dulu.') + '</span></div>' +
+          (DB.ai && (cur.proUrl || cur.asliUrl) && !chBusy ? '<button class="btn block" id="ed-chibi">' + icon('sparkles') + (chib ? 'Buat ulang avatar' : 'Buat avatar') + '</button>' : '') + '</div>';
       }
       h += '<div class="field"><label for="ed-name">Nama</label><input id="ed-name" class="input" value="' + esc(p.name) + '" maxlength="40" placeholder="Nama panggilan"></div>' +
         '<div class="field"><span class="lbl-sm">Jenis kelamin</span><div class="seg"><button class="' + (p.gender === 'L' ? 'on' : '') + '" data-g="L">' + icon('mars') + 'Laki-laki</button><button class="' + (p.gender === 'P' ? 'on' : '') + '" data-g="P">' + icon('venus') + 'Perempuan</button></div></div>';
@@ -3251,6 +3272,7 @@ function MemoryAdapter(store, persist) {
       var rs = $('#ed-reset', w);
       if (rs) rs.addEventListener('click', function () { withBusy(api('resetPin', { id: pid })).then(function (np) { DB.full[np.id] = np; toast('PIN direset ke 123456'); draw(); }).catch(function (e) { toast(errMsg(e), 'err'); }); });
       var ai = $('#ed-ai', w); if (ai) ai.addEventListener('click', function () { runAI(pid); draw(); });
+      var ch = $('#ed-chibi', w); if (ch) ch.addEventListener('click', function () { runChibi(pid).then(draw); draw(); });
       var arc = $('#ed-arc', w);
       if (arc) arc.addEventListener('click', function () {
         confirmBox('Arsipkan?', esc(p.name) + ' tidak tampil lagi di database dan tidak bisa masuk. Riwayat match tetap tersimpan.', [{ label: 'Batal', value: null }, { label: 'Arsipkan', value: 1, kind: 'danger' }])
@@ -3288,10 +3310,96 @@ function MemoryAdapter(store, persist) {
       return api('generatePro', { id: pid }).then(function (np) {
         DB.full[pid] = np; toast('Foto pro ' + np.name + ' selesai');
         LIVE.pv = -1; pollNow().catch(function () {}); render();
+        if (!np.chibiUrl && !np.chibiFull) runChibi(pid, true);
       }).catch(function (e) {
         DB.full[pid].aiStatus = 'error'; toast('Foto AI ' + P(pid).name + ' gagal: ' + errMsg(e), 'err'); render();
       });
     });
+  }
+
+  /* ---------- avatar chibi ruang tunggu ---------- */
+  var chibiQueue = Promise.resolve(), spriteJobs = {};
+  function runChibi(pid, quiet) {
+    if (!LIVE_MODE || !DB.ai) return Promise.resolve();
+    if (DB.full[pid]) { DB.full[pid].chibiStatus = 'busy'; DB.full[pid].chibiBusyAt = Date.now(); }
+    if (UI.view === 'players') render();
+    chibiQueue = chibiQueue.then(function () {
+      return api('generateChibi', { id: pid }).then(function (np) {
+        DB.full[pid] = np;
+        return ensureSprite(np);
+      }).then(function () {
+        if (!quiet) toast('Avatar ' + P(pid).name + ' selesai');
+        LIVE.pv = -1; pollNow().catch(function () {}); if (UI.view === 'players') render();
+      }).catch(function (e) {
+        if (DB.full[pid]) DB.full[pid].chibiStatus = 'error';
+        toast('Avatar ' + P(pid).name + ' gagal: ' + errMsg(e), 'err'); if (UI.view === 'players') render();
+      });
+    });
+    return chibiQueue;
+  }
+  function photoIdFromUrl(u) { var m = /\/photo\/(ph_[a-f0-9]{32})/.exec(u || ''); return m ? m[1] : ''; }
+  /* avatar besar → versi kecil untuk lobi, dibuat sekali di HP admin/host lalu disimpan di server */
+  function ensureSprite(p) {
+    if (!p || !p.chibiFull || p.chibiUrl || !isStaff() || spriteJobs[p.id]) return Promise.resolve();
+    spriteJobs[p.id] = 'run';
+    return makeSprite(p.chibiFull).then(function (data) {
+      return api('saveSprite', { id: p.id, data: data, chibiId: photoIdFromUrl(p.chibiFull) });
+    }).then(function (np) {
+      if (DB.full[p.id]) { DB.full[p.id].chibiUrl = np.chibiUrl; DB.full[p.id].chibiFull = ''; }
+      delete spriteJobs[p.id]; LIVE.pv = -1; return pollNow().catch(function () {});
+    }).catch(function (e) { spriteJobs[p.id] = 'fail'; console.warn('avatar kecil', e); });
+  }
+  function makeSprite(url) {
+    return new Promise(function (resolve, reject) {
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function () {
+        try {
+          var h = 576, w = Math.round(img.width * h / img.height);
+          var c = document.createElement('canvas'); c.width = w; c.height = h;
+          var x = c.getContext('2d'); x.drawImage(img, 0, 0, w, h);
+          var d = x.getImageData(0, 0, w, h);
+          clearBackground(d.data, w, h); x.putImageData(d, 0, 0);
+          var b = alphaBox(d.data, w, h); if (!b) throw new Error('Avatar kosong');
+          // potong ke badan, taruh di kanvas 320×480 dengan kaki di tengah bawah (sesuai bayangan di lantai lobi)
+          var out = document.createElement('canvas'); out.width = 320; out.height = 480;
+          var bw = b.x2 - b.x1 + 1, bh = b.y2 - b.y1 + 1, k = Math.min(312 / bw, 472 / bh), dw = bw * k, dh = bh * k;
+          out.getContext('2d').drawImage(c, b.x1, b.y1, bw, bh, (320 - dw) / 2, 476 - dh, dw, dh);
+          var data = out.toDataURL('image/webp', 0.86);
+          if (data.indexOf('data:image/webp') !== 0) data = out.toDataURL('image/png');  // Safari belum bisa menyimpan webp
+          resolve(data);
+        } catch (e) { reject(e); }
+      };
+      img.onerror = function () { reject(new Error('Avatar tidak bisa dimuat')); };
+      img.src = url;
+    });
+  }
+  /* bila model tidak bisa memberi latar transparan: latar polos di tepi gambar dihapus (flood fill dari pinggir) */
+  function clearBackground(px, w, h) {
+    var corners = [0, (w - 1) * 4, (h - 1) * w * 4, (h * w - 1) * 4];
+    if (corners.some(function (i) { return px[i + 3] < 250; })) return;
+    var r0 = 0, g0 = 0, b0 = 0;
+    corners.forEach(function (i) { r0 += px[i] / 4; g0 += px[i + 1] / 4; b0 += px[i + 2] / 4; });
+    var near = function (p) { var i = p * 4, dr = px[i] - r0, dg = px[i + 1] - g0, db = px[i + 2] - b0; return dr * dr + dg * dg + db * db; };
+    var seen = new Uint8Array(w * h), q = new Int32Array(w * h), qh = 0, qt = 0;
+    var push = function (p) { if (!seen[p] && near(p) < 2600) { seen[p] = 1; q[qt++] = p; } };
+    for (var i = 0; i < w; i++) { push(i); push((h - 1) * w + i); }
+    for (var j = 0; j < h; j++) { push(j * w); push(j * w + w - 1); }
+    while (qh < qt) {
+      var p = q[qh++], cx = p % w, cy = (p - cx) / w;
+      px[p * 4 + 3] = 0;
+      if (cx > 0) push(p - 1); if (cx < w - 1) push(p + 1); if (cy > 0) push(p - w); if (cy < h - 1) push(p + w);
+    }
+    for (var e = 0; e < w * h; e++) {               // tepi lebih halus
+      if (seen[e]) continue;
+      var ex = e % w;
+      if (((ex > 0 && seen[e - 1]) || (ex < w - 1 && seen[e + 1]) || (e >= w && seen[e - w]) || (e < w * (h - 1) && seen[e + w])) && near(e) < 9000) px[e * 4 + 3] = 140;
+    }
+  }
+  function alphaBox(px, w, h) {
+    var x1 = w, y1 = h, x2 = -1, y2 = -1;
+    for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) if (px[(y * w + x) * 4 + 3] > 24) { if (x < x1) x1 = x; if (x > x2) x2 = x; if (y < y1) y1 = y; if (y > y2) y2 = y; }
+    return x2 < 0 ? null : { x1: x1, y1: y1, x2: x2, y2: y2 };
   }
 
   /* ---------- aksi klik ---------- */
@@ -3490,6 +3598,18 @@ function MemoryAdapter(store, persist) {
     },
     close: function (el) { closeModal(el.closest('.modal-wrap')); },
     openLobby: function (el) { openLobby(el.dataset.id); },
+    chibiBatch: function () {
+      var todo = Object.keys(DB.full).map(function (k) { return DB.full[k]; }).filter(needChibi);
+      if (!todo.length) return;
+      confirmBox('Buat avatar lobi?', todo.length + ' orang belum punya avatar chibi. Dibuat satu per satu lewat OpenAI (±1 menit per orang, biaya OpenAI per gambar). Biarkan halaman ini terbuka sampai selesai.',
+        [{ label: 'Batal', value: null }, { label: 'Buat ' + todo.length + ' avatar', value: 1, kind: 'primary' }])
+        .then(function (v) {
+          if (!v) return;
+          toast('Membuat ' + todo.length + ' avatar…');
+          todo.forEach(function (x) { runChibi(x.id, true); });
+          chibiQueue.then(function () { toast('Pembuatan avatar selesai'); });
+        });
+    },
     planJoin: function (el) { lobbyJoin(el.dataset.id); },
     planLeave: function (el) { planAct(el.dataset.id, 'rsvp', { on: false }).then(function () { toast('Kehadiran dibatalkan'); }).catch(function () {}); },
     toLobby: function () {

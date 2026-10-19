@@ -64,7 +64,9 @@ var Core = (function () {
   }
   function publicPerson(p) {
     var fid = displayPhoto(p);
-    return { id: p.id, name: p.name, gender: p.gender, hijab: !!p.hijab, role: p.role, archived: !!p.archived, photoUrl: fid ? A.photoUrl(fid) : '', fid: fid };
+    return { id: p.id, name: p.name, gender: p.gender, hijab: !!p.hijab, role: p.role, archived: !!p.archived, photoUrl: fid ? A.photoUrl(fid) : '', fid: fid,
+      // avatar chibi lobi: versi kecil (sprite) untuk semua; versi besar hanya sampai HP host membuat versi kecilnya
+      chibiUrl: p.spriteId ? A.photoUrl(p.spriteId) : '', chibiFull: p.chibiId && !p.spriteId ? A.photoUrl(p.chibiId) : '' };
   }
   function fullPerson(p) {
     var o = publicPerson(p);
@@ -72,6 +74,7 @@ var Core = (function () {
     o.photoId = p.photoId || ''; o.proId = p.proId || '';
     o.asliUrl = p.photoId ? A.photoUrl(p.photoId) : ''; o.proUrl = p.proId ? A.photoUrl(p.proId) : '';
     o.aiStatus = p.aiStatus || (p.proId ? 'done' : 'none'); o.aiNote = p.aiNote || ''; o.pinDefault = !!p.pinDefault;
+    o.chibiStatus = p.chibiStatus || (p.chibiId ? 'done' : 'none'); o.chibiNote = p.chibiNote || ''; o.chibiAt = p.chibiAt || 0; o.chibiBusyAt = p.chibiBusyAt || 0;
     return o;
   }
 
@@ -208,6 +211,44 @@ var Core = (function () {
       throw e;
     });
   }
+  /* avatar chibi lobi: dibuat sekali dari foto pro lewat OpenAI; hanya admin/host yang bisa membuat ulang */
+  function generateChibi(r) {
+    auth(r.token, ['admin', 'host']);
+    var p = person(r.id);
+    if (!p) throw err('NOT_FOUND');
+    if (!p.proId && !p.photoId) throw err('INVALID', 'Belum ada foto untuk dijadikan avatar');
+    if (!A.aiEnabled() || !A.generateChibi) throw err('AI_OFF', 'OPENAI_API_KEY belum diisi');
+    A.lock(function () { var q = person(r.id); q.chibiStatus = 'busy'; q.chibiBusyAt = now(); A.savePerson(q); A.cachePut('PEOPLE', null); });
+    return Promise.resolve().then(function () {
+      return A.generateChibi(p, p.role === 'host' ? 'host' : 'player');
+    }).then(function (out) {
+      return A.lock(function () {
+        var q = person(r.id);
+        A.trash(q.chibiId); A.trash(q.spriteId);
+        q.chibiId = out.id; q.spriteId = ''; q.chibiStatus = 'done'; q.chibiNote = out.note || ''; q.chibiAt = now();
+        A.savePerson(q); bumpPeople();
+        return fullPerson(q);
+      });
+    }, function (e) {
+      A.lock(function () { var q = person(r.id); q.chibiStatus = 'error'; q.chibiNote = String(e.message || e).slice(0, 400); A.savePerson(q); A.cachePut('PEOPLE', null); });
+      throw e;
+    });
+  }
+  /* versi kecil avatar (±320×480, latar transparan) dibuat di HP admin/host, supaya lobi ringan untuk 30 karakter */
+  function saveSprite(r) {
+    auth(r.token, ['admin', 'host']);
+    if (!/^data:image\/(png|webp);base64,/.test(String(r.data || '')) || String(r.data).length > 700000) throw err('INVALID', 'Gambar avatar tidak valid');
+    return A.lock(function () {
+      var q = person(r.id);
+      if (!q || !q.chibiId) throw err('NOT_FOUND', 'Avatar belum dibuat');
+      if (r.chibiId && r.chibiId !== q.chibiId) throw err('STALE', 'Avatar sudah diganti');
+      var id = A.savePhoto(r.data, q.name + '_sprite');
+      A.trash(q.spriteId);
+      q.spriteId = id; A.savePerson(q); bumpPeople();
+      return publicPerson(q);
+    });
+  }
+
   /* profil sendiri: pilihan foto tampil dan unggah foto sendiri */
   function updateMe(r) {
     var actor = auth(r.token);
@@ -723,7 +764,7 @@ var Core = (function () {
     me: me, changePin: changePin, updateMe: updateMe, listPeople: listPeople, savePerson: savePersonReq, resetPin: resetPin,
     generatePro: generatePro, listSessions: listSessions, openSession: openSession, deleteSession: deleteSession,
     createSession: createSession, act: act, importPerson: importPerson, importSession: importSession, markMigrated: markMigrated,
-    pushSubscribe: pushSubscribe, venueSearch: venueSearch
+    pushSubscribe: pushSubscribe, venueSearch: venueSearch, generateChibi: generateChibi, saveSprite: saveSprite
   };
   function call(fn, req) {
     var f = PUBLIC[fn] || PRIVATE[fn];

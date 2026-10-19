@@ -1,4 +1,5 @@
 {
+  "id": "./",
   "name": "Paddoc Host",
   "short_name": "Paddoc Host",
   "description": "Undian dan rotasi pemain padel Americano/Mexicano untuk Paddoc.",
@@ -9,9 +10,29 @@
   "background_color": "#0A1628",
   "theme_color": "#0A1628",
   "lang": "id",
+  "launch_handler": {
+    "client_mode": [
+      "navigate-existing",
+      "auto"
+    ]
+  },
+  "handle_links": "preferred",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

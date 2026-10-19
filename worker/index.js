@@ -12,7 +12,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import Core from '../core.js';
-import { generateAI } from './ai.js';
+import { generateAI, generateChibi } from './ai.js';
 import { newVapidKeys, sendPush } from './push.js';
 
 const MAX_BODY = 8 * 1024 * 1024;
@@ -297,7 +297,8 @@ export class PaddocHost extends DurableObject {
       deletePush: (endpoint) => { sql.exec('DELETE FROM push_subs WHERE endpoint = ?', endpoint); },
       notify: (pid, payload) => { self.outbox.push({ pid, payload }); },
       geocode: (q) => geocode(env, q),
-      generateAI: (p, kind) => generateAI(env, A, clone(p), kind)
+      generateAI: (p, kind) => generateAI(env, A, clone(p), kind),
+      generateChibi: (p, kind) => generateChibi(env, A, clone(p), kind)
     };
     return A;
   }

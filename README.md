@@ -100,8 +100,21 @@ Sesi tidak langsung mulai. Host/admin menekan **Buat rencana sesi**, mengisi tan
   ke tampilan court. Salah tekan? **Kembali ke Lobi** (di dashboard dan bilah *Menunggu* papan iPad) selama belum ada
   match yang dimulai; daftar hadir dan chat tetap.
 - Pasangan tetap yang belum diatur dipasangkan otomatis saat mulai (putra-putri dulu); opsi lengkap menyusul.
-- Pratinjau dengan 30 pemain dummy: **`/?lobby=demo`**. Karakter sementara digambar kode; avatar chibi dari foto AI
-  menyusul di Tahap 3.
+- Pratinjau dengan 30 pemain dummy: **`/?lobby=demo`**.
+- Tidak ada teks yang saling menutupi di panggung: label nama atau gelembung yang bertabrakan disembunyikan sementara
+  (prioritas: chat, gelembung, nama sendiri, host, pemain terdepan), dan karakter menjaga jarak saat berjalan.
+
+### Avatar chibi (Tahap 3)
+
+- Dibuat **sekali** lewat OpenAI dari foto pro AI (atau foto asli): seluruh badan, kepala besar, latar transparan, logo
+  Padel Doc di baju, pegang raket. Pemain berhijab: lengan & kaki tertutup; lainnya boleh lengan pendek, tidak tanpa
+  lengan. Host berbaju wasit. Bila model tidak bisa latar transparan, dibuat berlatar polos lalu dibersihkan otomatis.
+- Otomatis dibuat setelah foto pro AI selesai. Di **Database pemain**, tombol **Avatar lobi (N)** membuat avatar untuk
+  semua yang belum punya; di editor tiap orang ada **Buat ulang avatar** (hanya admin/host).
+- HP admin/host mengecilkan avatar sekali (320 × 480, ±10–60 KB) dan menyimpannya; lobi hanya memuat versi kecil, jadi
+  30 karakter tetap ringan dan **membuka lobi tidak pernah memanggil OpenAI**.
+- Pemain melihat avatarnya di **Profil** (tanpa tombol ubah). Sebelum avatar dibuat, lobi memakai karakter bawaan
+  (siluet berinisial bila belum ada foto).
 
 Pencarian alamat memakai OpenStreetMap (gratis, data venue kecil kadang belum ada). Untuk hasil Google Maps, isi
 secret opsional **`GOOGLE_MAPS_API_KEY`** (Places API, berbayar) di Cloudflare. Bila tidak ketemu, tempel link dari
@@ -128,6 +141,9 @@ sebagai cadangan (3–4 detik bila WebSocket terputus).
 **Notifikasi**: sesi baru, pengingat 12 jam & 3 jam sebelum main, dan panggilan court. Tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
 lawan, dengan tombol **Siap** / **Skip dulu**. Kunci VAPID dibuat otomatis oleh server, tidak perlu disetel.
 
+- Link Paddoc Host di **Android** terbuka langsung di aplikasi yang sudah terpasang (aplikasi yang sedang terbuka
+  langsung pindah ke halaman link). Di **iPhone/iPad** link selalu terbuka di Safari (aturan Apple); layar di Safari
+  mengarahkan untuk membuka Paddoc Host dari layar utama, dan sesinya ada di beranda.
 - HP dan tablet **wajib memasang aplikasi ke layar utama** dulu (petunjuk iPhone/iPad dan Android; bila link terbuka di
   dalam WhatsApp/Instagram ada petunjuk membuka di Chrome/Safari). Link lobi yang dibuka di HP baru menampilkan
   ringkasan sesinya di layar pasang. Setelah terpasang: izinkan notifikasi (boleh nanti), lalu login. Laptop tidak wajib.

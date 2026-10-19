@@ -180,7 +180,7 @@ var Lobby = (function () {
       c.strokeStyle = '#8a6a44'; c.lineWidth = 4; for (var t = 0; t <= 4; t++) { var px = a.x + (b.x - a.x) * t / 4; c.beginPath(); c.moveTo(px, a.y); c.lineTo(px, a.y - wallH * .45); c.stroke(); }
       c.strokeStyle = '#c9a77a'; c.lineWidth = 2; c.beginPath(); c.moveTo(a.x, a.y - wallH * .38); c.lineTo(b.x, b.y - wallH * .38); c.stroke();
       palm(c, W * .05, a.y + H * .02, H * .2, 1); palm(c, W * .95, a.y + H * .02, H * .18, -1);
-      c.fillStyle = '#0A1628'; var bw = W * .5, bh = wallH * .36; c.fillRect(W / 2 - bw / 2, a.y - wallH - bh * .2, bw, bh); mark(W / 2 + bh * .2, a.y - wallH - bh * .2 + bh / 2, bh * .9, '#E8902F');
+      c.fillStyle = '#0A1628'; var bw = W * .5, bh = wallH * .36, by = a.y - wallH * .78; c.fillRect(W / 2 - bw / 2, by, bw, bh); mark(W / 2 + bh * .2, by + bh / 2, bh * .9, '#E8902F'); // di bawah tombol atas panggung
     } else if (lounge) {
       c.fillStyle = '#2c1d13'; c.fillRect(a.x, a.y - wallH * 1.1, b.x - a.x, wallH * 1.1);
       c.save(); c.shadowColor = 'rgba(255,170,80,.9)'; c.shadowBlur = 16; mark(W / 2 + wallH * .25, a.y - wallH * .62, wallH * .42, '#FFC27A'); c.restore();
@@ -349,14 +349,14 @@ var Lobby = (function () {
       '<div class="lb-main"><div class="lb-stagecol">' +
       '<div class="lb-stage"><div class="lb-bg"></div><canvas class="lb-canvas"></canvas><div class="lb-motes"></div><div class="lb-layer"></div>' +
       '<div class="lb-chip tl"><span class="dot"></span><span class="n" data-k="cnt">0</span><span data-k="cntTxt">pemain hadir</span></div>' +
-      '<div class="lb-chip tr"><label data-k="themeWrap"><span class="sr" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Tema lobi</span><select data-k="theme"></select></label>' +
-      '<button type="button" class="lb-round" data-lb="music" aria-pressed="false" aria-label="Musik lobi" title="Musik lobi">' + ic('music') + '</button></div>' +
+      '<div class="lb-chip tr"><button type="button" class="lb-round" data-lb="music" aria-pressed="false" aria-label="Musik lobi" title="Musik lobi">' + ic('music') + '</button></div>' +
       '<div class="lb-started" data-k="started" hidden><div><h2>Sesi dimulai</h2><p data-k="startedTxt"></p>' +
       '<button class="lb-btn" type="button" data-lb="back" data-k="backBtn">' + ic('back') + 'Kembali ke Lobi</button></div></div></div>' +
       '</div>' +
       '<div class="lb-controls" data-k="controls"></div>' +
       '<p class="lb-pubnote" data-k="pubnote" hidden>Kamu sedang menonton lobi. <b>Belum terdaftar?</b> Hubungi host atau admin untuk dibuatkan akun, lalu masuk untuk bergabung.</p>' +
       '<aside class="lb-side">' +
+      '<label class="lb-themerow" data-k="themeWrap" hidden><span>Tema lobi</span><select data-k="theme"></select></label>' +
       '<section class="lb-box"><button class="lb-boxh" type="button" data-lb="box" data-box="chat" aria-expanded="true">Chat <span class="badge" data-k="badge" hidden></span><span class="chev">' + ic('chev') + '</span></button>' +
       '<div class="lb-boxb" data-k="chatBody"><div class="lb-chat">' +
       '<form class="lb-send" data-k="send"><input data-k="input" maxlength="200" autocomplete="off" placeholder="Tulis pesan untuk semua yang hadir" aria-label="Pesan chat"><button class="lb-btn" type="submit" aria-label="Kirim">' + ic('send') + '</button></form>' +
@@ -384,6 +384,7 @@ var Lobby = (function () {
       if (!w || !h) return;
       var prev = LY ? LY.mode + LY.theme : '';
       W = w; H = h; LY = layoutFor(S.theme, W, H); LY.theme = S.theme;
+      measureChips();
       var SH = LY.SH, SW = SH * 64 / 96;
       stage.style.setProperty('--sh', SH + 'px'); stage.style.setProperty('--sw', SW + 'px');
       LY.SW = SW;
@@ -406,11 +407,27 @@ var Lobby = (function () {
       for (var i = 0; i < zs.length; i++) { r -= (zs[i][1] - zs[i][0]) * (zs[i][3] - zs[i][2]); if (r <= 0) { z = zs[i]; break; } }
       return [rand(z[0], z[1]), rand(z[2], z[3])];
     }
-    function place(e) { var p = randIn(spotOf(e)); e.u = p[0]; e.v = p[1]; }
-    function target(e) { var p = randIn(spotOf(e)); e.tu = p[0]; e.tv = p[1]; }
+    /* pilih titik yang paling jauh dari karakter lain (dari beberapa calon), diukur dalam piksel layar
+       dengan bobot ukuran label nama: lebar ±70px, tinggi ±18px */
+    function spread(e) {
+      var zs = spotOf(e), best = null, bestD = -1;
+      for (var k = 0; k < 8; k++) {
+        var c = randIn(zs), pc = LY.proj(c[0], c[1]), d = 1e9;
+        for (var id in ents) {
+          var o = ents[id]; if (o === e || !o.el) continue;
+          var po = LY.proj(o.state === 'walk' ? o.tu : o.u, o.state === 'walk' ? o.tv : o.v);
+          d = Math.min(d, Math.max(Math.abs(pc.x - po.x) / 70, Math.abs(pc.y - po.y) / 18));
+        }
+        if (d > bestD) { bestD = d; best = c; }
+      }
+      return best;
+    }
+    function place(e) { var p = spread(e); e.u = p[0]; e.v = p[1]; }
+    function target(e) { var p = spread(e); e.tu = p[0]; e.tv = p[1]; }
     function draw(e) {
       var P = LY.proj(e.u, e.v), walking = e.state === 'walk';
       var bob = REDUCE ? 0 : walking ? -Math.abs(Math.sin(T * 10 + e.ph)) * 3 : Math.sin(T * 2.6 + e.ph) * 1.2;
+      e.sx = P.x; e.sy = P.y + e.dropY + bob; e.ss = P.s;
       e.el.style.transform = 'translate3d(' + (P.x - LY.SW / 2).toFixed(1) + 'px,' + (P.y - LY.SH + e.dropY + bob).toFixed(1) + 'px,0) scale(' + P.s.toFixed(3) + ')';
       var z = 100 + Math.round(e.v * 1000);
       if (z !== e.z) { e.z = z; e.el.style.zIndex = z; }
@@ -422,7 +439,11 @@ var Lobby = (function () {
     }
     function say(e, text, cls, ms) {
       if (!e || !e.el) return;
-      var b = e.el.querySelector('.bub'); b.textContent = text; b.className = 'bub show' + (cls ? ' ' + cls : '');
+      var b = e.el.querySelector('.bub'); b.textContent = text;
+      var lft = LY && LY.proj(e.u, e.v).x > W * .62;             // dekat tepi kanan: gelembung ke kiri
+      b.className = 'bub show' + (cls ? ' ' + cls : '') + (lft ? ' lft' : '');
+      e.bw = b.offsetWidth; e.bh = b.offsetHeight;               // ukuran gelembung untuk pengecekan tumpang tindih
+      declutter();
       clearTimeout(e.bt); e.bt = setTimeout(function () { b.classList.remove('show'); }, ms || 2200);
     }
     function act(e, cls) { if (REDUCE || !e.el) return; e.el.classList.remove(cls); void e.el.offsetWidth; e.el.classList.add(cls); setTimeout(function () { if (e.el) e.el.classList.remove(cls); }, 600); }
@@ -470,10 +491,48 @@ var Lobby = (function () {
       }
       draw(e);
     }
+    /* label nama & gelembung yang bertabrakan (atau tertutup tombol di atas panggung) disembunyikan sementara.
+       Posisi dihitung tiap frame dari posisi karakter (tanpa membaca tata letak halaman), jadi tidak pernah ada teks
+       yang saling menutupi walau karakter terus bergerak. Prioritas: chat > gelembung lain > nama sendiri > host > pemain terdepan. */
+    var chipBoxes = [];
+    function measureChips() {
+      chipBoxes = [];
+      root.querySelectorAll('.lb-stage > .lb-chip').forEach(function (c) { chipBoxes.push({ l: c.offsetLeft, t: c.offsetTop, r: c.offsetLeft + c.offsetWidth, b: c.offsetTop + c.offsetHeight }); });
+    }
+    function boxOf(e, node, isBub) {
+      var s = e.ss, bx = e.sx, by = e.sy;            // titik kaki (tengah bawah) di layar & skala
+      if (!isBub) {
+        if (!e.tw) { e.tw = node.offsetWidth; e.th = node.offsetHeight; }
+        var bot = by - (LY.SH + 2) * s;
+        return { l: bx - e.tw * s / 2, r: bx + e.tw * s / 2, t: bot - e.th * s, b: bot };
+      }
+      var w = e.bw, h = e.bh, sw = LY.SW;
+      var left = node.classList.contains('lft') ? sw * .42 - w : sw * .58;
+      var b2 = by - (LY.SH + 22) * s;
+      return { l: bx + (left - sw / 2) * s, r: bx + (left + w - sw / 2) * s, t: b2 - h * s, b: b2 };
+    }
+    function declutter() {
+      if (!LY) return;
+      var placed = chipBoxes.slice(), items = [];
+      for (var id in ents) {
+        var e = ents[id]; if (!e.el || e.sx == null) continue;
+        var bub = e.bub || (e.bub = e.el.querySelector('.bub')), tag = e.tag || (e.tag = e.el.querySelector('.tag'));
+        if (bub.classList.contains('show')) items.push({ el: bub, e: e, bub: true, pr: bub.classList.contains('chat') ? 5 : 3 });
+        items.push({ el: tag, e: e, bub: false, pr: e.id === S.meId ? 4 : e.role === 'host' ? 2 : 1 });
+      }
+      items.sort(function (a, b) { return b.pr - a.pr || b.e.v - a.e.v; });
+      items.forEach(function (it) {
+        var r = boxOf(it.e, it.el, it.bub);
+        var hit = r.l < 0 || r.r > W || r.t < 0 || placed.some(function (q) { return r.l < q.r + 3 && r.r > q.l - 3 && r.t < q.b + 2 && r.b > q.t - 2; });
+        if (it.el.classList.contains('dim') !== hit) it.el.classList.toggle('dim', hit);
+        if (!hit) placed.push(r);
+      });
+    }
     function loop(t) {
       if (!alive) return;
       var dt = Math.min(.05, (t - lastT) / 1000); lastT = t; T += dt;
       if (LY) for (var id in ents) step(ents[id], dt);
+      declutter();
       if (handlers.frame) handlers.frame(t);
       raf = requestAnimationFrame(loop);
     }
@@ -498,6 +557,7 @@ var Lobby = (function () {
     function renderCount() {
       var pl = people().filter(function (p) { return p.role !== 'host'; }).length, ho = people().length - pl;
       el.cnt.textContent = pl; el.cntTxt.textContent = 'pemain · ' + ho + ' host hadir'; el.hN.textContent = people().length;
+      if (LY) measureChips();
     }
     function renderRoster() {
       var list = people().slice().sort(function (a, b) { return (a.role === 'host' ? 0 : 1) - (b.role === 'host' ? 0 : 1) || ((ents[b.id] || {}).at || 0) - ((ents[a.id] || {}).at || 0); });
