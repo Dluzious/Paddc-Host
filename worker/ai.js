@@ -39,6 +39,41 @@ function buildHostPrompt(p, st, withLogo) {
   ].join(' ');
 }
 
+/* ---------------- admin berjas bak CEO ---------------- */
+const ADMIN_STYLE = {
+  outfitL: ['a tailored navy two-piece business suit with a crisp white shirt and a dark silk tie', 'a charcoal grey three-piece suit with a light blue shirt and a patterned tie',
+    'a black slim-fit suit with a white shirt, open collar, no tie', 'a midnight blue double-breasted suit with a white shirt and a pocket square'],
+  outfitP: ['a tailored navy blazer and trouser suit with a silk blouse', 'a charcoal grey fitted pantsuit with a cream shell top',
+    'a black tailored blazer with a crisp white shirt and matching trousers', 'a camel-coloured tailored blazer suit with a white blouse'],
+  outfitHijab: ['a long tailored navy blazer suit with long sleeves to the wrists and a high-neck blouse', 'a loose-fit charcoal grey long-line blazer and trousers with long sleeves',
+    'a long black tailored coat-style suit with long sleeves and a high neckline'],
+  poses: ['standing confidently with arms crossed', 'one hand in the trouser pocket, the other holding a padel racket at the side',
+    'adjusting the jacket cuff, looking straight at the camera with a confident smile', 'holding a padel racket resting on one shoulder like an executive']
+};
+function chooseAdminStyle(p) {
+  const hijab = p.gender === 'P' && p.hijab;
+  const r = (a) => a[Math.floor(Math.random() * a.length)];
+  return { hijab, outfit: r(hijab ? ADMIN_STYLE.outfitHijab : p.gender === 'P' ? ADMIN_STYLE.outfitP : ADMIN_STYLE.outfitL), color: 'executive', prop: 'business suit', pose: r(ADMIN_STYLE.poses) };
+}
+function buildAdminPrompt(p, st, withLogo) {
+  const who = p.gender === 'P' ? 'a woman' : 'a man';
+  const modesty = st.hijab
+    ? 'She wears a hijab: keep her hijab exactly as in the photo (same shape and coverage). The suit has long sleeves to the wrists, loose fit, high neckline.'
+    : 'If the person wears a hijab or headscarf in the photo, keep it exactly and use long sleeves.';
+  const logo = withLogo
+    ? 'Image 1 is the person. Image 2 is the PADEL DOC club badge: place it as a small enamel lapel pin on the left lapel, reproducing it faithfully.'
+    : 'Add a small round enamel lapel pin on the left lapel: the PADEL DOC club badge (navy circle, orange and green rings, cream winged caduceus).';
+  return [
+    'Edit this photo into a polished executive portrait, like a CEO or club president photo for an annual report.',
+    'The person is ' + who + '. Keep the face, facial features, skin tone, hairstyle, glasses (if any), body shape and identity exactly the same. Do not change age or gender.',
+    'Framing: waist-up (half body), centered, straight-on view. Pose: ' + st.pose + '.',
+    'Outfit: ' + st.outfit + ', perfectly fitted and pressed. ' + modesty,
+    logo,
+    'Background: a modern glass-walled padel club lounge overlooking a blue padel court, warm soft daylight, softly blurred.',
+    'Style: photorealistic corporate portrait photography, crisp detail, confident and professional. No text, no watermark.'
+  ].join(' ');
+}
+
 /* ---------------- pemain ---------------- */
 /* Kombinasi terakhir disimpan (AI_RECENT) supaya pemain berikutnya tidak mendapat warna/pose/raket yang sama. */
 const STYLE = {
@@ -161,8 +196,9 @@ export async function generateAI(env, A, p, kind) {
   if (!src) throw new Error('INVALID: Foto asli tidak ditemukan');
   const photo = { bytes: Buffer.from(src.b64, 'base64'), mime: src.mime, name: 'foto.jpg' };
   const logo = { bytes: Buffer.from(LOGO_B64, 'base64'), mime: 'image/jpeg', name: 'paddoc-logo.jpg' };
-  const style = kind === 'host' ? chooseHostStyle(p) : chooseStyle(p, A);
-  const out = await callOpenAI(env, A, [photo, logo], (withLogo) => kind === 'host' ? buildHostPrompt(p, style, withLogo) : buildPrompt(p, style, withLogo, env.OPENAI_IMAGE_PROMPT));
+  const style = kind === 'host' ? chooseHostStyle(p) : kind === 'admin' ? chooseAdminStyle(p) : chooseStyle(p, A);
+  const out = await callOpenAI(env, A, [photo, logo], (withLogo) => kind === 'host' ? buildHostPrompt(p, style, withLogo)
+    : kind === 'admin' ? buildAdminPrompt(p, style, withLogo) : buildPrompt(p, style, withLogo, env.OPENAI_IMAGE_PROMPT));
   const id = A.savePhoto('data:image/jpeg;base64,' + out.b64, p.name + '_pro');
   const note = 'Model: ' + out.model + (out.withLogo ? '' : ' (logo dari teks)') + ' | ' + style.outfit + ', ' + style.color + ' | ' +
     (style.brand ? style.brand + ', ' + style.racket : style.prop) + ' | ' + style.pose;

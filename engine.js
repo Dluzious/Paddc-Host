@@ -5,6 +5,7 @@
 var Engine = (function () {
   'use strict';
 
+  var COURT_COLORS = ['blue', 'orange', 'green', 'black'];
   function uid(p) {
     return (p || '') + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
   }
@@ -21,9 +22,12 @@ var Engine = (function () {
       format: o.format || 'americano',          // americano | mexicano
       teamMode: o.teamMode || 'random',         // random | fixed
       scoring: o.scoring || { type: 'points', mode: 'total', n: 21 },
-      rules: Object.assign({ maxStreak: 2, catchUp: true, sortBy: 'points', drawMode: 'rolling' }, o.rules || {}),
+      rules: Object.assign({ maxStreak: 2, catchUp: true, sortBy: 'points', drawMode: 'rolling', deuce: 'golden' }, o.rules || {}),
       courts: (o.courts || []).map(function (c, i) {
-        return { id: c.id || uid('c_'), name: c.name || ('Court ' + (i + 1)), gender: c.gender || 'mix', active: c.active !== false };
+        return {
+          id: c.id || uid('c_'), name: c.name || ('Court ' + (i + 1)), gender: c.gender || 'mix', active: c.active !== false,
+          color: COURT_COLORS.indexOf(c.color) >= 0 ? c.color : 'blue', hostId: c.hostId || null
+        };
       }),
       parts: {},
       teams: [],
@@ -106,13 +110,13 @@ var Engine = (function () {
   function nextMatchOf(S, pid) { return reservedMap(S)[pid] || null; }
   /* lama match biasa di sesi ini (median), untuk menaksir sisa waktu court lain */
   function typicalDuration(S) {
-    var d = doneMatches(S).filter(function (m) { return m.start && m.end > m.start; })
-      .map(function (m) { return m.end - m.start; }).sort(function (a, b) { return a - b; });
+    var d = doneMatches(S).filter(function (m) { return (m.go || m.start) && m.end > (m.go || m.start); })
+      .map(function (m) { return m.end - (m.go || m.start); }).sort(function (a, b) { return a - b; });
     var med = d.length ? d[Math.floor(d.length / 2)] : 12 * 60000;
     return Math.max(5 * 60000, Math.min(30 * 60000, med));
   }
-  /* perkiraan sisa menit match yang sedang dimainkan */
-  function remaining(ctx, m) { return Math.max(0, ctx.dur - (ctx.now - m.start)) / 60000; }
+  /* perkiraan sisa menit match yang sedang dimainkan (dihitung dari Game start bila ada) */
+  function remaining(ctx, m) { return Math.max(0, ctx.dur - (ctx.now - (m.go || m.start))) / 60000; }
   function meetCost(st, a, b) {
     var k = pairKey(a, b), n = (st.partner[k] || 0) + (st.opp[k] || 0);
     return n ? MEET + MEET_REP * (n - 1) : 0;
@@ -711,6 +715,90 @@ var Engine = (function () {
     return (sc.mode === 'race' ? 'Race to ' + sc.n : 'Total ' + sc.n) + ' ' + unit;
   }
 
+  /* ---------- hitung skor langsung oleh host ----------
+     m.tally = urutan poin yang dimenangkan ('A' / 'B'). Keadaan skor selalu dihitung ulang dari urutan itu,
+     jadi tombol batal cukup membuang poin terakhir. Tenis/padel: 0-15-30-40-game; deuce memakai golden point
+     (poin berikutnya menang) atau advantage (harus unggul 2), sesuai S.rules.deuce. */
+  var TENNIS_PTS = ['0', '15', '30', '40'];
+  function tallyState(S, m) {
+    var h = m.tally || [], sc = S.scoring || {}, n = sc.n || 21, race = sc.mode === 'race';
+    if (sc.type !== 'tennis') {
+      var a = 0, b = 0;
+      h.forEach(function (x) { if (x === 'A') a++; else b++; });
+      return { a: a, b: b, done: race ? Math.max(a, b) >= n : a + b >= n, n: h.length };
+    }
+    var adv = S.rules && S.rules.deuce === 'adv';
+    var ga = 0, gb = 0, pa = 0, pb = 0;
+    h.forEach(function (x) {
+      if (x === 'A') pa++; else pb++;
+      var lead = pa - pb;
+      if (adv ? (pa >= 4 && lead >= 2) : pa >= 4) { ga++; pa = pb = 0; }
+      else if (adv ? (pb >= 4 && lead <= -2) : pb >= 4) { gb++; pa = pb = 0; }
+    });
+    var la, lb;
+    if (pa >= 3 && pb >= 3) {
+      if (pa === pb) { la = lb = '40'; } else { la = pa > pb ? 'AD' : '40'; lb = pb > pa ? 'AD' : '40'; }
+    } else { la = TENNIS_PTS[Math.min(pa, 3)]; lb = TENNIS_PTS[Math.min(pb, 3)]; }
+    return {
+      a: ga, b: gb, pa: la, pb: lb, deuce: pa >= 3 && pb >= 3 && pa === pb, golden: !adv,
+      done: race ? Math.max(ga, gb) >= n : ga + gb >= n, n: h.length
+    };
+  }
+  /* host menambah poin (side 'A'/'B') atau membatalkan poin terakhir (undo) */
+  function tally(S, id, side, undo) {
+    var m = findMatch(S, id);
+    if (!m || m.status !== 'live' || !m.start) return null;
+    m.tally = m.tally || [];
+    if (undo) m.tally.pop();
+    else if ((side === 'A' || side === 'B') && !tallyState(S, m).done) {
+      if (!m.go) m.go = now(); // poin pertama dianggap Game start
+      m.tally.push(side);
+    }
+    return tallyState(S, m);
+  }
+
+  /* ---------- tukar pemain dengan court lain yang belum mulai (Game start) ---------- */
+  function startedSet(S) {
+    var b = {};
+    liveMatches(S).forEach(function (m) { if (m.go) matchPlayers(m).forEach(function (p) { b[p] = 1; }); });
+    return b;
+  }
+  /* pemain/tim di court lain yang boleh ditukar: match-nya belum mulai dan pemainnya tidak sedang bertanding */
+  function swapCandidates(S, id) {
+    var started = startedSet(S), out = [];
+    liveMatches(S).forEach(function (m) {
+      if (m.id === id || m.go) return;
+      matchPlayers(m).forEach(function (p) { if (!started[p]) out.push({ pid: p, m: m }); });
+    });
+    return out;
+  }
+  function swapAcross(S, id1, outId, id2, inId) {
+    var m1 = findMatch(S, id1), m2 = findMatch(S, id2);
+    if (!m1 || !m2 || m1 === m2 || m1.status !== 'live' || m2.status !== 'live' || m1.go || m2.go) return false;
+    var a1 = m1.A.indexOf(outId) >= 0 ? m1.A : m1.B, a2 = m2.A.indexOf(inId) >= 0 ? m2.A : m2.B;
+    if (a1.indexOf(outId) < 0 || a2.indexOf(inId) < 0) return false;
+    if (matchPlayers(m1).indexOf(inId) >= 0 || matchPlayers(m2).indexOf(outId) >= 0) return false;
+    a1[a1.indexOf(outId)] = inId; a2[a2.indexOf(inId)] = outId;
+    var s1 = m1.snap[outId], s2 = m2.snap[inId];
+    delete m1.snap[outId]; delete m2.snap[inId];
+    m1.snap[inId] = s2; m2.snap[outId] = s1;
+    [m1, m2].forEach(function (m) {
+      if (S.teamMode !== 'fixed') { m.tA = m.tB = null; return; }
+      var tA = teamOf(S, m.A[0]), tB = teamOf(S, m.B[0]);
+      m.tA = tA && (tA.a === m.A[1] || tA.b === m.A[1]) ? tA.id : null;
+      m.tB = tB && (tB.a === m.B[1] || tB.b === m.B[1]) ? tB.id : null;
+    });
+    release(S);
+    return true;
+  }
+  /* pasangan tetap: tukar satu tim antar court */
+  function swapTeamAcross(S, id1, side1, id2, side2) {
+    var m1 = findMatch(S, id1), m2 = findMatch(S, id2);
+    if (!m1 || !m2 || m1 === m2 || m1.go || m2.go) return false;
+    var t1 = (side1 === 'A' ? m1.A : m1.B).slice(), t2 = (side2 === 'A' ? m2.A : m2.B).slice();
+    return swapAcross(S, id1, t1[0], id2, t2[0]) && swapAcross(S, id1, t1[1], id2, t2[1]);
+  }
+
   /* daftar tunggu: pemain aktif yang tidak sedang main, urut prioritas */
   function bench(S) {
     var busy = busySet(S), played = playedCount(S);
@@ -729,7 +817,9 @@ var Engine = (function () {
     playedCount: playedCount, teamOf: teamOf, teamActive: teamActive, unpairedPlayers: unpairedPlayers,
     scoringLabel: scoringLabel, bench: bench, mustRest: mustRest, liveMatches: liveMatches, findMatch: findMatch,
     isWaiting: isWaiting, waitingFor: waitingFor, release: release, freeWaiting: freeWaiting,
-    playingMatchOf: playingMatchOf, nextMatchOf: nextMatchOf, canWait: canWait
+    playingMatchOf: playingMatchOf, nextMatchOf: nextMatchOf, canWait: canWait,
+    tallyState: tallyState, tally: tally, swapCandidates: swapCandidates, swapAcross: swapAcross, swapTeamAcross: swapTeamAcross,
+    COURT_COLORS: COURT_COLORS
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = Engine;
