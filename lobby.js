@@ -112,24 +112,65 @@ var Lobby = (function () {
     beach: { name: 'Pantai', land: { img: 'img/lobby/beach.webp', size: [1584, 993],
       floor: { tl: [412, 272], tr: [1175, 272], bl: [158, 855], br: [1425, 855] }, zones: SIDES,
       hosts: [[.44, .56, 1.06, 1.08], [.43, .57, 1.09, 1.11]] } },
-    // tema event: tinggal isi gambar & kalibrasi (lihat README)
-    agustusan: { name: 'Agustusan', soon: true }, ramadan: { name: 'Ramadan', soon: true }, turnamen: { name: 'Panggung turnamen', soon: true }
   };
+  /* tema dari admin (editor tema di app): gambar + 4 sudut lantai; juga dipakai untuk menambah gambar HP tegak
+     atau mengganti gambar tema bawaan. Tema event (Agustusan, Ramadan, panggung turnamen) ditambah lewat sini. */
+  var CUSTOM = {};
+  function setThemes(list) {
+    var next = {};
+    (list || []).forEach(function (t) {
+      var side = function (x) { return x && x.url ? { img: x.url, size: x.size, floor: x.floor, host: x.host || null } : null; };
+      next[t.id] = { name: t.name, logo: t.logo !== false, hidden: !!t.hidden, land: side(t.land), port: side(t.port) };
+    });
+    var changed = JSON.stringify(next) !== JSON.stringify(CUSTOM);
+    CUSTOM = next;
+    return changed;
+  }
+  function themeDef(id) {
+    var b = THEMES[id], c = CUSTOM[id];
+    if (!b && !c) return themeDef('court');
+    if (!c) return { id: id, name: b.name, land: b.land, port: null, logo: false };
+    if (!b) return { id: id, name: c.name, land: c.land, port: c.port, logo: c.logo, custom: true };
+    return { id: id, name: c.name || b.name, land: c.land || b.land, port: c.port, logo: c.logo && !!(c.land || c.port), hidden: c.hidden };
+  }
+  function themeList() {
+    return Object.keys(THEMES).concat(Object.keys(CUSTOM).filter(function (k) { return !THEMES[k]; }))
+      .map(themeDef).filter(function (t) { return !t.hidden; }).map(function (t) { return { id: t.id, name: t.name }; });
+  }
+  /* titik lantai (u,v) → piksel gambar; 4 sudut bebas (bilinear), net di u = .5 (lebar) atau v = .5 (tegak) */
+  function bilinear(f, u, v) {
+    return [(1 - v) * ((1 - u) * f.tl[0] + u * f.tr[0]) + v * ((1 - u) * f.bl[0] + u * f.br[0]),
+      (1 - v) * ((1 - u) * f.tl[1] + u * f.tr[1]) + v * ((1 - u) * f.bl[1] + u * f.br[1])];
+  }
+  function hostSpots(L, mode) {
+    if (L.hosts) return L.hosts;
+    var h = L.host;
+    if (mode === 'land') return h ? [[h[0] - .06, h[0] + .06, h[1], h[1] + .02], [h[0] - .07, h[0] + .07, h[1] + .03, h[1] + .05]] : [[.44, .56, 1.08, 1.1], [.43, .57, 1.11, 1.13]];
+    return h ? [[h[0] - .015, h[0] + .015, h[1] - .08, h[1] + .08], [1 - h[0] - .015, 1 - h[0] + .015, h[1] - .08, h[1] + .08]] : PORT.hosts;
+  }
   var PORT = { zones: { A: [[.06, .94, .05, .42]], B: [[.06, .94, .58, .95]] }, hosts: [[-.05, -.025, .4, .6], [1.025, 1.05, .4, .6]] };
 
+  /* layar lebar: gambar lebar (atau gambar tegak dipasang utuh bila tema hanya punya itu);
+     HP tegak: gambar tegak, atau lapangan diputar yang digambar kode */
+  function imgLayout(L, W, H, mode, fit) {
+    var iw = L.size[0], ih = L.size[1], k = fit ? Math.min(W / iw, H / ih) : Math.max(W / iw, H / ih), ox = (W - iw * k) / 2, oy = (H - ih * k) / 2, f = L.floor;
+    var front = Math.hypot(f.br[0] - f.bl[0], f.br[1] - f.bl[1]) * k;
+    return { mode: mode, img: L.img, fit: !!fit, zones: L.zones || (mode === 'land' ? SIDES : PORT.zones), hosts: hostSpots(L, mode),
+      SH: clamp(front * (mode === 'land' ? .105 : .2), 40, 150),
+      proj: function (u, v) { var q = bilinear(f, u, v); return { x: ox + q[0] * k, y: oy + q[1] * k, s: (mode === 'land' ? .62 : .66) + (mode === 'land' ? .38 : .34) * v }; } };
+  }
   function layoutFor(themeId, W, H) {
-    var th = THEMES[themeId] || THEMES.court, L = th.land;
-    if (L && W / H >= 1.15) {
-      var iw = L.size[0], ih = L.size[1], k = Math.max(W / iw, H / ih), ox = (W - iw * k) / 2, oy = (H - ih * k) / 2, f = L.floor;
-      return { mode: 'land', img: L.img, zones: L.zones, hosts: L.hosts, SH: clamp((f.br[0] - f.bl[0]) * k * .105, 40, 150),
-        proj: function (u, v) {
-          var y = f.tl[1] + (f.bl[1] - f.tl[1]) * v, xl = f.tl[0] + (f.bl[0] - f.tl[0]) * v, xr = f.tr[0] + (f.br[0] - f.tr[0]) * v;
-          return { x: ox + (xl + (xr - xl) * u) * k, y: oy + y * k, s: .62 + .38 * v };
-        } };
+    var th = themeDef(themeId), wide = W / H >= 1.15, out;
+    if (wide && th.land) out = imgLayout(th.land, W, H, 'land');
+    else if (!wide && th.port) out = imgLayout(th.port, W, H, 'port');
+    else if (wide && th.port) out = imgLayout(th.port, W, H, 'port', true);
+    else {
+      var y0 = .17, y1 = .86, wT = .6, wB = .88;
+      out = { mode: 'drawn', zones: PORT.zones, hosts: PORT.hosts, SH: clamp(H * .12, 44, 110),
+        proj: function (u, v) { return { x: W / 2 + (u - .5) * W * (wT + (wB - wT) * v), y: H * (y0 + (y1 - y0) * v), s: .66 + .34 * v }; } };
     }
-    var y0 = .17, y1 = .86, wT = .6, wB = .88;
-    return { mode: 'port', zones: PORT.zones, hosts: PORT.hosts, SH: clamp(H * .12, 44, 110),
-      proj: function (u, v) { return { x: W / 2 + (u - .5) * W * (wT + (wB - wT) * v), y: H * (y0 + (y1 - y0) * v), s: .66 + .34 * v }; } };
+    out.logo = th.logo; out.palette = THEMES[themeId] ? themeId : 'court';
+    return out;
   }
 
   /* ---------- lapangan versi HP tegak (digambar kode): net melintang, sisi A di atas, B di bawah ---------- */
@@ -337,7 +378,7 @@ var Lobby = (function () {
      ============================================================ */
   function mount(root, state, handlers) {
     handlers = handlers || {};
-    var S = null, ents = {}, order = 0, chatSeen = {}, unread = 0, raf = 0, lastT = 0, T = 0, W = 0, H = 0, LY = null, alive = true;
+    var themesSig = null, S = null, ents = {}, order = 0, chatSeen = {}, unread = 0, raf = 0, lastT = 0, T = 0, W = 0, H = 0, LY = null, alive = true;
     var open = { roster: lsGet('paddoc_lb_roster') !== '0', chat: lsGet('paddoc_lb_chat') !== '0' };
     root.innerHTML =
       '<div class="lb">' +
@@ -349,6 +390,7 @@ var Lobby = (function () {
       '<div class="lb-main"><div class="lb-stagecol">' +
       '<div class="lb-stage"><div class="lb-bg"></div><canvas class="lb-canvas"></canvas><div class="lb-motes"></div><div class="lb-layer"></div>' +
       '<div class="lb-chip tl"><span class="dot"></span><span class="n" data-k="cnt">0</span><span data-k="cntTxt">pemain hadir</span></div>' +
+      '<img class="lb-chip bl lb-logomark" src="icon-192.png" alt="Logo Padel Doc" hidden>' +
       '<div class="lb-chip tr"><button type="button" class="lb-round" data-lb="music" aria-pressed="false" aria-label="Musik lobi" title="Musik lobi">' + ic('music') + '</button></div>' +
       '<div class="lb-started" data-k="started" hidden><div><h2>Sesi dimulai</h2><p data-k="startedTxt"></p>' +
       '<button class="lb-btn" type="button" data-lb="back" data-k="backBtn">' + ic('back') + 'Kembali ke Lobi</button></div></div></div>' +
@@ -367,7 +409,8 @@ var Lobby = (function () {
     var el = {}; root.querySelectorAll('[data-k]').forEach(function (n) { el[n.dataset.k] = n; });
     var stage = root.querySelector('.lb-stage'), bg = root.querySelector('.lb-bg'), cv = root.querySelector('.lb-canvas'), layer = root.querySelector('.lb-layer');
     var cx = cv.getContext('2d');
-    el.theme.innerHTML = Object.keys(THEMES).map(function (k) { var t = THEMES[k]; return '<option value="' + k + '"' + (t.soon ? ' disabled' : '') + '>' + esc(t.name) + (t.soon ? ' (segera)' : '') + '</option>'; }).join('');
+    function themeOptions() { el.theme.innerHTML = themeList().map(function (t) { return '<option value="' + t.id + '">' + esc(t.name) + '</option>'; }).join(''); }
+    themeOptions();
     if (!REDUCE) {
       var motes = root.querySelector('.lb-motes');
       for (var k = 0; k < 22; k++) {
@@ -388,12 +431,13 @@ var Lobby = (function () {
       var SH = LY.SH, SW = SH * 64 / 96;
       stage.style.setProperty('--sh', SH + 'px'); stage.style.setProperty('--sw', SW + 'px');
       LY.SW = SW;
-      if (LY.mode === 'land') { bg.style.backgroundImage = 'url("' + LY.img + '")'; cv.hidden = true; }
+      if (LY.img) { bg.style.backgroundImage = 'url("' + LY.img + '")'; bg.style.backgroundSize = LY.fit ? 'contain' : 'cover'; cv.hidden = true; }
       else {
         bg.style.backgroundImage = ''; cv.hidden = false;
         var dpr = Math.min(2, window.devicePixelRatio || 1); cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        drawPortrait(cx, W, H, LY.proj, S.theme);
+        drawPortrait(cx, W, H, LY.proj, LY.palette);
       }
+      root.querySelector('.lb-logomark').hidden = !LY.logo;
       if (force || prev !== LY.mode + LY.theme) Object.keys(ents).forEach(function (id) { var e = ents[id]; if (e.el) { place(e); e.state = 'idle'; e.el.classList.remove('walking'); } });
       Object.keys(ents).forEach(function (id) { if (ents[id].el) draw(ents[id]); });
     }
@@ -497,7 +541,7 @@ var Lobby = (function () {
     var chipBoxes = [];
     function measureChips() {
       chipBoxes = [];
-      root.querySelectorAll('.lb-stage > .lb-chip').forEach(function (c) { chipBoxes.push({ l: c.offsetLeft, t: c.offsetTop, r: c.offsetLeft + c.offsetWidth, b: c.offsetTop + c.offsetHeight }); });
+      root.querySelectorAll('.lb-stage > .lb-chip').forEach(function (c) { if (c.hidden) return; chipBoxes.push({ l: c.offsetLeft, t: c.offsetTop, r: c.offsetLeft + c.offsetWidth, b: c.offsetTop + c.offsetHeight }); });
     }
     function boxOf(e, node, isBub) {
       var s = e.ss, bx = e.sx, by = e.sy;            // titik kaki (tengah bawah) di layar & skala
@@ -615,6 +659,7 @@ var Lobby = (function () {
     var cdT = setInterval(countdown, 1000);
 
     function confirmStart() {
+      if (S.pairing) { if (handlers.start) handlers.start(); return; }   // pasangan tetap: app menampilkan pilihan pasangan sebagai konfirmasi
       var pl = people().filter(function (p) { return p.role !== 'host'; }).length, ho = people().length - pl;
       modal('Mulai sesi sekarang?', '<p><b>' + pl + ' pemain</b> dan <b>' + ho + ' host</b> hadir. Lobi ditutup untuk semua orang dan undian court pertama langsung dibuat.</p>',
         [{ label: 'Batal' }, { label: 'Ya, mulai sesi', cls: 'primary', on: function () { if (handlers.start) handlers.start(); } }]);
@@ -649,8 +694,11 @@ var Lobby = (function () {
 
     function update(next, opts) {
       var first = !S, prevTheme = S && S.theme;
+      // daftar tema dibandingkan per lobi: app bisa sudah memanggil Lobby.setThemes lebih dulu
+      var tSig = next.themes ? JSON.stringify(next.themes) : themesSig, themesChanged = tSig !== themesSig;
+      if (themesChanged) { themesSig = tSig; setThemes(next.themes); themeOptions(); }
       S = Object.assign({}, S || {}, next);
-      if (first || prevTheme !== S.theme) relayout(true);
+      if (first || prevTheme !== S.theme || themesChanged) relayout(true);
       var now = {}; people().forEach(function (p) { now[p.id] = p; });
       Object.keys(ents).forEach(function (id) { if (!now[id]) exit(id); });
       people().forEach(function (p) {
@@ -743,6 +791,7 @@ var Lobby = (function () {
     return inst;
   }
 
-  return { mount: mount, demo: demo, THEMES: THEMES, shareText: shareText, look: look, refLook: refLook, musicOn: musicOn };
+  return { mount: mount, demo: demo, THEMES: THEMES, setThemes: setThemes, themeList: themeList, themeDef: themeDef, bilinear: bilinear,
+    shareText: shareText, look: look, refLook: refLook, musicOn: musicOn };
 })();
 if (typeof module !== 'undefined') module.exports = Lobby;

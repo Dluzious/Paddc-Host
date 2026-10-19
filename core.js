@@ -97,7 +97,7 @@ var Core = (function () {
   }
   function status() {
     var hasAdmin = people().some(function (p) { return p.role === 'admin' && !p.archived; });
-    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.4', migrated: !!A.prop('MIGRATED_AT') };
+    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.5', migrated: !!A.prop('MIGRATED_AT') };
   }
   function createAdmin(r) {
     return A.lock(function () {
@@ -381,6 +381,7 @@ var Core = (function () {
       when: p.when, whenText: p.whenText, venue: p.venue || {}, theme: p.theme || 'court', by: p.by,
       rsvp: (p.rsvp || []).map(function (x) { return { pid: x.pid, role: x.role, at: x.at }; }), chatN: (p.chat || []).length };
     if (member) o.chat = (p.chat || []).slice(-100);
+    if (S.teamMode === 'fixed') o.teams = (p.teams || []).map(function (t) { return { a: t.a, b: t.b }; });
     return o;
   }
   function plans(member) {
@@ -390,25 +391,39 @@ var Core = (function () {
       .map(function (S) { return planView(S, member); });
   }
   function venueLine(v) { v = v || {}; return [v.name, v.address].filter(Boolean).join(' · '); }
-  /* pasangan tetap yang belum diatur: dipasangkan acak, putra-putri dulu bila bisa (opsi lengkap di Tahap 5) */
+  /* pasangan tetap yang belum diatur: dipasangkan acak, putra-putri dulu bila bisa */
   function autoTeams(ids, P, given) {
     var used = {}, teams = [];
     (given || []).forEach(function (t) { if (ids.indexOf(t.a) >= 0 && ids.indexOf(t.b) >= 0 && !used[t.a] && !used[t.b]) { teams.push({ a: t.a, b: t.b }); used[t.a] = used[t.b] = 1; } });
-    var rest = ids.filter(function (id) { return !used[id]; }).sort(function () { return Math.random() - .5; });
+    var rest = ids.filter(function (id) { return !used[id]; });
+    for (var i = rest.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), x = rest[i]; rest[i] = rest[j]; rest[j] = x; }
     var L = rest.filter(function (id) { return (P[id] || {}).gender !== 'P'; }), W = rest.filter(function (id) { return (P[id] || {}).gender === 'P'; });
     while (L.length && W.length) teams.push({ a: L.pop(), b: W.pop() });
     var left = L.concat(W);
     while (left.length >= 2) teams.push({ a: left.pop(), b: left.pop() });
     return teams;
   }
-  function startPlan(S, P) {
+  function startPlan(S, P, d) {
+    d = d || {};
     var p = S.plan, alive = {};
     people().forEach(function (x) { if (!x.archived) alive[x.id] = x; });
     var players = p.rsvp.filter(function (x) { return x.role === 'player' && alive[x.pid] && alive[x.pid].role !== 'host'; }).map(function (x) { return x.pid; });
     if (players.length < 4) throw err('INVALID', 'Butuh minimal 4 pemain yang hadir untuk memulai');
     var hostIds = p.rsvp.filter(function (x) { return x.role === 'host' && alive[x.pid]; }).map(function (x) { return x.pid; });
-    var fresh = Engine.newSession({ name: S.name, format: S.format, teamMode: S.teamMode, scoring: S.scoring, rules: S.rules, courts: S.courts, playerIds: players,
-      teams: S.teamMode === 'fixed' ? autoTeams(players, P, p.teams) : [] });
+    var teams = [];
+    if (S.teamMode === 'fixed') {
+      if (Array.isArray(d.teams)) {
+        // pasangan dari host (acak campuran/putra/putri, best player, atau manual); sisanya boleh tidak dipasangkan
+        var used = {};
+        var given = d.teams.filter(function (t) {
+          var okT = t && players.indexOf(t.a) >= 0 && players.indexOf(t.b) >= 0 && t.a !== t.b && !used[t.a] && !used[t.b];
+          if (okT) used[t.a] = used[t.b] = 1;
+          return okT;
+        }).map(function (t) { return { a: t.a, b: t.b }; });
+        teams = d.pairRest ? autoTeams(players, P, given) : given;
+      } else teams = autoTeams(players, P, p.teams);
+    }
+    var fresh = Engine.newSession({ name: S.name, format: S.format, teamMode: S.teamMode, scoring: S.scoring, rules: S.rules, courts: S.courts, playerIds: players, teams: teams });
     S.parts = fresh.parts; S.teams = fresh.teams; S.matches = []; S.seq = 0; S.status = 'live'; S.date = new Date().toISOString();
     S.calls = {}; S.lastDone = {};
     setHosts(S, (S.hosts || []).concat(hostIds));
@@ -456,7 +471,7 @@ var Core = (function () {
       if (d.name) S.name = String(d.name).trim().slice(0, 60) || S.name;
       return null;
     }
-    if (type === 'startPlan') { startPlan(S, P); return null; }
+    if (type === 'startPlan') { startPlan(S, P, d); return null; }
     return null;
   }
   /* pengingat 12 jam & 3 jam sebelum main untuk yang sudah hadir; dipanggil server (alarm). Hasil: waktu pengingat berikutnya */
@@ -485,6 +500,127 @@ var Core = (function () {
       return next;
     });
   }
+  /* ---------------- tema ruang tunggu: gambar + kalibrasi 4 sudut lantai, diatur admin ---------------- */
+  var BUILTIN_THEMES = ['court', 'lounge', 'beach'];
+  function themesRaw() { try { return JSON.parse(A.prop('LOBBY_THEMES') || '[]'); } catch (e) { return []; } }
+  function themeView(t) {
+    var side = function (x) { return x && x.img ? { url: A.photoUrl(x.img), size: x.size, floor: x.floor, host: x.host || null } : null; };
+    return { id: t.id, name: t.name, logo: t.logo !== false, builtin: BUILTIN_THEMES.indexOf(t.id) >= 0, hidden: !!t.hidden, land: side(t.land), port: side(t.port) };
+  }
+  function themes() { return themesRaw().map(themeView); }
+  function cleanSide(src, old, id, k) {
+    var size = [Math.round(Number((src.size || [])[0])), Math.round(Number((src.size || [])[1]))];
+    if (!(size[0] >= 200 && size[0] <= 6000 && size[1] >= 200 && size[1] <= 6000)) throw err('INVALID', 'Ukuran gambar tema tidak valid');
+    var floor = {};
+    ['tl', 'tr', 'br', 'bl'].forEach(function (c) {
+      var q = (src.floor || {})[c] || [], x = Number(q[0]), y = Number(q[1]);
+      if (!isFinite(x) || !isFinite(y) || x < -size[0] * .2 || x > size[0] * 1.2 || y < -size[1] * .2 || y > size[1] * 1.2) throw err('INVALID', 'Tandai 4 sudut lantai dulu');
+      floor[c] = [Math.round(x), Math.round(y)];
+    });
+    var img = old && old.img;
+    if (src.data) { var nid = A.savePhoto(src.data, 'tema_' + id + '_' + k); if (img) A.trash(img); img = nid; }
+    if (!img) throw err('INVALID', 'Unggah gambar tema dulu');
+    var h = src.host, host = h && isFinite(Number(h[0])) && isFinite(Number(h[1])) ? [Math.max(-.5, Math.min(1.5, Number(h[0]))), Math.max(-.5, Math.min(1.5, Number(h[1])))] : null;
+    return { img: img, size: size, floor: floor, host: host };
+  }
+  function saveTheme(r) {
+    auth(r.token, ['admin']);
+    var t = r.theme || {};
+    return A.lock(function () {
+      var list = themesRaw();
+      var id = /^[a-z0-9_]{2,24}$/.test(String(t.id || '')) ? t.id : 't_' + A.uuid().replace(/-/g, '').slice(0, 8);
+      var old = list.filter(function (x) { return x.id === id; })[0] || { id: id }, builtin = BUILTIN_THEMES.indexOf(id) >= 0;
+      var name = String(t.name || '').trim().slice(0, 40);
+      if (!builtin && !name) throw err('INVALID', 'Isi nama tema');
+      var out = { id: id, name: name, logo: t.logo !== false, hidden: !!t.hidden };
+      ['land', 'port'].forEach(function (k) {
+        if (t[k] === null) { if (old[k]) A.trash(old[k].img); return; }          // gambar dihapus
+        if (!t[k]) { if (old[k]) out[k] = old[k]; return; }                    // tidak diubah
+        out[k] = cleanSide(t[k], old[k], id, k);
+      });
+      if (!builtin && !out.land && !out.port) throw err('INVALID', 'Unggah minimal satu gambar (layar lebar atau HP tegak)');
+      A.setProp('LOBBY_THEMES', JSON.stringify(list.filter(function (x) { return x.id !== id; }).concat([out])));
+      return themes();
+    });
+  }
+  /* hapus tema buatan admin; untuk tema bawaan: kembali ke gambar bawaan */
+  function deleteTheme(r) {
+    auth(r.token, ['admin']);
+    return A.lock(function () {
+      var list = themesRaw(), t = list.filter(function (x) { return x.id === r.id; })[0];
+      if (!t) throw err('NOT_FOUND', 'Tema tidak ditemukan');
+      ['land', 'port'].forEach(function (k) { if (t[k]) A.trash(t[k].img); });
+      A.setProp('LOBBY_THEMES', JSON.stringify(list.filter(function (x) { return x.id !== r.id; })));
+      return themes();
+    });
+  }
+
+  /* ---------------- kudos setelah sesi ---------------- */
+  var KUDOS_PLAYER = ['wall_master', 'lob_specialist', 'vibora_specialist', 'bandeja_master', 'smash_machine', 'volley_expert', 'block_master', 'spin_doctor',
+    'chiquita_artist', 'bajada_specialist', 'drop_shot_artist', 'tactical_genius', 'game_reader', 'positioning_pro', 'defensive_wall', 'rally_machine',
+    'predator', 'dream_partner', 'hype_partner', 'smart_supporter', 'silent_killer'];
+  var KUDOS_HOST = ['super_host', 'organized_host', 'vibe_master', 'problem_solver', 'game_day_hero', 'reliable_host'];
+  var KUDOS_DAYS = 7;
+  /* yang hadir di sesi: pemain (pernah masuk acakan) dan host */
+  function attendees(S) {
+    var who = {};
+    Object.keys(S.parts || {}).forEach(function (pid) { who[pid] = 'player'; });
+    (S.hosts || []).forEach(function (pid) { if (!who[pid]) who[pid] = 'host'; });
+    return who;
+  }
+  function kudosSession(r, actor) {
+    var S = loadS(r.sid);
+    if (!S || S.status !== 'done') throw err('NOT_FOUND', 'Sesi belum selesai');
+    var who = attendees(S);
+    if (!who[actor.id]) throw err('FORBIDDEN', 'Kamu tidak ikut sesi ini');
+    return { S: S, who: who, open: now() - (S.endedAt || S.updated || 0) < KUDOS_DAYS * 864e5 };
+  }
+  function kudosForm(r) {
+    var actor = auth(r.token), x = kudosSession(r, actor), given = {};
+    (A.kudosBy ? A.kudosBy(x.S.id, actor.id) : []).forEach(function (k) { (given[k.target] = given[k.target] || []).push(k.k); });
+    return { sid: x.S.id, name: x.S.name, open: x.open, given: given, lists: { player: KUDOS_PLAYER, host: KUDOS_HOST },
+      people: Object.keys(x.who).filter(function (id) { return id !== actor.id && person(id); }).map(function (id) { return { id: id, role: x.who[id] }; }) };
+  }
+  function giveKudos(r) {
+    var actor = auth(r.token), x = kudosSession(r, actor);
+    if (!x.open) throw err('INVALID', 'Waktu memberi kudos untuk sesi ini sudah lewat');
+    if (!A.saveKudos) throw err('INVALID', 'Kudos belum tersedia di versi ini');
+    var gifts = r.gifts || {}, rows = [];
+    Object.keys(gifts).forEach(function (target) {
+      if (target === actor.id || !x.who[target]) throw err('INVALID', 'Kudos hanya untuk yang hadir di sesi ini');
+      var ks = (gifts[target] || []).filter(function (k, i, a) { return a.indexOf(k) === i; });
+      if (ks.length > 2) throw err('INVALID', 'Maksimal 2 kudos untuk satu orang');
+      var allowed = x.who[target] === 'host' ? KUDOS_HOST : KUDOS_PLAYER;
+      ks.forEach(function (k) { if (allowed.indexOf(k) < 0) throw err('INVALID', 'Kudos tidak dikenal'); rows.push({ target: target, k: k }); });
+    });
+    A.lock(function () { A.saveKudos(x.S.id, actor.id, rows, now()); });
+    return { count: rows.length };
+  }
+  /* penerima melihat siapa yang memberi; orang lain tidak bisa */
+  function myKudos(r) {
+    var actor = auth(r.token), names = {}, totals = {};
+    var list = (A.kudosFor ? A.kudosFor(actor.id) : []).map(function (k) {
+      totals[k.k] = (totals[k.k] || 0) + 1;
+      if (!(k.sid in names)) { var S = loadS(k.sid); names[k.sid] = S ? S.name : ''; }
+      var g = person(k.giver);
+      return { k: k.k, from: g ? g.name : '?', fromId: k.giver, session: names[k.sid], at: k.at };
+    }).sort(function (a, b) { return b.at - a.at; });
+    return { totals: totals, list: list };
+  }
+  /* admin: semua pemain dan kudos yang diterima */
+  function kudosAdmin(r) {
+    auth(r.token, ['admin']);
+    var by = {}, names = {};
+    (A.kudosAll ? A.kudosAll() : []).forEach(function (k) {
+      var o = by[k.target] = by[k.target] || { id: k.target, total: 0, totals: {}, list: [] };
+      o.total++; o.totals[k.k] = (o.totals[k.k] || 0) + 1;
+      if (!(k.sid in names)) { var S = loadS(k.sid); names[k.sid] = S ? S.name : ''; }
+      var g = person(k.giver); o.list.push({ k: k.k, from: g ? g.name : '?', fromId: k.giver, session: names[k.sid], at: k.at });
+    });
+    return Object.keys(by).map(function (id) { var p = person(id); by[id].name = p ? p.name : '?'; return by[id]; })
+      .sort(function (a, b) { return b.total - a.total || a.name.localeCompare(b.name); });
+  }
+
   function venueSearch(r) {
     auth(r.token, ['admin', 'host']);
     var q = String(r.q || '').trim().slice(0, 120);
@@ -496,7 +632,7 @@ var Core = (function () {
   function poll(r, member) {
     r = r || {};
     var sid = A.prop('ACTIVE_SID') || '';
-    var out = { now: now(), sid: sid, pv: peopleVersion(), plans: plans(member === true || isMember(r.token)) };
+    var out = { now: now(), sid: sid, pv: peopleVersion(), plans: plans(member === true || isMember(r.token)), themes: themes() };
     if (sid) {
       var S = loadS(sid);
       if (!S) { out.sid = ''; } else {
@@ -717,7 +853,11 @@ var Core = (function () {
       case 'rename': if (d.name) S.name = String(d.name).slice(0, 60); break;
       case 'end':
         Engine.liveMatches(S).forEach(function (x) { Engine.voidMatch(S, x.id); });
-        S.status = 'done';
+        S.status = 'done'; S.endedAt = now();
+        if (A.notify) Object.keys(attendees(S)).forEach(function (pid) {
+          A.notify(pid, { title: 'Beri kudos: ' + S.name, body: 'Sesi selesai. Beri kesan untuk teman main dan host. Hanya penerima yang bisa melihatnya.',
+            tag: 'kudos-' + S.id, url: '/?kudos=' + S.id });
+        });
         break;
       case 'reopen': S.status = 'live'; fill(S, P); break;
       default: throw err('INVALID', 'Aksi tidak dikenal: ' + type);
@@ -764,7 +904,8 @@ var Core = (function () {
     me: me, changePin: changePin, updateMe: updateMe, listPeople: listPeople, savePerson: savePersonReq, resetPin: resetPin,
     generatePro: generatePro, listSessions: listSessions, openSession: openSession, deleteSession: deleteSession,
     createSession: createSession, act: act, importPerson: importPerson, importSession: importSession, markMigrated: markMigrated,
-    pushSubscribe: pushSubscribe, venueSearch: venueSearch, generateChibi: generateChibi, saveSprite: saveSprite
+    pushSubscribe: pushSubscribe, venueSearch: venueSearch, generateChibi: generateChibi, saveSprite: saveSprite,
+    saveTheme: saveTheme, deleteTheme: deleteTheme, kudosForm: kudosForm, giveKudos: giveKudos, myKudos: myKudos, kudosAdmin: kudosAdmin
   };
   function call(fn, req) {
     var f = PUBLIC[fn] || PRIVATE[fn];

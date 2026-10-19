@@ -1,4 +1,4 @@
-# Paddoc Host v2.4
+# Paddoc Host v2.5
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -96,10 +96,14 @@ Sesi tidak langsung mulai. Host/admin menekan **Buat rencana sesi**, mengisi tan
   login; penonton tanpa login melihat lobi tanpa chat dan keterangan *Belum terdaftar? Hubungi host atau admin*.
 - **Pengingat** 12 jam dan 3 jam sebelum main dikirim ke yang hadir (nama sesi, jadwal, venue, tombol *Buka Maps*),
   dijadwalkan oleh alarm Durable Object. Pengingat yang waktunya sudah lewat saat rencana dibuat dilewati.
-- **Mulai Sesi** (popup konfirmasi, minimal 4 pemain hadir) mengubah rencana jadi sesi berjalan dan semua layar pindah
+- **Mulai Sesi** (popup konfirmasi, atau pilihan pasangan untuk sesi pasangan tetap; minimal 4 pemain hadir) mengubah rencana jadi sesi berjalan dan semua layar pindah
   ke tampilan court. Salah tekan? **Kembali ke Lobi** (di dashboard dan bilah *Menunggu* papan iPad) selama belum ada
   match yang dimulai; daftar hadir dan chat tetap.
-- Pasangan tetap yang belum diatur dipasangkan otomatis saat mulai (putra-putri dulu); opsi lengkap menyusul.
+- **Pasangan tetap**: saat menekan Mulai Sesi, host memilih cara memasangkan dari yang benar-benar hadir:
+  **acak campuran** (putra + putri dulu), **acak putra**, **acak putri**, **best player** (pilih unggulan, partnernya
+  diacak dari pemain lain), atau **manual** (isi semua tim). Hasil acak bisa diubah per baris; memilih pemain yang
+  sudah di tim lain menukar tempatnya. *Pasangkan sisanya otomatis* (bawaan aktif) memasangkan yang belum punya tim;
+  bila dimatikan mereka belum ikut main. Pilihan yang sama ada di bagian **Pasangan** saat membuat rencana.
 - Pratinjau dengan 30 pemain dummy: **`/?lobby=demo`**.
 - Tidak ada teks yang saling menutupi di panggung: label nama atau gelembung yang bertabrakan disembunyikan sementara
   (prioritas: chat, gelembung, nama sendiri, host, pemain terdepan), dan karakter menjaga jarak saat berjalan.
@@ -123,8 +127,21 @@ aplikasi Google Maps.
 Kode lobi: `lobby.js` + `lobby.css`; gambar latar di `img/lobby/`. Layar lebar memakai gambar ilustrasi per tema;
 HP tegak memakai lapangan yang diputar (net melintang) dan digambar kode sampai ada gambar versi tegak.
 
-**Menambah tema**: tambahkan entri di `THEMES` (`lobby.js`) berisi gambar dan koordinat 4 sudut garis lapangan
-di gambar (piksel), zona tiap sisi, dan tempat host. Spesifikasi gambar:
+### Tema ruang tunggu (Tahap 4)
+
+Admin: **Menu → Tema ruang tunggu**. Tiap tema punya gambar **layar lebar** (iPad/TV) dan boleh punya gambar
+**HP tegak**; tanpa gambar tegak, HP memakai lapangan yang digambar aplikasi.
+
+- **Tema baru** (mis. Agustusan, Ramadan, final turnamen): isi nama, unggah gambar, lalu ketuk **4 sudut lantai**
+  berurutan: 1 kiri belakang, 2 kanan belakang, 3 kanan depan, 4 kiri depan (titik bisa digeser). Pratinjau
+  menampilkan lantai, sisi A/B, garis net, dan tempat host; titik **H** opsional untuk memindahkan tempat host.
+  Urutan sudut yang tertukar ditolak.
+- **Tema bawaan** bisa diberi gambar HP tegak, diganti gambarnya, atau disembunyikan; **Kembalikan bawaan** menghapus
+  gambar unggahan. *Logo Paddoc di pojok* untuk gambar yang belum berlogo.
+- Gambar diperkecil di HP admin (maks. 1800 px, JPEG) lalu disimpan di Durable Object seperti foto. Daftar tema ikut
+  data sinkron, jadi lobi yang terbuka langsung berganti tanpa muat ulang.
+
+Tema bawaan ada di `THEMES` (`lobby.js`). Spesifikasi gambar:
 
 | | Layar lebar | HP tegak |
 |---|---|---|
@@ -133,12 +150,29 @@ di gambar (piksel), zona tiap sisi, dan tempat host. Spesifikasi gambar:
 | Isi | lantai tengah kosong, dekorasi di pinggir, logo/tulisan PADDOC di dinding atau papan | sama |
 | Jangan ada | orang, teks antarmuka (mis. label "Menunggu pemain lain") | sama |
 
+## Foto wasit di papan iPad
+
+Court yang punya wasit (host court) menampilkan foto dan nama depan host itu di **tengah atas court** pada papan iPad.
+Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas nomor court supaya tidak menutupi teks.
+
+## Kudos setelah sesi (Tahap 5)
+
+- Saat host/admin menekan **Akhiri sesi**, semua yang hadir (pemain dan host) mendapat notifikasi **Beri kudos**;
+  HP pemain yang sedang membuka app juga langsung ditawari, dan dashboard menampilkan ajakan dengan tombol **Lewati**.
+- Tiap orang memberi **1–2 kudos** untuk tiap pemain dan host yang hadir (boleh semua, boleh dilewati, bisa diubah
+  selama 7 hari). Kudos pemain: Wall Master, Lob Specialist, Vibora Specialist, Bandeja Master, Smash Machine,
+  Volley Expert, Block Master, Spin Doctor, Chiquita Artist, Bajada Specialist, Drop Shot Artist, Tactical Genius,
+  Game Reader, Positioning Pro, Defensive Wall, Rally Machine, Predator, Dream Partner, Hype Partner, Smart Supporter,
+  Silent Killer. Kudos host: Super Host, Organized Host, Vibe Master, Problem Solver, Game Day Hero, Reliable Host.
+- Kudos tersimpan per orang dan terakumulasi antar sesi. **Profil → Kudos untukmu** menampilkan jumlah per kudos dan
+  siapa pemberinya; orang lain tidak bisa melihatnya. Admin melihat semua di **Database → Kudos**.
+
 ## Sinkron & notifikasi
 
 Server mengirim perubahan ke semua perangkat lewat WebSocket begitu terjadi; cek berkala tetap jalan setiap 30 detik
 sebagai cadangan (3–4 detik bila WebSocket terputus).
 
-**Notifikasi**: sesi baru, pengingat 12 jam & 3 jam sebelum main, dan panggilan court. Tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
+**Notifikasi**: sesi baru, pengingat 12 jam & 3 jam sebelum main, panggilan court, dan ajakan kudos setelah sesi. Tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
 lawan, dengan tombol **Siap** / **Skip dulu**. Kunci VAPID dibuat otomatis oleh server, tidak perlu disetel.
 
 - Link Paddoc Host di **Android** terbuka langsung di aplikasi yang sudah terpasang (aplikasi yang sedang terbuka

@@ -51,6 +51,8 @@
   color: #F2EBDD; padding: 7px 12px; border-radius: 999px; font-weight: 800; font-size: 13px; border: 1px solid rgba(255,255,255,.12); }
 .lb-chip.tl { left: 12px; top: 12px; }
 .lb-chip.tr { right: 12px; top: 12px; padding: 4px; gap: 4px; }
+.lb-logomark { left: 12px; bottom: 12px; width: 52px; height: 52px; padding: 0; border-radius: 50%; object-fit: cover; opacity: .92; }
+.lb-logomark[hidden] { display: none; }
 .lb-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--lb-warn); animation: lbPing 1.6s infinite; }
 @keyframes lbPing { 0% { box-shadow: 0 0 0 0 rgba(240,164,58,.6); } 70% { box-shadow: 0 0 0 8px rgba(240,164,58,0); } 100% { box-shadow: 0 0 0 0 rgba(240,164,58,0); } }
 .lb-chip .n { font-family: var(--f-display, 'Big Shoulders Display', sans-serif); font-size: 20px; color: var(--lb-ok); font-variant-numeric: tabular-nums; }
