@@ -1,4 +1,4 @@
-# Paddoc Host v2.3
+# Paddoc Host v2.4
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -82,19 +82,33 @@ banyak pemain dan sedikit match per orang, jumlah pasangan memang lebih banyak d
 - **Ganti pemain** bisa dengan pemain menunggu, atau **pemain/pasangan di court lain yang belum Game start**.
   Court yang sudah mulai tidak muncul di daftar (server juga menolaknya).
 
-## Ruang tunggu (lobi) — sedang dibangun bertahap
+## Rencana sesi & ruang tunggu (lobi)
 
-Tahap 1 (pratinjau, data dummy): buka **`/?lobby=demo`**. Pemain dan host yang hadir tampil sebagai karakter chibi
-yang berkeliaran di lapangan sampai host menekan **Mulai Sesi** (ada popup konfirmasi dan tombol **Kembali ke Lobi**).
-Kode: `lobby.js` + `lobby.css`; gambar latar di `img/lobby/`.
+Sesi tidak langsung mulai. Host/admin menekan **Buat rencana sesi**, mengisi tanggal & jam (picker HP), venue
+(tombol **Cari alamat** mengisi alamat dan link Google Maps otomatis), dan tema lobi. Setelah dibuat:
 
-- **Layar lebar** (iPad, laptop): latar gambar ilustrasi per tema. **HP tegak**: lapangan diputar (net melintang,
-  satu sisi di atas, satu di bawah) dan digambar oleh kode sampai ada gambar versi tegak.
-- Karakter tidak menembus net; tiap orang tetap di sisinya. Host berbaju wasit berdiri dekat tiang net.
-- Panel **Hadir** dan **Chat** bisa dibuka-tutup; pesan chat juga muncul sebagai gelembung di atas karakter pengirim.
-  Penonton tanpa login tidak melihat isi chat.
-- Musik lobi dibuat oleh kode (tanpa file), menyala setelah layar disentuh, berhenti saat sesi dimulai.
-- Menghormati pengaturan "kurangi gerakan" di HP (karakter diam).
+- Semua orang mendapat notifikasi **Sesi baru** (tombol *Ikut hadir*), dan kartu **Sesi berikutnya** muncul di beranda.
+- Link lobi `/?lobby=<id>` bisa dibagikan: tombol **Bagikan** menyalin link + ajakan (nama sesi, jadwal, venue, Maps).
+- Pemain menekan **Saya Bergabung** / **Batal Bergabung**; karakternya jatuh ke lapangan di semua layar (lewat
+  WebSocket, umumnya < 1 detik). Admin memilih hadir sebagai host atau ikut main. Host bisa menambah atau menandai
+  tidak hadir, mengubah rencana, dan mengganti tema.
+- **Chat** di bawah tombol: pesan terbaru di atas, juga tampil sebagai gelembung di atas karakter. Hanya untuk yang
+  login; penonton tanpa login melihat lobi tanpa chat dan keterangan *Belum terdaftar? Hubungi host atau admin*.
+- **Pengingat** 12 jam dan 3 jam sebelum main dikirim ke yang hadir (nama sesi, jadwal, venue, tombol *Buka Maps*),
+  dijadwalkan oleh alarm Durable Object. Pengingat yang waktunya sudah lewat saat rencana dibuat dilewati.
+- **Mulai Sesi** (popup konfirmasi, minimal 4 pemain hadir) mengubah rencana jadi sesi berjalan dan semua layar pindah
+  ke tampilan court. Salah tekan? **Kembali ke Lobi** (di dashboard dan bilah *Menunggu* papan iPad) selama belum ada
+  match yang dimulai; daftar hadir dan chat tetap.
+- Pasangan tetap yang belum diatur dipasangkan otomatis saat mulai (putra-putri dulu); opsi lengkap menyusul.
+- Pratinjau dengan 30 pemain dummy: **`/?lobby=demo`**. Karakter sementara digambar kode; avatar chibi dari foto AI
+  menyusul di Tahap 3.
+
+Pencarian alamat memakai OpenStreetMap (gratis, data venue kecil kadang belum ada). Untuk hasil Google Maps, isi
+secret opsional **`GOOGLE_MAPS_API_KEY`** (Places API, berbayar) di Cloudflare. Bila tidak ketemu, tempel link dari
+aplikasi Google Maps.
+
+Kode lobi: `lobby.js` + `lobby.css`; gambar latar di `img/lobby/`. Layar lebar memakai gambar ilustrasi per tema;
+HP tegak memakai lapangan yang diputar (net melintang) dan digambar kode sampai ada gambar versi tegak.
 
 **Menambah tema**: tambahkan entri di `THEMES` (`lobby.js`) berisi gambar dan koordinat 4 sudut garis lapangan
 di gambar (piksel), zona tiap sisi, dan tempat host. Spesifikasi gambar:
@@ -111,11 +125,12 @@ di gambar (piksel), zona tiap sisi, dan tempat host. Spesifikasi gambar:
 Server mengirim perubahan ke semua perangkat lewat WebSocket begitu terjadi; cek berkala tetap jalan setiap 30 detik
 sebagai cadangan (3–4 detik bila WebSocket terputus).
 
-**Panggil pemain**: tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
+**Notifikasi**: sesi baru, pengingat 12 jam & 3 jam sebelum main, dan panggilan court. Tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
 lawan, dengan tombol **Siap** / **Skip dulu**. Kunci VAPID dibuat otomatis oleh server, tidak perlu disetel.
 
-- HP yang pertama kali membuka link diarahkan dulu untuk **memasang aplikasi ke layar utama**, lalu **mengizinkan
-  notifikasi**, baru login. Keduanya bisa dilewati.
+- HP dan tablet **wajib memasang aplikasi ke layar utama** dulu (petunjuk iPhone/iPad dan Android; bila link terbuka di
+  dalam WhatsApp/Instagram ada petunjuk membuka di Chrome/Safari). Link lobi yang dibuka di HP baru menampilkan
+  ringkasan sesinya di layar pasang. Setelah terpasang: izinkan notifikasi (boleh nanti), lalu login. Laptop tidak wajib.
 - iPhone/iPad: notifikasi hanya bisa bila app dipasang lewat *Bagikan → Tambah ke Layar Utama* (iOS 16.4+) dan izin
   diberikan dari dalam app.
 - Notifikasi push berbunyi satu kali (suara bawaan HP; Android juga bergetar panjang). Alarm berulang hanya berjalan

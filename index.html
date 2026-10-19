@@ -810,6 +810,23 @@ button.cm-p:hover { background: rgba(8,18,34,0.55); }
 .auth { max-width: 380px; margin: 8vh auto 40px; padding: 24px 16px; display: grid; gap: 14px; justify-items: stretch; text-align: center; }
 .auth.wide { max-width: 440px; }
 .onboard .ta-ring { justify-self: center; }
+.onboard .plan-card { text-align: left; }
+.install-os { margin: 0; text-align: left; font-size: 13px; color: var(--muted); }
+.plans { display: grid; gap: 10px; margin-bottom: 16px; }
+.plan-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.plan-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 8px; min-width: 0; }
+.plan-card.soon { border-color: var(--accent); }
+.plan-card h3 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 24px; text-transform: uppercase; line-height: 1; text-wrap: balance; }
+.pc-top, .pc-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pc-meta { color: var(--muted); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+.pc-meta a { color: var(--fg); font-weight: 700; }
+.pc-faces { display: flex; align-items: center; min-height: 32px; }
+.pc-faces .av { width: 30px; height: 30px; margin-right: -8px; border: 2px solid var(--surface); }
+.pc-faces .muted { margin-left: 16px; font-size: 13px; }
+.chip.ok { color: #2FAF6B; }
+.venue-res { margin-top: -4px; }
+.lobby-undo { flex: none; align-self: center; margin-left: auto; white-space: nowrap; }
+.venue-res .vpin { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--accent); }
 .onboard h1:not(.wordmark) { margin: 0; font-size: 26px; }
 .steps { text-align: left; margin: 0; padding-left: 22px; display: grid; gap: 10px; line-height: 1.45; }
 .steps .ic { width: 18px; height: 18px; vertical-align: -3px; }
@@ -907,6 +924,7 @@ var ICONS = (function () {
     swap: p('M8 3 4 7l4 4') + p('M4 7h16') + p('m16 21 4-4-4-4') + p('M20 17H4'),
     home: p('m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z') + p('M9 22V12h6v10'),
     flag: p('M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z') + p('M4 22v-7'),
+    pin: p('M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z') + p('M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z'),
     search: c(11, 11, 8) + p('m21 21-4.3-4.3'),
     timer: p('M10 2h4') + p('M12 14l3-3') + c(12, 14, 8),
     moon: p('M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z'),
@@ -1015,7 +1033,7 @@ function MemoryAdapter(store, persist) {
   'use strict';
 
   var LOGO = 'data:image/webp;base64,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';
-  var APP_VERSION = '2.3';
+  var APP_VERSION = '2.4';
   var API_URL = window.PADDOC_API && /^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)[:/]|\/[^/])/.test(window.PADDOC_API) ? window.PADDOC_API : '';
   var LIVE_MODE = !!API_URL && !(location.protocol === 'file:' && API_URL.charAt(0) === '/'); // tersambung ke server Cloudflare
   var OLD_API = window.PADDOC_OLD_API && /^https:\/\/script\.google\.com\//.test(window.PADDOC_OLD_API) ? window.PADDOC_OLD_API : '';
@@ -1050,7 +1068,7 @@ function MemoryAdapter(store, persist) {
   function authSet(v) { try { (LIVE_MODE ? localStorage : sessionStorage).setItem('paddoc_auth', JSON.stringify(v)); } catch (e) {} }
 
   /* ---------- state ---------- */
-  var LIVE = { sid: '', v: -1, pv: -1, S: null, offset: 0, people: {}, loaded: false };
+  var LIVE = { sid: '', v: -1, pv: -1, S: null, offset: 0, people: {}, loaded: false, plans: [], plansSig: '' };
   var AUTH = authGet() || { token: '', me: null };
   var DB = { full: {}, sessions: [], ai: false, status: null };
   var S = null; // sesi yang sedang tampil (= LIVE.S)
@@ -1155,8 +1173,10 @@ function MemoryAdapter(store, persist) {
     if (r.sid !== LIVE.sid) { LIVE.sid = r.sid; LIVE.S = r.S || null; LIVE.v = r.v == null ? -1 : r.v; changed = true; }
     else if (r.S && r.v !== LIVE.v && !tallyPend) { LIVE.S = r.S; LIVE.v = r.v; changed = true; }
     if (!r.sid) { LIVE.S = null; LIVE.v = -1; }
+    var plansChanged = r.plans ? setPlans(r.plans) : false;
     LIVE.loaded = true;
     if (changed) onLiveChange();
+    else if (plansChanged) onPlansChange();
   }
   function schedulePoll() {
     clearTimeout(pollT);
@@ -1184,6 +1204,7 @@ function MemoryAdapter(store, persist) {
       wsOpen = true; wsRetry = 0;
       clearInterval(wsPing);
       wsPing = setInterval(function () { try { ws.send('ping'); } catch (e) {} }, 25000);
+      wsAuth();
       pollNow().catch(function () {});
       schedulePoll();
     };
@@ -1200,17 +1221,32 @@ function MemoryAdapter(store, persist) {
     };
     ws.onerror = function () { try { ws.close(); } catch (e) {} };
   }
+  /* HP yang login ikut menerima chat lobi lewat WebSocket */
+  function wsAuth() { if (ws && wsOpen && AUTH.token) { try { ws.send('auth ' + AUTH.token); } catch (e) {} } }
   function applyServer(r) {
     if (!r) return;
-    if (r.S) { LIVE.sid = r.sid || r.S.id; LIVE.S = r.S; LIVE.v = r.v; }
+    if (r.plan) upsertPlan(r.plan);
+    if (r.S) {
+      if (r.S.status === 'plan') {                       // kembali ke lobi: sesi ini bukan lagi sesi aktif
+        if (LIVE.sid === (r.sid || r.S.id)) { LIVE.sid = ''; LIVE.S = null; LIVE.v = -1; pollNow().catch(function () {}); }
+      } else { LIVE.sid = r.sid || r.S.id; LIVE.S = r.S; LIVE.v = r.v; }
+    }
     onLiveChange();
   }
   function onLiveChange() {
     S = LIVE.S;
+    // popup giliran ditutup bila match-nya batal (mis. host kembali ke lobi)
+    var ta = $('#turn-alert'), tm = ta && S && Engine.findMatch(S, ta.dataset.m);
+    if (ta && (!tm || tm.status !== 'live')) { ta.remove(); stopAlarm(); }
     checkMyTurn();
-    if (['dash', 'board', 'scoreboard'].indexOf(UI.view) >= 0) render();
+    if (UI.view === 'lobby') renderLobby();
+    else if (['dash', 'board', 'scoreboard'].indexOf(UI.view) >= 0) render();
     else paintTopOnly();
     scheduleResultExpiry();
+  }
+  function onPlansChange() {
+    if (UI.view === 'lobby') renderLobby();
+    else if (UI.view === 'dash' || UI.view === 'home' || UI.view === 'install') render();
   }
   var syncState = 'ok';
   function setSync(s) { if (s === syncState) return; syncState = s; var el = $('#sync'); if (el) el.outerHTML = syncHTML(); }
@@ -1307,6 +1343,7 @@ function MemoryAdapter(store, persist) {
     var el = document.createElement('div');
     el.id = 'turn-alert';
     el.className = 'turn-alert';
+    el.dataset.m = m.id;
     el.innerHTML = '<div class="ta-card" role="alertdialog" aria-live="assertive">' +
       '<div class="ta-ring">' + icon(kind === 'call' ? 'bell' : 'racket') + '</div>' +
       '<div class="ta-kicker">' + (kind === 'call' ? 'Kamu dipanggil host' : 'Giliran kamu main!') + '</div>' +
@@ -1340,29 +1377,50 @@ function MemoryAdapter(store, persist) {
   function registerSW() {
     if (!LIVE_MODE || !('serviceWorker' in navigator) || location.protocol === 'file:') return;
     navigator.serviceWorker.register('sw.js').then(function (r) { SW = r; }).catch(function () {});
-    navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.type === 'call') handleCallLink(e.data.m, e.data['do']); });
+    navigator.serviceWorker.addEventListener('message', function (e) {
+      if (!e.data) return;
+      if (e.data.type === 'call') handleCallLink(e.data.m, e.data['do']);
+      if (e.data.type === 'open' && e.data.url) {
+        var u = new URL(e.data.url, location.href), sid = u.searchParams.get('lobby');
+        if (sid) pollNow().catch(function () {}).then(function () { handleLobbyLink({ sid: sid, join: u.searchParams.get('do') === 'join' }); });
+      }
+    });
   }
   window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); installEvt = e; if (UI.view === 'install') render(); });
   window.addEventListener('appinstalled', function () { installEvt = null; lsSet('paddoc_installed', true); if (UI.view === 'install') render(); });
   /* langkah pertama di HP baru: pasang dulu, lalu izinkan notifikasi, baru masuk */
   function onboardStep() {
     if (!LIVE_MODE || !isMobile()) return null;
-    if (!isStandalone() && !lsGet('paddoc_install_skip')) return 'install';
+    if (!isStandalone()) return 'install';
     if (pushSupported() && Notification.permission === 'default' && !lsGet('paddoc_notif_skip')) return 'notify';
     return null;
   }
+  function inAppBrowser() { return /FBAN|FBAV|Instagram|Line\/|WhatsApp|TikTok|Twitter|; wv\)/i.test(navigator.userAgent); }
   function installSteps() {
-    if (isIOS()) return '<ol class="steps"><li>Ketuk tombol <b>Bagikan</b> ' + icon('share') + ' (di bawah layar Safari, atau di atas pada iPad).</li>' +
+    var inApp = inAppBrowser() ? '<div class="demo-note">' + icon('info') + '<div>Link ini terbuka di dalam aplikasi lain. ' +
+      (isIOS() ? 'Ketuk menu <b>•••</b> atau ikon kompas lalu pilih <b>Buka di Safari</b>.' : 'Ketuk menu <b>⋮</b> lalu pilih <b>Buka di Chrome</b>.') +
+      '<div class="row" style="margin-top:8px"><button class="btn" data-act="copyLink">' + icon('link') + 'Salin link</button></div></div></div>' : '';
+    if (isIOS()) return inApp + '<p class="install-os"><b>iPhone / iPad</b> (Safari)</p><ol class="steps"><li>Ketuk tombol <b>Bagikan</b> ' + icon('share') + ' (di bawah layar Safari, atau di kanan atas pada iPad).</li>' +
       '<li>Gulir lalu pilih <b>Tambah ke Layar Utama</b> (Add to Home Screen).</li><li>Ketuk <b>Tambah</b>, lalu buka <b>Paddoc Host</b> dari layar utama.</li></ol>';
-    if (installEvt) return '<button class="btn primary lg block" data-act="doInstall">' + icon('download') + 'Pasang aplikasi</button>';
-    return '<ol class="steps"><li>Buka menu browser <b>⋮</b> (kanan atas).</li><li>Pilih <b>Instal aplikasi</b> atau <b>Tambahkan ke layar utama</b>.</li><li>Buka <b>Paddoc Host</b> dari layar utama.</li></ol>';
+    if (installEvt) return inApp + '<button class="btn primary lg block" data-act="doInstall">' + icon('download') + 'Pasang aplikasi</button>' +
+      '<p class="muted" style="font-size:13px;margin:0">Setelah terpasang, buka <b>Paddoc Host</b> dari layar utama.</p>';
+    return inApp + '<p class="install-os"><b>Android</b> (Chrome)</p><ol class="steps"><li>Ketuk menu <b>⋮</b> di kanan atas Chrome.</li><li>Pilih <b>Instal aplikasi</b> atau <b>Tambahkan ke layar utama</b>, lalu <b>Instal</b>.</li><li>Buka <b>Paddoc Host</b> dari layar utama.</li></ol>';
+  }
+  function installLobbyCard() {
+    var pl = UI.installLobby && planById(UI.installLobby);
+    if (!pl) return '';
+    var v = pl.venue || {};
+    return '<div class="plan-card"><span class="lbl-sm">Kamu diundang ke ruang tunggu</span><h3>' + esc(pl.name) + '</h3><div class="pc-meta">' + esc(pl.whenText || '') +
+      (v.name || v.address ? '<br>' + esc([v.name, v.address].filter(Boolean).join(' · ')) : '') + '</div>' +
+      '<div class="pc-faces">' + pl.rsvp.slice(0, 8).map(function (x) { return av(x.pid); }).join('') + '<span class="muted">' + pl.rsvp.length + ' hadir</span></div>' +
+      '<p class="muted" style="font-size:13px;margin:0">Setelah aplikasi terpasang, sesi ini muncul di beranda. Ketuk <b>Buka lobi</b> lalu <b>Saya Bergabung</b>.</p></div>';
   }
   function viewInstall() {
     var done = lsGet('paddoc_installed');
-    return '<div class="auth onboard"><img src="' + LOGO + '" alt="Logo Padel Doc"><h1 class="wordmark">Paddoc <b>Host</b></h1>' +
+    return '<div class="auth onboard"><img src="' + LOGO + '" alt="Logo Padel Doc"><h1 class="wordmark">Paddoc <b>Host</b></h1>' + installLobbyCard() +
       (done ? '<p><b>Aplikasi sudah terpasang.</b> Tutup halaman ini, lalu buka <b>Paddoc Host</b> dari layar utama HP.</p>'
-        : '<p>Pasang dulu di layar utama HP supaya host bisa <b>memanggil kamu lewat notifikasi</b> saat giliran main.</p>' + installSteps()) +
-      '<button class="btn ghost block" data-act="skipInstall">' + (done ? 'Lanjut di browser' : 'Lanjut di browser saja') + '</button></div>';
+        : '<p>Pasang dulu di layar utama HP. Aplikasi hanya bisa dipakai dari layar utama supaya host bisa <b>memanggil kamu lewat notifikasi</b> saat giliran main.</p>' + installSteps()) +
+      '<p class="muted" style="font-size:12px;margin:0">Sudah pernah pasang? Buka <b>Paddoc Host</b> dari layar utama HP.</p></div>';
   }
   function viewNotify() {
     return '<div class="auth onboard"><div class="ta-ring">' + icon('bell') + '</div><h1>Izinkan notifikasi</h1>' +
@@ -1607,9 +1665,10 @@ function MemoryAdapter(store, persist) {
     var u = me();
     if (!LIVE.loaded) return loaderHTML();
     if (!S) {
-      return '<div class="dash"><div class="empty big">' + icon('court') + '<div><b>Belum ada sesi berjalan.</b><br>' +
-        (isStaff() ? 'Mulai sesi baru untuk mengundi pemain.' : 'Dashboard akan tampil otomatis saat host memulai sesi.') + '</div>' +
-        (isStaff() ? '<button class="btn primary lg" data-act="newSession">' + icon('play') + 'Mulai sesi baru</button>' : '') +
+      var pc = planCards();
+      return '<div class="dash">' + pc + '<div class="empty' + (pc ? '' : ' big') + '">' + icon('court') + '<div><b>Belum ada sesi berjalan.</b><br>' +
+        (pc ? 'Konfirmasi hadir di lobi; dashboard court tampil saat host menekan Mulai Sesi.' : isStaff() ? 'Buat rencana sesi; pemain konfirmasi hadir di lobi.' : 'Dashboard akan tampil otomatis saat host memulai sesi.') + '</div>' +
+        (isStaff() ? '<button class="btn primary lg" data-act="newSession">' + icon('play') + 'Buat rencana sesi</button>' : '') +
         (!u ? '<button class="btn lg" data-act="login">' + icon('login') + 'Masuk</button>' : '') + '</div></div>' + staffNav();
     }
     var courts = S.courts.filter(function (c) { return c.active || Engine.courtLive(S, c.id) || recentResult(c); });
@@ -1621,6 +1680,9 @@ function MemoryAdapter(store, persist) {
       '<span class="chip">' + icon('users') + Object.keys(S.parts).filter(function (k) { return S.parts[k].active; }).length + '</span>' +
       (S.status !== 'live' ? '<span class="chip">Selesai</span>' : '') + '</div></div>' + hostCard() + '</section>';
     h += myStatus();
+    if (isStaff() && startedFromLobby()) h += '<div class="demo-note">' + icon('info') + '<div><b>Sesi baru dimulai dari lobi.</b> Salah tekan? Lobi bisa dibuka lagi selama belum ada match yang dimulai.' +
+      '<div class="row" style="margin-top:8px"><button class="btn" data-act="toLobby">' + icon('undo') + 'Kembali ke Lobi</button></div></div></div>';
+    h += planCards();
     h += '<div class="dash-grid"><section class="dash-courts"><h2 class="sec-title">' + icon('court') + 'Sedang main</h2>' +
       (courts.length ? '<div class="mini-list">' + courts.map(courtMini).join('') + '</div>' : '<div class="empty">Tidak ada court aktif.</div>') +
       '<h2 class="sec-title">' + icon('coffee') + 'Menunggu giliran</h2>' + benchInline() + '</section>' +
@@ -1892,7 +1954,8 @@ function MemoryAdapter(store, persist) {
       return '<button class="bchip paused" data-act="benchP" data-p="' + k + '">' + av(k) + '<span>' + esc(P(k).name) + '</span><span class="cnt">belum siap</span></button>';
     }).join('');
     if (!inner) inner = '<span class="muted" style="font-size:13px;align-self:center">' + (S.status === 'live' ? 'Semua pemain sedang bermain.' : 'Sesi selesai.') + '</span>';
-    return '<section class="bench"><div class="bench-lbl"><b>' + icon('coffee') + 'Menunggu</b><small>' + b.length + ' pemain · urut giliran</small></div><div class="bench-row">' + inner + '</div></section>';
+    return '<section class="bench"><div class="bench-lbl"><b>' + icon('coffee') + 'Menunggu</b><small>' + b.length + ' pemain · urut giliran</small></div><div class="bench-row">' + inner + '</div>' +
+      (isStaff() && startedFromLobby() ? '<button class="btn lobby-undo" data-act="toLobby" title="Salah tekan Mulai Sesi? Buka lagi ruang tunggu">' + icon('undo') + 'Kembali ke Lobi</button>' : '') + '</section>';
   }
   function segBtns(act, items, cur) {
     return '<div class="seg">' + items.map(function (it) {
@@ -1935,6 +1998,7 @@ function MemoryAdapter(store, persist) {
       '<div class="field"><label for="li-user">Username</label><input id="li-user" class="input" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="mis. andi"></div>' +
       '<div class="field"><label for="li-pin">PIN</label><input id="li-pin" class="input pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••••"></div>' +
       '<button class="btn primary lg block" type="submit">' + icon('login') + 'Masuk</button>' +
+      '<p class="muted" style="margin:0;font-size:13px"><b>Belum terdaftar?</b> Hubungi host atau admin untuk dibuatkan akun.</p>' +
       '<button class="btn ghost block" type="button" data-act="dash">Lihat dashboard tanpa masuk</button>' +
       (!LIVE_MODE ? '<div class="demo-note">' + icon('info') + '<div>Demo: masuk sebagai <b>admin</b>, <b>rudi</b> (host), atau <b>andi</b> (pemain). Semua PIN <b>123456</b>.</div></div>' : '') +
       '<span class="muted" style="font-size:12px">v' + APP_VERSION + '</span></form>';
@@ -1954,17 +2018,18 @@ function MemoryAdapter(store, persist) {
   /* ---------- beranda staf: daftar sesi ---------- */
   function viewHome() {
     var live = DB.sessions.filter(function (s) { return s.status === 'live'; });
-    var done = DB.sessions.filter(function (s) { return s.status !== 'live'; });
+    var done = DB.sessions.filter(function (s) { return s.status === 'done'; });
     var h = '<div class="home">' +
       '<section class="hero"><img src="' + LOGO + '" alt="Logo Padel Doc"><div class="hero-txt"><h1>Paddoc <b>Host</b></h1>' +
       '<p>Atur siapa lawan siapa di tiap court. Perubahan langsung tampil di HP pemain dan papan admin.</p>' +
-      '<div class="hero-actions"><button class="btn primary lg" data-act="newSession">' + icon('play') + 'Mulai sesi baru</button>' +
+      '<div class="hero-actions"><button class="btn primary lg" data-act="newSession">' + icon('play') + 'Buat rencana sesi</button>' +
       '<button class="btn lg" data-act="playersView">' + icon('users') + 'Database pemain</button></div></div></section>';
     if (!LIVE_MODE) h += '<div class="demo-note">' + icon('info') + '<div><b>Mode demo.</b> Data contoh tersimpan di perangkat ini. Buka di dua tab dan masuk dengan peran berbeda untuk mencoba sinkron live.</div></div>';
     if (LIVE_MODE && isAdmin() && OLD_API && !(DB.status && DB.status.migrated)) {
       h += '<div class="demo-note">' + icon('info') + '<div><b>Data lama masih di Google Sheet.</b> Pindahkan sekali ke Cloudflare supaya pemain, foto, dan riwayat sesi muncul di sini.' +
         '<div class="row" style="margin-top:8px"><button class="btn" data-act="migrate">' + icon('cloud') + 'Pindahkan data dari Google Sheet</button></div></div></div>';
     }
+    h += planCards();
     h += '<section><h2 class="sec-title">' + icon('play') + 'Sesi berjalan</h2>' +
       (live.length ? '<div class="sess-list">' + live.map(sessCard).join('') + '</div>' : '<div class="empty">' + icon('court') + '<div>Belum ada sesi berjalan.</div></div>') + '</section>';
     if (done.length) h += '<section><h2 class="sec-title">' + icon('history') + 'Sesi sebelumnya</h2><div class="sess-list">' + done.map(sessCard).join('') + '</div></section>';
@@ -1980,6 +2045,252 @@ function MemoryAdapter(store, persist) {
       '<button class="icon-btn del" data-act="delSession" data-id="' + s.id + '" aria-label="Hapus sesi">' + icon('trash') + '</button></div>';
   }
 
+  /* ---------- rencana sesi & ruang tunggu (lobi) ---------- */
+  var LOBBY = null; // { sid, role, inst }
+  function plansList() { return LIVE.plans || []; }
+  function planById(id) { return plansList().filter(function (p) { return p.id === id; })[0] || null; }
+  /* data rencana dari server; chat hanya ikut bila perangkat ini login, jadi chat lama dipertahankan saat kiriman tanpa chat */
+  function setPlans(list) {
+    var old = {}, needChat = false;
+    plansList().forEach(function (p) { old[p.id] = p; });
+    list.forEach(function (p) {
+      var o = old[p.id];
+      if (!p.chat && me()) {
+        if (o && o.chat) p.chat = o.chat;
+        if (p.chatN && (!o || !o.chat || p.chatN !== o.chatN)) needChat = true;
+      }
+    });
+    var sig = JSON.stringify(list);
+    if (sig === LIVE.plansSig) return false;
+    LIVE.plans = list; LIVE.plansSig = sig;
+    if (needChat) setTimeout(function () { pollNow().catch(function () {}); }, 60);
+    return true;
+  }
+  function upsertPlan(pl) {
+    var list = plansList().filter(function (p) { return p.id !== pl.id; });
+    if (pl.status === 'plan') list.push(pl);
+    list.sort(function (a, b) { return (a.when || 0) - (b.when || 0); });
+    LIVE.plans = list; LIVE.plansSig = JSON.stringify(list);
+  }
+  function lobbyUrl(sid) { return location.origin + location.pathname + '?lobby=' + encodeURIComponent(sid); }
+  function hashId(x) { var h = 7; for (var i = 0; i < x.length; i++) h = (h * 31 + x.charCodeAt(i)) | 0; return Math.abs(h); }
+  function lobbyPerson(pid, rl) {
+    var p = P(pid), f = DB.full[pid] || {}, ph = photoSrc(p);
+    var o = { id: pid, name: p.name, role: rl === 'host' ? 'host' : 'player', photo: ph ? ph.src : '' };
+    if (p.chibiUrl) o.sprite = p.chibiUrl;                                   // avatar chibi (Tahap 3)
+    else if (o.role === 'host') o.look = Lobby.refLook(hashId(pid));        // host: baju wasit
+    else if (o.photo) o.look = Lobby.look(hashId(pid), p.gender === 'P', !!(p.hijab || f.hijab)); // sementara sampai avatar chibi dibuat
+    return o;
+  }
+  function lobbyRole() { return isStaff() ? 'host' : me() ? 'player' : 'public'; }
+  function lobbyState(pl) {
+    var dir = {};
+    (pl.chat || []).forEach(function (c) { if (!dir[c.pid]) dir[c.pid] = lobbyPerson(c.pid, c.role); });
+    return {
+      role: lobbyRole(), meId: me() ? me().id : null, theme: pl.theme || 'court', started: false, directory: dir,
+      session: { name: pl.name, whenText: pl.whenText, startAt: pl.when, venue: pl.venue || {}, url: lobbyUrl(pl.id),
+        kicker: 'Ruang tunggu · ' + (pl.format === 'mexicano' ? 'Mexicano' : 'Americano') + ' · ' + pl.courts + ' court' + (pl.teamMode === 'fixed' ? ' · pasangan tetap' : '') },
+      people: pl.rsvp.map(function (x) { return lobbyPerson(x.pid, x.role); }),
+      chat: pl.chat || []
+    };
+  }
+  function destroyLobby() { if (LOBBY) { try { LOBBY.inst.destroy(); } catch (e) { /* sudah dilepas */ } LOBBY = null; } }
+  function renderLobby() {
+    var pl = planById(UI.lobbySid);
+    if (!pl) {
+      var started = LIVE.sid === UI.lobbySid && LIVE.S && LIVE.S.status === 'live';
+      if (LOBBY && started) {                       // host menekan Mulai Sesi: tampilkan sebentar lalu ke tampilan court
+        LOBBY.inst.update({ started: true });
+        clearTimeout(UI.lobbyGoT); UI.lobbyGoT = setTimeout(function () { if (UI.view === 'lobby') go(homeView()); }, 1600);
+        return;
+      }
+      destroyLobby();
+      if (!LIVE.loaded) { $('#app').innerHTML = loaderHTML(); return; }
+      toast(started ? 'Sesi sudah dimulai' : 'Lobi tidak ditemukan atau sudah dihapus', started ? '' : 'err');
+      go(started ? homeView() : 'dash');
+      return;
+    }
+    if (!LOBBY || LOBBY.sid !== pl.id || LOBBY.role !== lobbyRole() || !document.body.contains(LOBBY.inst.root)) {
+      destroyLobby();
+      $('#app').classList.remove('board-app');
+      $('#app').innerHTML = '<div id="lobby-root"></div>';
+      LOBBY = { sid: pl.id, role: lobbyRole(), inst: Lobby.mount($('#lobby-root'), lobbyState(pl), lobbyHandlers(pl.id)) };
+    } else LOBBY.inst.update(lobbyState(pl));
+  }
+  function openLobby(sid) {
+    UI.lobbySid = sid;
+    if (history.replaceState) history.replaceState(null, '', location.pathname + '?lobby=' + encodeURIComponent(sid));
+    go('lobby');
+  }
+  function planAct(sid, type, payload) {
+    return api('act', { sid: sid, type: type, payload: payload || {} }).then(function (r) { applyServer(r); return r; }).catch(function (e) {
+      toast(errMsg(e), 'err');
+      if (errCode(e) === 'STALE') pollNow().catch(function () {});
+      throw e;
+    });
+  }
+  function lobbyJoin(sid) {
+    if (!me()) { UI.afterLogin = { lobby: sid, join: true }; go('login'); return; }
+    var send = function (as) { planAct(sid, 'rsvp', { on: true, as: as }).then(function () { toast('Kamu tercatat hadir'); }).catch(function () {}); };
+    if (!isAdmin()) { send(); return; }
+    confirmBox('Hadir sebagai apa?', 'Admin bisa ikut main atau bertugas sebagai host.', [{ label: 'Batal', value: null }, { label: 'Jadi host', value: 'host' }, { label: 'Ikut main', value: 'player', kind: 'primary' }])
+      .then(function (v) { if (v) send(v); });
+  }
+  function lobbyHandlers(sid) {
+    var h = {
+      exit: function () { go(isStaff() ? 'home' : 'dash'); },
+      join: function () { lobbyJoin(sid); },
+      leave: function () { planAct(sid, 'rsvp', { on: false }).catch(function () {}); },
+      chat: function (text) { planAct(sid, 'chat', { text: text }).catch(function () {}); },
+      login: function () { UI.afterLogin = { lobby: sid }; go('login'); }
+    };
+    if (isStaff()) {
+      h.add = function () { openLobbyAdd(sid); };
+      h.remove = function (pid) { planAct(sid, 'rsvp', { pid: pid, on: false }).then(function () { toast(P(pid).name + ' ditandai tidak hadir'); }).catch(function () {}); };
+      h.start = function () { startPlanFlow(sid); };
+      h.theme = function (id) { planAct(sid, 'theme', { theme: id }).catch(function () {}); };
+      h.edit = function () { openPlanEdit(sid); };
+    }
+    return h;
+  }
+  function openLobbyAdd(sid) {
+    var q = '';
+    var w = openModal({ title: 'Tambah yang hadir', icon: 'userPlus', body: '' });
+    function draw() {
+      var pl = planById(sid); if (!pl) { closeModal(w); return; }
+      var inIds = {}; pl.rsvp.forEach(function (x) { inIds[x.pid] = 1; });
+      var src = Object.keys(DB.full).length ? DB.full : LIVE.people;
+      var list = Object.keys(src).map(function (k) { return src[k]; })
+        .filter(function (x) { return !x.archived && !inIds[x.id] && (!q || x.name.toLowerCase().indexOf(q.toLowerCase()) >= 0); })
+        .sort(function (a, b) { return (a.role === 'host') - (b.role === 'host') || a.name.localeCompare(b.name); });
+      setModal(w, '<div class="field"><input id="la-q" class="input" placeholder="Cari nama" value="' + esc(q) + '" aria-label="Cari nama"></div><div class="list">' +
+        (list.length ? list.map(function (x) {
+          return '<button class="li" data-add="' + x.id + '">' + av(x.id) + '<span><b>' + esc(x.name) + '</b><small>' + (x.role === 'host' ? 'Host' : x.role === 'admin' ? 'Admin · ikut main' : gLabel(x.gender)) + '</small></span>' + icon('plus') + '</button>';
+        }).join('') : '<div class="muted">Semua orang sudah tercatat hadir.</div>') + '</div>');
+      var inp = $('#la-q', w);
+      inp.addEventListener('input', function () { q = inp.value; var pos = inp.selectionStart; draw(); var ni = $('#la-q', w); ni.focus(); ni.setSelectionRange(pos, pos); });
+      $$('[data-add]', w).forEach(function (el) {
+        el.addEventListener('click', function () { el.disabled = true; planAct(sid, 'rsvp', { pid: el.dataset.add, on: true, as: 'player' }).then(draw).catch(function () { el.disabled = false; }); });
+      });
+    }
+    draw();
+  }
+  function startPlanFlow(sid) {
+    var other = LIVE.S && LIVE.S.status === 'live' && LIVE.sid && LIVE.sid !== sid ? LIVE.S : null;
+    var run = function () {
+      withBusy(planAct(sid, 'startPlan', {})).then(function () { UI.seen = {}; UI.sort = null; UI.group = 'all'; toast('Sesi dimulai'); go(homeView()); }).catch(function () {});
+    };
+    if (!other) { run(); return; }
+    confirmBox('Sesi lain masih berjalan', esc(other.name) + ' masih berjalan. Akhiri sesi itu lalu mulai sesi ini?', [{ label: 'Batal', value: null }, { label: 'Akhiri & mulai', value: 1, kind: 'primary' }])
+      .then(function (v) { if (v) api('act', { sid: other.id, type: 'end', payload: {} }).then(run).catch(function (e) { toast(errMsg(e), 'err'); }); });
+  }
+  /* jadwal: tanggal & jam dari picker HP; disimpan sebagai waktu absolut + teks untuk notifikasi */
+  function pad2(n) { return ('0' + n).slice(-2); }
+  function ymd(ts) { var d = new Date(ts); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function hm(ts) { var d = new Date(ts); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+  function whenFrom(d) {
+    if (!/^\d{4}-\d\d-\d\d$/.test(d.date || '') || !/^\d\d:\d\d/.test(d.time || '')) return null;
+    var x = d.date.split('-'), y = d.time.split(':');
+    return new Date(+x[0], +x[1] - 1, +x[2], +y[0], +y[1]).getTime();
+  }
+  function whenLabel(ts) {
+    var d = new Date(ts), tz = '';
+    try { tz = (new Intl.DateTimeFormat('id-ID', { timeZoneName: 'short' }).formatToParts(d).filter(function (x) { return x.type === 'timeZoneName'; })[0] || {}).value || ''; } catch (e) { tz = ''; }
+    return d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + pad2(d.getHours()) + '.' + pad2(d.getMinutes()) + (tz ? ' ' + tz : '');
+  }
+  function defaultWhen() { var t = new Date(); t.setHours(19, 30, 0, 0); if (t.getTime() < Date.now() + 3600000) t.setDate(t.getDate() + 1); return t.getTime(); }
+  /* isian jadwal, venue (cari alamat otomatis), dan tema; dipakai di Mulai sesi dan Ubah rencana */
+  function planFieldsHTML(d, pf, withName) {
+    var v = d.venue || {};
+    return (withName ? '<div class="field"><label for="' + pf + '-name">Nama sesi</label><input id="' + pf + '-name" class="input" maxlength="60" value="' + esc(d.name) + '"></div>' : '') +
+      '<div class="row"><div class="field" style="flex:1;min-width:150px"><label for="' + pf + '-date">Tanggal main</label><input type="date" id="' + pf + '-date" class="input" value="' + esc(d.date) + '"></div>' +
+      '<div class="field" style="flex:1;min-width:120px"><label for="' + pf + '-time">Jam mulai</label><input type="time" id="' + pf + '-time" class="input" step="300" value="' + esc(d.time) + '"></div></div>' +
+      '<div class="field"><label for="' + pf + '-vname">Venue</label><div class="row" style="flex-wrap:nowrap"><input id="' + pf + '-vname" class="input" style="flex:1;min-width:0" maxlength="80" placeholder="mis. Padel Doc Arena Tasikmalaya" value="' + esc(v.name) + '">' +
+      '<button type="button" class="btn" data-pf="find">' + icon('search') + 'Cari alamat</button></div></div>' +
+      (d.vres ? '<div class="list venue-res">' + (d.vres.length ? d.vres.map(function (x, i) {
+        return '<button type="button" class="li" data-pf="pick" data-i="' + i + '"><span class="vpin">' + icon('pin') + '</span><span><b>' + esc(x.name) + '</b><small>' + esc(x.address) + '</small></span>' + icon('check') + '</button>';
+      }).join('') : '<div class="muted">Alamat tidak ditemukan. Isi alamat dan tempel link Google Maps di bawah.</div>') + '</div>' : '') +
+      '<div class="field"><label for="' + pf + '-vaddr">Alamat</label><input id="' + pf + '-vaddr" class="input" maxlength="160" value="' + esc(v.address) + '"></div>' +
+      '<div class="field"><label for="' + pf + '-vmaps">Link Google Maps</label><input id="' + pf + '-vmaps" class="input" inputmode="url" maxlength="400" placeholder="https://maps.app.goo.gl/…" value="' + esc(v.maps) + '">' +
+      (v.maps ? '<a class="muted" style="font-size:13px" href="' + esc(v.maps) + '" target="_blank" rel="noopener">Cek lokasi di Google Maps</a>' : '<small class="muted">Terisi otomatis dari Cari alamat, atau tempel link dari aplikasi Google Maps.</small>') + '</div>' +
+      '<div class="field"><label for="' + pf + '-theme">Tema ruang tunggu</label><select id="' + pf + '-theme" class="input">' + Object.keys(Lobby.THEMES).filter(function (k) { return !Lobby.THEMES[k].soon; }).map(function (k) {
+        return '<option value="' + k + '"' + (k === d.theme ? ' selected' : '') + '>' + esc(Lobby.THEMES[k].name) + '</option>'; }).join('') + '</select></div>';
+  }
+  function bindPlanFields(root, d, pf, redraw) {
+    var f = function (id) { return root.querySelector('#' + pf + '-' + id); };
+    d.venue = d.venue || {};
+    var on = function (id, ev, fn) { var el = f(id); if (el) el.addEventListener(ev, fn); };
+    on('name', 'input', function (e) { d.name = e.target.value; });
+    on('date', 'change', function (e) { d.date = e.target.value; if (pf === 'su') render(); });
+    on('time', 'change', function (e) { d.time = e.target.value; if (pf === 'su') render(); });
+    on('vname', 'input', function (e) { d.venue.name = e.target.value; d.venue.lat = d.venue.lng = null; });
+    on('vaddr', 'input', function (e) { d.venue.address = e.target.value; });
+    on('vmaps', 'input', function (e) { d.venue.maps = e.target.value.trim(); });
+    on('theme', 'change', function (e) { d.theme = e.target.value; });
+    var find = root.querySelector('[data-pf="find"]');
+    if (find) find.addEventListener('click', function () {
+      var q = (d.venue.name || '').trim();
+      if (q.length < 3) { toast('Tulis nama venue dulu, minimal 3 huruf', 'err'); return; }
+      find.disabled = true;
+      api('venueSearch', { q: q }).then(function (list) { d.vres = list || []; redraw(); }).catch(function (e) { find.disabled = false; toast(errMsg(e), 'err'); });
+    });
+    $$('[data-pf="pick"]', root).forEach(function (el) {
+      el.addEventListener('click', function () { var x = d.vres[+el.dataset.i]; d.venue = { name: x.name, address: x.address, maps: x.maps, lat: x.lat, lng: x.lng }; d.vres = null; redraw(); });
+    });
+  }
+  function openPlanEdit(sid) {
+    var pl = planById(sid); if (!pl) return;
+    var d = { name: pl.name, date: ymd(pl.when || defaultWhen()), time: hm(pl.when || defaultWhen()), venue: Object.assign({}, pl.venue || {}), vres: null, theme: pl.theme || 'court' };
+    var w = openModal({ title: 'Ubah rencana sesi', icon: 'pencil', wide: true, body: '',
+      foot: '<button class="btn danger" id="pe-del">' + icon('trash') + 'Hapus rencana</button><button class="btn" data-act="close">Batal</button><button class="btn primary" id="pe-save">' + icon('check') + 'Simpan</button>' });
+    function draw() { setModal(w, planFieldsHTML(d, 'pe', true)); bindPlanFields(w, d, 'pe', draw); }
+    draw();
+    $('#pe-save', w).addEventListener('click', function () {
+      var when = whenFrom(d);
+      if (!when) { toast('Isi tanggal dan jam main', 'err'); return; }
+      closeModal(w);
+      planAct(sid, 'editPlan', { name: d.name, when: when, whenText: whenLabel(when), venue: d.venue, theme: d.theme }).then(function () { toast('Rencana diperbarui'); }).catch(function () {});
+    });
+    $('#pe-del', w).addEventListener('click', function () {
+      confirmBox('Hapus rencana sesi?', 'Lobi, daftar hadir, dan chat untuk ' + esc(pl.name) + ' ikut terhapus.', [{ label: 'Batal', value: null }, { label: 'Hapus', value: 1, kind: 'danger' }]).then(function (v) {
+        if (!v) return;
+        closeModal(w);
+        api('deleteSession', { sid: sid }).then(function () {
+          upsertPlan({ id: sid, status: 'deleted' }); toast('Rencana dihapus');
+          api('listSessions').then(function (x) { DB.sessions = x; }).catch(function () {});
+          go(isStaff() ? 'home' : 'dash');
+        }).catch(function (e) { toast(errMsg(e), 'err'); });
+      });
+    });
+  }
+  function planCountdown(pl) {
+    var ms = (pl.when || 0) - srvNow();
+    if (ms <= 0) return 'Waktunya mulai';
+    var h = Math.floor(ms / 3600000), m = Math.floor(ms % 3600000 / 60000);
+    if (h >= 48) return Math.floor(h / 24) + ' hari lagi';
+    return h ? h + ' jam ' + m + ' menit lagi' : m + ' menit lagi';
+  }
+  /* kartu "Sesi berikutnya" di dashboard & beranda host */
+  function planCards() {
+    var list = plansList(); if (!list.length) return '';
+    var u = me();
+    return '<section class="plans"><h2 class="sec-title">' + icon('timer') + 'Sesi berikutnya</h2><div class="plan-list">' + list.slice(0, 4).map(function (pl) {
+      var mine = u && pl.rsvp.some(function (x) { return x.pid === u.id; });
+      var ms = (pl.when || 0) - srvNow(), soon = ms > 0 && ms < 12 * 3600000, v = pl.venue || {};
+      return '<article class="plan-card' + (soon ? ' soon' : '') + '"><div class="pc-top"><span class="chip' + (soon ? ' accent' : '') + '">' + icon('timer') + esc(planCountdown(pl)) + '</span>' +
+        (mine ? '<span class="chip ok">' + icon('check') + 'Kamu hadir</span>' : '') + '</div>' +
+        '<h3>' + esc(pl.name) + '</h3><div class="pc-meta">' + esc(pl.whenText || '') + (v.name || v.address ? '<br>' + esc([v.name, v.address].filter(Boolean).join(' · ')) : '') +
+        (v.maps ? ' · <a href="' + esc(v.maps) + '" target="_blank" rel="noopener">Google Maps</a>' : '') + '</div>' +
+        '<div class="pc-faces">' + pl.rsvp.slice(0, 8).map(function (x) { return av(x.pid); }).join('') + '<span class="muted">' + pl.rsvp.length + ' hadir</span></div>' +
+        '<div class="pc-acts"><button class="btn primary" data-act="openLobby" data-id="' + pl.id + '">' + icon('users') + 'Buka lobi</button>' +
+        (u ? (mine ? '<button class="btn" data-act="planLeave" data-id="' + pl.id + '">Batal hadir</button>' : '<button class="btn" data-act="planJoin" data-id="' + pl.id + '">' + icon('check') + 'Saya hadir</button>') : '') +
+        '</div></article>';
+    }).join('') + '</div></section>';
+  }
+  function startedFromLobby() {
+    return S && S.plan && S.plan.startedAt && S.status === 'live' && !S.matches.some(function (m) { return m.go || (m.tally && m.tally.length) || m.status === 'done'; });
+  }
+
   /* ---------- setup sesi ---------- */
   function defaultSetup() {
     var d = new Date(), hosts = hostList();
@@ -1988,7 +2299,8 @@ function MemoryAdapter(store, persist) {
       format: 'americano', teamMode: 'random', scType: 'points', scMode: 'total', n: 21,
       courts: [{ name: 'Court 1', gender: 'mix', color: 'blue', hostId: '' }, { name: 'Court 2', gender: 'mix', color: 'blue', hostId: '' }],
       maxStreak: 2, catchUp: true, sortBy: 'points', drawMode: 'wait', deuce: 'golden', sel: {}, teams: [], q: '',
-      hosts: role() === 'host' ? [me().id] : (hosts[0] ? [hosts[0].id] : [])
+      hosts: role() === 'host' ? [me().id] : (hosts[0] ? [hosts[0].id] : []),
+      date: ymd(defaultWhen()), time: '19:30', venue: { name: '', address: '', maps: '' }, vres: null, theme: 'court'
     };
   }
   function scoreExample(type, mode, n) {
@@ -2008,10 +2320,11 @@ function MemoryAdapter(store, persist) {
       '<div class="field"><span class="lbl-sm">Host sesi (boleh lebih dari satu; wasit tiap court diatur di bagian Court)</span>' + hostPicker(d.hosts, 'suHostT') + '</div>' +
       '<div class="choice">' + optBtn('suFormat', 'americano', d.format === 'americano', 'shuffle', 'Americano', 'Semua bergantian jadi partner dan lawan. Jumlah main dibuat rata.') +
       optBtn('suFormat', 'mexicano', d.format === 'mexicano', 'zap', 'Mexicano', 'Ronde pertama acak. Berikutnya peringkat 1+3 lawan 2+4.') + '</div></section>';
-    h += '<section class="card"><h3><span class="stepno">2</span>Sistem pasangan</h3><div class="choice">' +
+    h += '<section class="card"><h3><span class="stepno">2</span>Jadwal & tempat</h3>' + planFieldsHTML(d, 'su', false) + '</section>';
+    h += '<section class="card"><h3><span class="stepno">3</span>Sistem pasangan</h3><div class="choice">' +
       optBtn('suTeam', 'random', d.teamMode === 'random', 'swap', 'Acak tiap match', 'Keempat pemain diacak setiap kali court dapat giliran.') +
       optBtn('suTeam', 'fixed', d.teamMode === 'fixed', 'users', 'Pasangan tetap', 'Pasangan sama sepanjang sesi, yang diacak hanya lawannya.') + '</div></section>';
-    h += '<section class="card"><h3><span class="stepno">3</span>Skor</h3><div class="choice">' +
+    h += '<section class="card"><h3><span class="stepno">4</span>Skor</h3><div class="choice">' +
       optBtn('suScType', 'points', d.scType === 'points', 'list', 'Poin', 'Hitungan poin biasa, misal sampai 21.') +
       optBtn('suScType', 'tennis', d.scType === 'tennis', 'ball', 'Poin tenis', '15-30-40. Yang dimasukkan skor game, misal 4-2.') + '</div>' +
       '<div class="row">' + segBtns('suScMode', [['total', 'Total n'], ['race', 'Race to n']], d.scMode) +
@@ -2019,14 +2332,14 @@ function MemoryAdapter(store, persist) {
       '<div class="row">' + presets.map(function (v) { return '<button class="pchip ' + (v === d.n ? 'on' : '') + '" data-act="suNset" data-v="' + v + '">' + v + '</button>'; }).join('') + '</div></div>' +
       (d.scType === 'tennis' ? '<div class="field"><span class="lbl-sm">Saat 40-40 (deuce)</span>' + segBtns('suDeuce', [['golden', 'Golden point'], ['adv', 'Advantage']], d.deuce) + '</div>' : '') +
       '<div class="muted" style="font-size:13px">' + icon('info') + ' ' + (d.scMode === 'race' ? 'Tim yang duluan mencapai ' + d.n + ' menang.' : 'Total ' + d.n + ' dimainkan.') + ' Contoh: ' + scoreExample(d.scType, d.scMode, d.n) + '</div></section>';
-    h += '<section class="card"><h3><span class="stepno">4</span>Court</h3>' +
+    h += '<section class="card"><h3><span class="stepno">5</span>Court</h3>' +
       '<div class="row"><div class="stepper"><button data-act="suCourts" data-v="-1" aria-label="Kurangi court">' + icon('minus') + '</button><input readonly value="' + d.courts.length + '" aria-label="Jumlah court"><button data-act="suCourts" data-v="1" aria-label="Tambah court">' + icon('plus') + '</button></div><span class="muted">Maksimal 6 court.</span></div>' +
       '<div class="court-rows">' + d.courts.map(function (c, i) {
         return '<div class="court-row"><span class="cnum">' + (i + 1) + '</span><input class="input su-cname" data-i="' + i + '" value="' + esc(c.name) + '" aria-label="Nama court ' + (i + 1) + '">' +
           segBtns('suCg', [['mix|' + i, 'Campur', 'mix'], ['L|' + i, 'Putra', 'mars'], ['P|' + i, 'Putri', 'venus']], c.gender + '|' + i) +
           '<div class="court-extra">' + colorPicker(c.color, 'suColor', i) + refSelect(d.hosts, c.hostId, 'su-ref', i) + '</div></div>';
       }).join('') + '</div></section>';
-    h += '<section class="card"><h3><span class="stepno">5</span>Aturan rotasi</h3>' +
+    h += '<section class="card"><h3><span class="stepno">6</span>Aturan rotasi</h3>' +
       '<div class="field"><span class="lbl-sm">Cara mengundi</span><div class="choice">' +
       optBtn('suDraw', 'wait', d.drawMode === 'wait', 'users', 'Rata & bertemu semua', 'Americano: court yang selesai boleh menunggu 1–2 pemain yang hampir selesai di court sebelah (Match in progress, please wait), supaya jumlah main rata dan semua pemain saling bertemu. Host bisa mengganti pemain yang ditunggu.') +
       optBtn('suDraw', 'rolling', d.drawMode === 'rolling', 'zap', 'Bergulir', 'Court yang selesai langsung diisi pemain yang sedang menunggu. Paling cepat, tidak ada court kosong.') +
@@ -2034,7 +2347,8 @@ function MemoryAdapter(store, persist) {
       '<div class="field"><span class="lbl-sm">Wajib istirahat setelah main beruntun</span>' + segBtns('suStreak', [[2, '2 match'], [3, '3 match']], d.maxStreak) + '</div>' +
       '<label class="toggle"><span><b>Pemain telat mengejar jumlah main</b><small>Pemain yang masuk di tengah diprioritaskan sampai jumlah mainnya menyusul.</small></span><span class="sw"><input type="checkbox" id="su-catch" ' + (d.catchUp ? 'checked' : '') + '><i></i></span></label>' +
       '<div class="field"><span class="lbl-sm">Urutan klasemen utama</span>' + segBtns('suSort', [['points', 'Total poin'], ['wins', 'Jumlah menang'], ['avg', 'Rata-rata']], d.sortBy) + '</div></section>';
-    h += '<section class="card"><h3><span class="stepno">6</span>Peserta <span class="chip" style="margin-left:auto">' + icon('mars') + nL + '</span><span class="chip">' + icon('venus') + nP + '</span></h3>' +
+    h += '<section class="card"><h3><span class="stepno">7</span>Yang sudah pasti hadir <small class="muted" style="font-weight:600">(opsional)</small><span class="chip" style="margin-left:auto">' + icon('mars') + nL + '</span><span class="chip">' + icon('venus') + nP + '</span></h3>' +
+      '<p class="muted" style="margin:0;font-size:13px">Pemain lain konfirmasi hadir sendiri di lobi lewat HP masing-masing.</p>' +
       '<div class="row"><input id="su-q" class="input" style="flex:1;min-width:160px" placeholder="Cari nama" value="' + esc(d.q) + '">' +
       '<button class="btn" data-act="suAll">' + icon('check') + 'Pilih semua</button><button class="btn ghost" data-act="suNone">Kosongkan</button></div>' +
       '<div class="pick-grid"><button class="pick add" data-act="suAddNew">' + icon('userPlus') + '<b>Pemain baru</b></button>' +
@@ -2042,7 +2356,8 @@ function MemoryAdapter(store, persist) {
         return '<button class="pick ' + (d.sel[p.id] ? 'on' : '') + '" data-act="suPick" data-p="' + p.id + '"><span class="ph">' + photo(p.id) + '</span><b>' + esc(p.name) + '</b><span class="tick">' + icon('check') + '</span></button>';
       }).join('') + '</div></section>';
     if (d.teamMode === 'fixed') {
-      h += '<section class="card"><h3><span class="stepno">7</span>Pasangan</h3>' +
+      h += '<section class="card"><h3><span class="stepno">8</span>Pasangan <small class="muted" style="font-weight:600">(opsional)</small></h3>' +
+        '<p class="muted" style="margin:0;font-size:13px">Pemain hadir yang belum punya pasangan dipasangkan otomatis saat sesi dimulai.</p>' +
         '<div class="row"><button class="btn" data-act="suPair">' + icon('shuffle') + 'Acak pasangan (putra + putri dulu)</button></div>' +
         '<div class="teams">' + (d.teams.length ? d.teams.map(function (t, i) {
           return '<div class="team-row"><span class="tn">' + (i + 1) + '</span>' + teamSelect(i, 'a', t.a, sel) + '<span class="amp">&amp;</span>' + teamSelect(i, 'b', t.b, sel) + '</div>';
@@ -2050,8 +2365,8 @@ function MemoryAdapter(store, persist) {
     }
     h += '</div>';
     var ok = setupReady(d, sel);
-    h += '<div class="startbar"><div class="startbar-in"><div class="sum"><b>' + sel.length + ' pemain · ' + d.courts.length + ' court</b>' + esc(ok.msg) + '</div>' +
-      '<button class="btn ghost" data-act="dash">Batal</button><button class="btn primary lg" data-act="suStart" ' + (ok.ok ? '' : 'disabled') + '>' + icon('shuffle') + 'Mulai & undi</button></div></div>';
+    h += '<div class="startbar"><div class="startbar-in"><div class="sum"><b>' + (whenFrom(d) ? esc(whenLabel(whenFrom(d))) : 'Jadwal belum diisi') + ' · ' + d.courts.length + ' court</b>' + esc(ok.msg) + '</div>' +
+      '<button class="btn ghost" data-act="dash">Batal</button><button class="btn primary lg" data-act="suStart" ' + (ok.ok ? '' : 'disabled') + '>' + icon('users') + 'Buat rencana & buka lobi</button></div></div>';
     return h;
   }
   function hostPicker(sel, actName) {
@@ -2076,15 +2391,12 @@ function MemoryAdapter(store, persist) {
     return '<select class="input su-team" data-i="' + i + '" data-slot="' + slot + '" aria-label="Pemain tim ' + (i + 1) + '"><option value="">—</option>' +
       sel.map(function (pid) { return '<option value="' + pid + '" ' + (pid === val ? 'selected' : '') + '>' + esc(P(pid).name) + ' (' + P(pid).gender + ')</option>'; }).join('') + '</select>';
   }
+  /* rencana: cukup jadwal; pemain konfirmasi hadir di lobi, sesi dimulai host dari lobi */
   function setupReady(d, sel) {
-    if (d.teamMode === 'fixed') {
-      var full = d.teams.filter(function (t) { return t.a && t.b; }).length;
-      if (full < 2) return { ok: false, msg: 'Butuh minimal 2 pasangan lengkap.' };
-      return { ok: true, msg: full + ' pasangan' };
-    }
-    if (sel.length < 4) return { ok: false, msg: 'Pilih minimal 4 pemain.' };
-    var c = Math.min(d.courts.length, Math.floor(sel.length / 4));
-    return { ok: true, msg: c < d.courts.length ? 'Pemain cukup untuk ' + c + ' court' : (sel.length - d.courts.length * 4) + ' pemain menunggu tiap giliran' };
+    var when = whenFrom(d);
+    if (!when) return { ok: false, msg: 'Isi tanggal dan jam main.' };
+    if (when < Date.now() - 3600000) return { ok: false, msg: 'Jadwal sudah lewat.' };
+    return { ok: true, msg: sel.length ? sel.length + ' pemain sudah tercatat hadir' : 'Pemain konfirmasi hadir di lobi' };
   }
   function autoPair(sel) {
     var L = shuffle(sel.filter(function (p) { return P(p).gender === 'L'; }));
@@ -2149,6 +2461,8 @@ function MemoryAdapter(store, persist) {
 
   /* ---------- render ---------- */
   function render() {
+    if (UI.view === 'lobby') { renderLobby(); return; }
+    destroyLobby();
     var flip = {};
     $$('.srow[data-id]').forEach(function (el) { flip[el.dataset.id] = el.getBoundingClientRect().top; });
     var listEl = $('.stand-list'), scrollTop = listEl ? listEl.scrollTop : 0;
@@ -2180,6 +2494,7 @@ function MemoryAdapter(store, persist) {
   }
   function go(v) {
     UI.view = v;
+    if (v !== 'lobby' && /[?&]lobby=/.test(location.search) && history.replaceState) history.replaceState(null, '', location.pathname);
     document.body.classList.remove('drawer');
     render(); window.scrollTo(0, 0);
     if (v === 'board') wake();
@@ -2204,6 +2519,7 @@ function MemoryAdapter(store, persist) {
 
   /* form di halaman (masuk, admin pertama, profil) */
   function bindView() {
+    if (UI.view === 'setup' && UI.setup) bindPlanFields($('#app'), UI.setup, 'su', render);
     var lf = $('#loginf');
     if (lf) lf.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -2255,9 +2571,12 @@ function MemoryAdapter(store, persist) {
   function afterLogin() {
     var tasks = [pollNow().catch(function () {})];
     if (isStaff()) tasks.push(loadStaffData());
+    wsAuth();
     Promise.all(tasks).then(function () {
       DB.full[AUTH.me.id] = DB.full[AUTH.me.id] || AUTH.me;
-      if (isStaff() && !S) go('home'); else go(homeView());
+      var back = UI.afterLogin; UI.afterLogin = null;
+      if (back && planById(back.lobby)) { openLobby(back.lobby); if (back.join) lobbyJoin(back.lobby); }
+      else if (isStaff() && !S) go('home'); else go(homeView());
       checkMyTurn();
       schedulePoll(); connectLive();
       syncPush();
@@ -2988,6 +3307,8 @@ function MemoryAdapter(store, persist) {
       pushSynced = '';
       api('logout').catch(function () {});
       AUTH = { token: '', me: null }; saveAuth(); DB.full = {}; DB.sessions = [];
+      if (ws) { try { ws.close(); } catch (e) {} }        // sambung ulang tanpa akses chat
+      LIVE.plans.forEach(function (p) { delete p.chat; }); LIVE.plansSig = '';
       toast('Kamu sudah keluar'); go('dash'); schedulePoll();
     },
     theme: function () {
@@ -3073,18 +3394,20 @@ function MemoryAdapter(store, persist) {
       d.teams = autoPair(sel); render();
     },
     suStart: function () {
-      var d = UI.setup;
+      var d = UI.setup, when = whenFrom(d);
       var setup = {
         name: d.name.trim() || 'Sesi Paddoc', format: d.format, teamMode: d.teamMode, hosts: d.hosts,
+        plan: { when: when, whenText: whenLabel(when), venue: d.venue, theme: d.theme },
         scoring: { type: d.scType, mode: d.scMode, n: d.n }, rules: { maxStreak: d.maxStreak, catchUp: d.catchUp, sortBy: d.sortBy, drawMode: d.drawMode, deuce: d.deuce },
         courts: d.courts, playerIds: Object.keys(d.sel).filter(function (k) { return d.sel[k]; }),
         teams: d.teamMode === 'fixed' ? d.teams.filter(function (t) { return t.a && t.b; }) : []
       };
       withBusy(api('createSession', { setup: setup })).then(function (r) {
         UI.seen = {}; UI.sort = null; UI.group = 'all'; UI.unit = 'player';
-        applyServer(r);
+        if (r.plan) upsertPlan(r.plan);
         api('listSessions').then(function (s) { DB.sessions = s; }).catch(function () {});
-        go(homeView());
+        toast('Rencana dibuat. Bagikan link lobi ke grup.');
+        if (r.plan) openLobby(r.sid); else { applyServer(r); go(homeView()); }
       }).catch(function (e) { toast(errMsg(e), 'err'); });
     },
     /* papan & dashboard */
@@ -3166,6 +3489,19 @@ function MemoryAdapter(store, persist) {
       navigator.wakeLock.request('screen').then(function (l) { wakeLock = l; l.addEventListener('release', function () { wakeLock = null; }); render(); }).catch(function () { toast('Fitur jaga layar ditolak perangkat', 'err'); });
     },
     close: function (el) { closeModal(el.closest('.modal-wrap')); },
+    openLobby: function (el) { openLobby(el.dataset.id); },
+    planJoin: function (el) { lobbyJoin(el.dataset.id); },
+    planLeave: function (el) { planAct(el.dataset.id, 'rsvp', { on: false }).then(function () { toast('Kehadiran dibatalkan'); }).catch(function () {}); },
+    toLobby: function () {
+      if (!S) return;
+      var sid = S.id;
+      confirmBox('Kembali ke lobi?', 'Undian court dibatalkan dan semua kembali ke ruang tunggu. Daftar hadir dan chat tetap ada.', [{ label: 'Batal', value: null }, { label: 'Kembali ke Lobi', value: 1, kind: 'primary' }])
+        .then(function (v) { if (v) act('backToLobby', {}).then(function () { openLobby(sid); }).catch(function () {}); });
+    },
+    copyLink: function () {
+      try { navigator.clipboard.writeText(location.href).then(function () { toast('Link disalin. Tempel di Chrome atau Safari.'); }, function () { toast(location.href); }); }
+      catch (e) { toast(location.href); }
+    },
     doInstall: function () {
       if (!installEvt) return;
       installEvt.prompt();
@@ -3246,6 +3582,18 @@ function MemoryAdapter(store, persist) {
   }
 
   /* ---------- mulai ---------- */
+  var LOBBY_LINK = (function () {
+    var q = new URLSearchParams(location.search), sid = q.get('lobby');
+    if (!sid || sid === 'demo') return null;
+    if (q.get('do') && history.replaceState) history.replaceState(null, '', location.pathname + '?lobby=' + encodeURIComponent(sid));
+    return { sid: sid, join: q.get('do') === 'join' };
+  })();
+  function handleLobbyLink(link) {
+    if (!link) return;
+    if (planById(link.sid)) { openLobby(link.sid); if (link.join) lobbyJoin(link.sid); return; }
+    if (LIVE.sid === link.sid) { toast('Sesi itu sudah dimulai'); go(homeView()); return; }
+    toast('Lobi tidak ditemukan atau sudah dihapus', 'err');
+  }
   var CALL_LINK = (function () {
     var q = new URLSearchParams(location.search), m = q.get('call');
     if (m && history.replaceState) history.replaceState(null, '', location.pathname);
@@ -3264,6 +3612,10 @@ function MemoryAdapter(store, persist) {
     if (step) {
       UI.view = step; render();
       if (step === 'notify') getPushKey().catch(function () {});
+      if (step === 'install' && LOBBY_LINK) {                // tampilkan ringkasan lobi yang dibagikan
+        UI.installLobby = LOBBY_LINK.sid;
+        api('poll', { token: '' }).then(function (r) { applyPoll(r); render(); }).catch(function () {});
+      }
       return;
     }
     $('#app').innerHTML = loaderHTML();
@@ -3274,8 +3626,11 @@ function MemoryAdapter(store, persist) {
         if (isStaff()) return loadStaffData();
       }).then(function () {
         UI.view = isStaff() && !S ? 'home' : homeView();
+        var L = LOBBY_LINK; LOBBY_LINK = null;
+        if (L && planById(L.sid)) { UI.lobbySid = L.sid; UI.view = 'lobby'; }
         render(); schedulePoll(); connectLive();
         syncPush();
+        if (L) { if (UI.view === 'lobby') { if (L.join) lobbyJoin(L.sid); } else handleLobbyLink(L); }
         if (CALL_LINK) { handleCallLink(CALL_LINK.m, CALL_LINK.act); CALL_LINK = null; }
       });
     }).catch(function (e) {

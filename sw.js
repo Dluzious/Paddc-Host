@@ -27,22 +27,28 @@ self.addEventListener('push', function (e) {
     icon: 'icon-192.png',
     badge: 'icon-192.png',
     vibrate: [800, 200, 800, 200, 800, 200, 1500],
-    data: { m: d.m || '' },
-    actions: d.m ? [{ action: 'ok', title: 'Siap' }, { action: 'skip', title: 'Skip dulu' }] : []
+    data: { m: d.m || '', url: d.url || '', maps: d.maps || '' },
+    actions: d.m ? [{ action: 'ok', title: 'Siap' }, { action: 'skip', title: 'Skip dulu' }]
+      : d.join ? [{ action: 'join', title: 'Ikut hadir' }]
+      : d.maps ? [{ action: 'maps', title: 'Buka Maps' }] : []
   };
   e.waitUntil(self.registration.showNotification(d.title || 'Paddoc Host', opts));
 });
 
 self.addEventListener('notificationclick', function (e) {
-  var m = (e.notification.data && e.notification.data.m) || '';
+  var data = e.notification.data || {}, m = data.m || '';
   var act = e.action || 'open';
   e.notification.close();
-  var url = new URL(m ? './?call=' + encodeURIComponent(m) + '&do=' + act : './', self.registration.scope).href;
+  if (act === 'maps' && data.maps) { e.waitUntil(self.clients.openWindow(data.maps)); return; }
+  // panggilan court: ?call=<match>&do=<aksi>; sesi baru / pengingat: ?lobby=<sesi>(&do=join)
+  var path = m ? './?call=' + encodeURIComponent(m) + '&do=' + act : data.url ? '.' + data.url + (act === 'join' ? '&do=join' : '') : './';
+  var url = new URL(path, self.registration.scope).href;
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
     for (var i = 0; i < list.length; i++) {
       var c = list[i];
       if (c.url.indexOf(self.registration.scope) === 0 && 'focus' in c) {
         if (m) c.postMessage({ type: 'call', m: m, 'do': act });
+        else if (data.url) c.postMessage({ type: 'open', url: path });
         return c.focus();
       }
     }

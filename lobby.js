@@ -28,8 +28,8 @@ var Lobby = (function () {
     plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M18 6 6 18M6 6l12 12"/>', chev: '<path d="m6 9 6 6 6-6"/>',
     play: '<path d="m6 4 14 8-14 8Z"/>', music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
     send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>', login: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
-    camera: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z"/><circle cx="12" cy="13" r="3"/>',
-    back: '<path d="m15 18-6-6 6-6"/>', check: '<path d="M20 6 9 17l-5-5"/>'
+    back: '<path d="m15 18-6-6 6-6"/>', check: '<path d="M20 6 9 17l-5-5"/>',
+    pencil: '<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>'
   };
   function ic(n) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + IC[n] + '</svg>'; }
 
@@ -341,7 +341,8 @@ var Lobby = (function () {
     var open = { roster: lsGet('paddoc_lb_roster') !== '0', chat: lsGet('paddoc_lb_chat') !== '0' };
     root.innerHTML =
       '<div class="lb">' +
-      '<header class="lb-head"><img class="lb-logo" src="icon-192.png" alt="Logo Padel Doc">' +
+      '<header class="lb-head">' + (handlers.exit ? '<button type="button" class="lb-exit" data-lb="exit" aria-label="Kembali ke beranda" title="Kembali">' + ic('back') + '</button>' : '') +
+      '<img class="lb-logo" src="icon-192.png" alt="Logo Padel Doc">' +
       '<div class="lb-ttl"><div class="lb-kick" data-k="kick"></div><h1 data-k="name"></h1><div class="lb-meta">' +
       '<span>' + ic('cal') + '<span data-k="when"></span></span><span>' + ic('pin') + '<span data-k="venue"></span></span><span data-k="maps"></span></div></div>' +
       '<div class="lb-cd"><small>Sesi dimulai dalam</small><strong data-k="cd">--:--:--</strong></div></header>' +
@@ -352,16 +353,16 @@ var Lobby = (function () {
       '<button type="button" class="lb-round" data-lb="music" aria-pressed="false" aria-label="Musik lobi" title="Musik lobi">' + ic('music') + '</button></div>' +
       '<div class="lb-started" data-k="started" hidden><div><h2>Sesi dimulai</h2><p data-k="startedTxt"></p>' +
       '<button class="lb-btn" type="button" data-lb="back" data-k="backBtn">' + ic('back') + 'Kembali ke Lobi</button></div></div></div>' +
+      '</div>' +
+      '<div class="lb-controls" data-k="controls"></div>' +
       '<p class="lb-pubnote" data-k="pubnote" hidden>Kamu sedang menonton lobi. <b>Belum terdaftar?</b> Hubungi host atau admin untuk dibuatkan akun, lalu masuk untuk bergabung.</p>' +
-      '<div class="lb-controls" data-k="controls"></div></div>' +
       '<aside class="lb-side">' +
-      '<section class="lb-box" data-k="meBox" hidden></section>' +
+      '<section class="lb-box"><button class="lb-boxh" type="button" data-lb="box" data-box="chat" aria-expanded="true">Chat <span class="badge" data-k="badge" hidden></span><span class="chev">' + ic('chev') + '</span></button>' +
+      '<div class="lb-boxb" data-k="chatBody"><div class="lb-chat">' +
+      '<form class="lb-send" data-k="send"><input data-k="input" maxlength="200" autocomplete="off" placeholder="Tulis pesan untuk semua yang hadir" aria-label="Pesan chat"><button class="lb-btn" type="submit" aria-label="Kirim">' + ic('send') + '</button></form>' +
+      '<ul class="lb-msgs" data-k="msgs" aria-live="polite"></ul><p class="lb-empty" data-k="chatNote" hidden></p></div></div></section>' +
       '<section class="lb-box"><button class="lb-boxh" type="button" data-lb="box" data-box="roster" aria-expanded="true">Hadir <span class="cnt" data-k="hN">0</span><span class="chev">' + ic('chev') + '</span></button>' +
       '<div class="lb-boxb" data-k="rosterBody"><div class="lb-roster" data-k="roster"></div></div></section>' +
-      '<section class="lb-box"><button class="lb-boxh" type="button" data-lb="box" data-box="chat" aria-expanded="true">Chat <span class="badge" data-k="badge" hidden></span><span class="chev">' + ic('chev') + '</span></button>' +
-      '<div class="lb-boxb" data-k="chatBody"><div class="lb-chat"><ul class="lb-msgs" data-k="msgs" aria-live="polite"></ul>' +
-      '<form class="lb-send" data-k="send"><input data-k="input" maxlength="200" autocomplete="off" placeholder="Tulis pesan untuk semua yang hadir" aria-label="Pesan chat"><button class="lb-btn" type="submit" aria-label="Kirim">' + ic('send') + '</button></form>' +
-      '<p class="lb-empty" data-k="chatNote" hidden></p></div></div></section>' +
       '</aside></div></div>';
     var el = {}; root.querySelectorAll('[data-k]').forEach(function (n) { el[n.dataset.k] = n; });
     var stage = root.querySelector('.lb-stage'), bg = root.querySelector('.lb-bg'), cv = root.querySelector('.lb-canvas'), layer = root.querySelector('.lb-layer');
@@ -511,40 +512,35 @@ var Lobby = (function () {
       var small = function (act, icon, label) { return '<button class="lb-btn sm" type="button" data-lb="' + act + '" aria-label="' + label + '" title="' + label + '">' + ic(icon) + '<span class="lbl">' + label + '</span></button>'; };
       if (S.role === 'host') h = small('share', 'share', 'Bagikan lobi') + small('add', 'plus', 'Tambah yang hadir') +
         (S.meId ? (me ? small('leave', 'x', 'Saya batal hadir') : small('join', 'check', 'Saya hadir')) : '') +
+        (handlers.edit ? small('edit', 'pencil', 'Ubah rencana') : '') +
         '<button class="lb-btn primary grow" type="button" data-lb="start"' + (pl < 4 || S.started ? ' disabled' : '') + '>' + ic('play') + 'Mulai Sesi</button>';
       else if (S.role === 'player') h = (me ? '<button class="lb-btn danger grow" type="button" data-lb="leave">Batal Bergabung</button>' : '<button class="lb-btn join grow" type="button" data-lb="join">' + ic('check') + 'Saya Bergabung</button>') +
         small('share', 'share', 'Bagikan lobi');
-      else h = '<p class="lb-note">Kamu sedang menonton lobi. <b>Belum terdaftar?</b> Hubungi host atau admin untuk dibuatkan akun, lalu masuk untuk bergabung.</p>' +
-        '<button class="lb-btn grow" type="button" data-lb="login">' + ic('login') + 'Masuk</button>' + small('share', 'share', 'Bagikan lobi');
+      else h = '<button class="lb-btn grow" type="button" data-lb="login">' + ic('login') + 'Masuk</button>' + small('share', 'share', 'Bagikan lobi');
       el.controls.innerHTML = h;
       el.pubnote.hidden = S.role !== 'public';
       el.themeWrap.hidden = S.role !== 'host';
       el.started.hidden = !S.started;
       el.startedTxt.textContent = S.role === 'host' ? 'Lobi ditutup untuk semua orang. Salah tekan? Kembali ke lobi selama belum ada match yang dimulai.' : 'Lobi ditutup. Tunggu panggilan court dari host.';
       el.backBtn.hidden = S.role !== 'host';
-      var mp = S.meId && people().filter(function (p) { return p.id === S.meId; })[0];
-      var meP = mp || (S.me || null);
-      el.meBox.hidden = !(S.role !== 'public' && meP);
-      if (!el.meBox.hidden) el.meBox.innerHTML = '<div class="lb-me"><div class="big">' + figure(meP) + '</div><div><b>Avatar kamu</b><p>Avatar dibuat dari foto profilmu. Mau tampilan baru? Ganti foto profil, admin yang membuat ulang avatarnya.</p>' +
-        '<button class="lb-btn" type="button" data-lb="photo">' + ic('camera') + 'Ganti foto profil</button></div></div>';
     }
     function renderChat(quiet) {
       var canChat = S.role !== 'public';
       el.send.hidden = !canChat || S.started; el.msgs.hidden = !canChat;
-      el.chatNote.hidden = canChat; el.chatNote.textContent = 'Masuk untuk melihat dan ikut chat dengan yang hadir.';
-      if (!canChat) return;
-      var list = S.chat || [], atBottom = el.msgs.scrollHeight - el.msgs.scrollTop - el.msgs.clientHeight < 40, added = 0;
+      if (!canChat) { el.chatNote.hidden = false; el.chatNote.textContent = 'Masuk untuk melihat dan ikut chat dengan yang hadir.'; return; }
+      var list = S.chat || [], nearTop = el.msgs.scrollTop < 40, added = 0;
       list.forEach(function (c) {
         if (chatSeen[c.id]) return;
         chatSeen[c.id] = 1; added++;
         var li = document.createElement('li'); li.className = 'lb-msg' + (c.pid === S.meId ? ' mine' : '');
-        var p = people().filter(function (x) { return x.id === c.pid; })[0] || { name: c.name, role: c.role };
+        var p = (S.directory && S.directory[c.pid]) || people().filter(function (x) { return x.id === c.pid; })[0] || { name: c.name, role: c.role };
         li.innerHTML = head(p) + '<div><b class="' + (c.role === 'host' ? 'host' : '') + '">' + esc(c.name) + '</b><time>' + hhmm(c.at) + '</time><p>' + esc(c.text) + '</p></div>';
-        el.msgs.appendChild(li);
+        el.msgs.insertBefore(li, el.msgs.firstChild);                // terbaru paling atas
         if (!quiet) { say(ents[c.pid], c.text.length > 60 ? c.text.slice(0, 58) + '…' : c.text, 'chat', 4500); if (!open.chat && c.pid !== S.meId) unread++; }
       });
-      while (el.msgs.children.length > 120) el.msgs.removeChild(el.msgs.firstChild);
-      if (added && (atBottom || quiet)) el.msgs.scrollTop = el.msgs.scrollHeight;
+      while (el.msgs.children.length > 120) el.msgs.removeChild(el.msgs.lastChild);
+      if (added && nearTop) el.msgs.scrollTop = 0;
+      el.chatNote.hidden = !!list.length; if (list.length === 0) el.chatNote.textContent = 'Belum ada pesan. Sapa yang sudah hadir!';
       el.badge.hidden = !unread; el.badge.textContent = unread;
     }
     function countdown() {
@@ -567,7 +563,7 @@ var Lobby = (function () {
       var b = e.target.closest('[data-lb]'); if (!b || b.disabled) return;
       var a = b.dataset.lb;
       audio();                                          // ketukan pertama membuka izin suara HP
-      if (a === 'box') { var n = b.dataset.box; open[n] = !open[n]; lsSet('paddoc_lb_' + n, open[n] ? '1' : '0'); syncBoxes(); if (n === 'chat' && open.chat) el.msgs.scrollTop = el.msgs.scrollHeight; }
+      if (a === 'box') { var n = b.dataset.box; open[n] = !open[n]; lsSet('paddoc_lb_' + n, open[n] ? '1' : '0'); syncBoxes(); if (n === 'chat' && open.chat) el.msgs.scrollTop = 0; }
       else if (a === 'music') { var on = musicOn(!music); b.setAttribute('aria-pressed', String(on)); lsSet('paddoc_lb_music', on ? '1' : '0'); }
       else if (a === 'share') { if (handlers.share) handlers.share(); else copyShare(S.session || {}, (S.session && S.session.url) || location.href); }
       else if (a === 'start') confirmStart();
@@ -672,7 +668,6 @@ var Lobby = (function () {
       theme: function (id) { cur.theme = id; push(); },
       chat: function (text) { var m = meOf(); chat.push({ id: 'c' + cid++, pid: m.id, name: m.name, role: m.role, text: text, at: Date.now() }); push(); },
       login: function () { toast('Pratinjau: tombol ini membuka halaman masuk.'); },
-      photo: function () { toast('Pratinjau: membuka pilihan foto profil.'); },
       frame: function (t) { frames++; if (t - fpsT > 1000) { fpsEl.textContent = Math.round(frames * 1000 / (t - fpsT)) + ' fps · ' + present.length + ' karakter'; frames = 0; fpsT = t; } }
     };
     inst = mount(root.querySelector('.lb-demo-host'), state(), h);
