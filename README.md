@@ -1,57 +1,94 @@
-# Paddoc Host
+# Paddoc Host v2.2
 
-Aplikasi undian dan rotasi pemain padel untuk Paddoc. Aplikasi dan datanya berjalan di **Cloudflare**:
-Worker untuk API, database **D1** untuk pemain, sesi, dan foto.
+Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
+antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
+aplikasi dan API, satu Durable Object (SQLite) untuk semua data (orang, sesi, foto, login).
 
-- `index.html` – aplikasinya
+- `index.html` – aplikasi
+- `engine.js` – mesin undian & klasemen (dipakai aplikasi dan server)
+- `core.js` – aturan peran dan semua aksi sesi (dipakai server, dan mode demo di browser)
+- `worker/` – server Cloudflare: `index.js` (API, WebSocket, foto), `ai.js` (foto pro AI), `logo.js`
 - `config.js` – alamat API (`/api`) dan URL Apps Script lama (hanya untuk pindahan data)
-- `worker/index.js` – backend (API, PIN host, foto, foto pro AI)
-- `wrangler.jsonc` – konfigurasi Worker Cloudflare
-- `manifest.webmanifest` dan file `icon-*.png` – ikon saat dipasang di Home Screen
+- `wrangler.jsonc` – konfigurasi Worker
 
-## Pasang di Cloudflare (sekali saja)
+## Pasang / perbarui di Cloudflare
 
-1. Masuk ke [dash.cloudflare.com](https://dash.cloudflare.com) (akun gratis cukup).
-2. **Workers & Pages → Create → Import a repository** → hubungkan GitHub → pilih repo `Paddc-Host`.
-   - Project name: `paddoc-host`
-   - Build command: kosongkan. Deploy command: `npx wrangler deploy` (bawaan).
-   - Tekan **Deploy**. Database D1 bernama `paddoc-host` dibuat otomatis saat deploy pertama.
-     Kalau log build bilang tidak punya izin membuat database: buka **Storage & Databases → D1 → Create**,
-     beri nama persis `paddoc-host`, lalu jalankan ulang deploy.
-3. Buka Worker `paddoc-host` → **Settings → Variables and Secrets → Add**, pilih tipe **Secret**:
-   - `APP_PIN` – PIN host untuk membuka aplikasi (wajib)
-   - `OPENAI_API_KEY` – kunci API OpenAI untuk foto pro AI (opsional)
+Worker `paddoc-host` yang tersambung ke repo GitHub ini akan deploy otomatis setiap ada perubahan di branch produksi.
 
-   Pakai tipe *Secret*, bukan *Text*: variabel teks biasa bisa tertimpa setiap kali deploy ulang.
-4. Buka alamat Worker, misalnya `https://paddoc-host.NAMA-AKUN.workers.dev`, lalu masukkan PIN.
-5. Pasang ulang ke Home Screen dari alamat baru itu (ikon lama masih mengarah ke alamat lama).
+1. Di [dash.cloudflare.com](https://dash.cloudflare.com) buka **Workers & Pages → paddoc-host → Settings → Variables and Secrets**,
+   tambahkan dengan tipe **Secret**:
+   - `APP_PIN` – kode pemasangan untuk membuat akun admin pertama (wajib, angka bebas)
+   - `OPENAI_API_KEY` – untuk foto pro AI (opsional)
+2. Pastikan **Settings → Build** memakai branch yang berisi kode ini (atau merge ke `main`). Deploy command: `npx wrangler deploy`.
+   Durable Object dibuat otomatis saat deploy; tidak perlu membuat database.
+3. Buka `https://paddoc-host.<akun>.workers.dev`. Layar **Buat akun admin** muncul sekali: isi kode pemasangan = `APP_PIN`.
+4. Pasang ke Home Screen dari alamat itu.
 
-Setiap perubahan yang di-push ke branch produksi di GitHub akan otomatis ter-deploy.
+## Pindahkan data dari Google Sheet (sekali)
 
-## Pindahkan data dari Google Sheet (sekali saja)
+Masuk sebagai admin. Di beranda muncul **Data lama masih di Google Sheet** → **Pindahkan data dari Google Sheet** → isi
+PIN host versi lama (v1.0). Semua pemain (beserta foto asli dan foto pro) dan semua sesi disalin; Google Sheet tidak diubah.
+Setiap pemain otomatis punya akun: username dari nama (huruf kecil tanpa spasi, mis. `andi`, `sari2`) dan PIN `123456`.
+Aman diulang kalau terputus. Setelah selesai, baris `PADDOC_OLD_API` di `config.js` boleh dihapus.
 
-Di beranda akan muncul kotak **Data lama masih di Google Sheet**. Tekan **Pindahkan data dari Google Sheet**,
-isi PIN host versi Google Sheet, lalu tunggu sampai selesai. Yang disalin: semua pemain (termasuk yang diarsipkan),
-foto asli, foto pro, dan semua sesi beserta riwayat match. Google Sheet tidak diubah atau dihapus.
+Akun admin yang dibuat di langkah 3 adalah akun terpisah dari data pemain lama dengan nama yang sama.
 
-Kalau terputus di tengah jalan, tekan Mulai lagi; data yang sudah pindah ditimpa, bukan dobel.
-Foto yang gagal diambil disebutkan di akhir. Setelah selesai, kotak itu hilang dan baris `PADDOC_OLD_API`
-di `config.js` boleh dihapus.
+## Peran
 
-## Melihat data
+| Peran | Bisa apa | Tampilan |
+|---|---|---|
+| Tanpa login | Melihat siapa yang main, antrean, klasemen, host | Dashboard HP |
+| Pemain | + status giliran, notifikasi panggilan, Skip/Siap main, Keluar dari game, foto tampil, unggah foto sendiri, ganti PIN | Dashboard HP |
+| Host | Semua urusan sesi: mulai sesi, skor, panggil, ganti pemain, court, database pemain | Dashboard HP + menu bawah |
+| Admin | Semua akses host + atur peran, username, reset PIN | Papan court besar di iPad, bisa pindah ke tampilan HP |
 
-- **Di aplikasi:** menu **Riwayat → Unduh CSV** untuk klasemen dan daftar match satu sesi
-  (bisa dibuka di Google Sheets / Excel / Numbers), dan **Unduh cadangan data** di beranda untuk semua data (JSON).
-- **Di Cloudflare:** **Storage & Databases → D1 → paddoc-host** untuk melihat tabel `players` dan `sessions`.
+## Cara mengundi
 
-## Catatan
+| Cara | Perilaku |
+|---|---|
+| **Rata & bertemu semua** (bawaan Americano, baru di v2.2) | Court yang selesai langsung diundi dari semua pemain, **termasuk 1–2 pemain yang hampir selesai di court sebelah** (perkiraan sisa ≤ 6 menit). Court itu menampilkan **"Match in progress, please wait"** dan nama pemain yang ditunggu; skor belum bisa diisi dan timer belum jalan. Match otomatis mulai begitu court sebelah mengisi skor, dan HP pemain baru mendapat notifikasi saat itu. Host bisa mengetuk pemain yang ditunggu untuk menggantinya, atau menekan **Ganti yang ditunggu** supaya aplikasi memilih pengganti terbaik dari bangku. Undian mengutamakan jumlah main yang rata, lalu pemain yang belum pernah bertemu (sebagai partner atau lawan). |
+| Bergulir | Court yang selesai langsung diisi pemain yang sedang menunggu. Paling cepat, tetapi kelompok di tiap court cenderung itu-itu saja. |
+| Per ronde | Court yang selesai menunggu semua court selesai, lalu semua diundi bersamaan. Tombol **Undi sekarang** mengisi court tanpa menunggu. |
 
-- PIN salah 5 kali dari satu alamat IP → IP itu dikunci 10 menit; 30 kali dari semua IP → semua dikunci 10 menit.
-- Foto disajikan di `/photo/<id>.jpg` dengan ID acak yang sulit ditebak, sama seperti tautan Google Drive "siapa pun yang punya link".
-- Model AI diatur di `wrangler.jsonc` (`OPENAI_IMAGE_MODEL`, dicoba berurutan) dan `OPENAI_IMAGE_QUALITY`.
-- Batas gratis Cloudflare (D1 5 GB, 100.000 tulis/hari, Worker 100.000 permintaan/hari) jauh di atas kebutuhan satu klub.
-- Kalau aplikasi tetap dibuka dari GitHub Pages, isi `window.PADDOC_API` di `config.js` dengan URL lengkap Worker
-  (`https://paddoc-host.NAMA-AKUN.workers.dev/api`).
+Di Mexicano, "Rata & bertemu semua" sama dengan Bergulir.
+
+Simulasi 40 sesi per skenario (150 menit, lama match 9–17 menit, separuh putra/putri, court campur):
+
+| Skenario | Pasangan pemain yang pernah bertemu (Bergulir / Per ronde / **Baru**) | Court menganggur (Bergulir / Per ronde / **Baru**) |
+|---|---|---|
+| 8 pemain, 2 court | 43% / 100% / **100%** | 4% / 13% / **9%** |
+| 10 pemain, 2 court | 83% / 98% / **95%** | 5% / 12% / **7%** |
+| 12 pemain, 2 court | 88% / 82% / **95%** | 5% / 12% / **4%** |
+| 13 pemain, 3 court | 87% / 93% / **93%** | 5% / 17% / **13%** |
+| 16 pemain, 3 court | 81% / 74% / **89%** | 4% / 17% / **5%** |
+| 18 pemain, 4 court | 68% / 78% / **81%** | 4% / 20% / **10%** |
+
+Selisih jumlah main antar pemain (rata-rata sepanjang sesi) sama dengan Bergulir, sekitar 1 main; Per ronde sedikit lebih
+rata pada beberapa jumlah pemain, dengan harga court lebih sering menganggur. Pemain yang datang telat diprioritaskan
+sampai jumlah mainnya menyusul (tetap dengan jeda istirahat). "Semua pemain bertemu" diupayakan, tidak dijamin: dengan
+banyak pemain dan sedikit match per orang, jumlah pasangan memang lebih banyak daripada jumlah match.
+
+## Sinkron & notifikasi
+
+Server mengirim perubahan ke semua perangkat lewat WebSocket begitu terjadi; cek berkala tetap jalan setiap 30 detik
+sebagai cadangan (3–4 detik bila WebSocket terputus). Notifikasi giliran hanya muncul kalau app sedang terbuka di HP;
+minta pemain menekan **Aktifkan suara** dan **Jaga layar menyala** di kartu statusnya.
+
+## Keamanan
+
+- PIN awal semua akun `123456`. Selama belum diganti, siapa pun yang tahu username bisa masuk sebagai orang itu. Profil
+  menampilkan peringatan sampai PIN diganti; admin bisa mereset PIN ke `123456`.
+- 8 kali salah PIN mengunci username itu 10 menit.
+- Dashboard (nama, foto, klasemen) terlihat oleh siapa pun yang memegang link. Foto disajikan di `/photo/<id>.jpg`
+  dengan ID acak yang sulit ditebak.
+
+## Foto pro AI
+
+Sama dengan v2.1: variasi baju/warna/raket/pose, logo Padel Doc di dada kiri, aturan hijab (lengan panjang, hijab
+dipertahankan), host berseragam wasit. Model dicoba berurutan (`gpt-image-2.5-sunburst`, `gpt-image-2`,
+`gpt-image-1.5`, `gpt-image-1`) dan yang berhasil diingat. Opsional (Variables di Cloudflare): `OPENAI_IMAGE_MODEL`
+untuk memaksa model, `OPENAI_IMAGE_QUALITY` (`low`/`medium`/`high`, bawaan `medium`), `OPENAI_IMAGE_PROMPT` untuk prompt
+sendiri (`{nama}` diganti nama pemain).
 
 ## Uji di komputer sendiri
 
@@ -59,4 +96,5 @@ di `config.js` boleh dihapus.
 npx wrangler dev --var APP_PIN:1234
 ```
 
-Lalu buka <http://localhost:8787>. Data lokal tersimpan di folder `.wrangler/` dan tidak ikut ke Cloudflare.
+Buka <http://localhost:8787>. Data lokal tersimpan di folder `.wrangler/`. Membuka `index.html` langsung dari file
+menjalankan **mode demo** dengan data contoh di browser (masuk sebagai `admin`, `rudi`, atau `andi`, PIN `123456`).
