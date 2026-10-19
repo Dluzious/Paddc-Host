@@ -82,6 +82,30 @@ banyak pemain dan sedikit match per orang, jumlah pasangan memang lebih banyak d
 - **Ganti pemain** bisa dengan pemain menunggu, atau **pemain/pasangan di court lain yang belum Game start**.
   Court yang sudah mulai tidak muncul di daftar (server juga menolaknya).
 
+## Ruang tunggu (lobi) — sedang dibangun bertahap
+
+Tahap 1 (pratinjau, data dummy): buka **`/?lobby=demo`**. Pemain dan host yang hadir tampil sebagai karakter chibi
+yang berkeliaran di lapangan sampai host menekan **Mulai Sesi** (ada popup konfirmasi dan tombol **Kembali ke Lobi**).
+Kode: `lobby.js` + `lobby.css`; gambar latar di `img/lobby/`.
+
+- **Layar lebar** (iPad, laptop): latar gambar ilustrasi per tema. **HP tegak**: lapangan diputar (net melintang,
+  satu sisi di atas, satu di bawah) dan digambar oleh kode sampai ada gambar versi tegak.
+- Karakter tidak menembus net; tiap orang tetap di sisinya. Host berbaju wasit berdiri dekat tiang net.
+- Panel **Hadir** dan **Chat** bisa dibuka-tutup; pesan chat juga muncul sebagai gelembung di atas karakter pengirim.
+  Penonton tanpa login tidak melihat isi chat.
+- Musik lobi dibuat oleh kode (tanpa file), menyala setelah layar disentuh, berhenti saat sesi dimulai.
+- Menghormati pengaturan "kurangi gerakan" di HP (karakter diam).
+
+**Menambah tema**: tambahkan entri di `THEMES` (`lobby.js`) berisi gambar dan koordinat 4 sudut garis lapangan
+di gambar (piksel), zona tiap sisi, dan tempat host. Spesifikasi gambar:
+
+| | Layar lebar | HP tegak |
+|---|---|---|
+| Ukuran | 16:10, minimal 1600 × 1000 | 9:16 atau lebih tinggi, minimal 1080 × 1920 |
+| Sudut pandang | dari atas agak miring, net **tegak** di tengah (sisi kiri & kanan) | dari belakang baseline, net **melintang** di tengah (sisi atas & bawah) |
+| Isi | lantai tengah kosong, dekorasi di pinggir, logo/tulisan PADDOC di dinding atau papan | sama |
+| Jangan ada | orang, teks antarmuka (mis. label "Menunggu pemain lain") | sama |
+
 ## Sinkron & notifikasi
 
 Server mengirim perubahan ke semua perangkat lewat WebSocket begitu terjadi; cek berkala tetap jalan setiap 30 detik
