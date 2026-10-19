@@ -1,4 +1,4 @@
-# Paddoc Host v2.2
+# Paddoc Host v2.3
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -7,7 +7,8 @@ aplikasi dan API, satu Durable Object (SQLite) untuk semua data (orang, sesi, fo
 - `index.html` – aplikasi
 - `engine.js` – mesin undian & klasemen (dipakai aplikasi dan server)
 - `core.js` – aturan peran dan semua aksi sesi (dipakai server, dan mode demo di browser)
-- `worker/` – server Cloudflare: `index.js` (API, WebSocket, foto), `ai.js` (foto pro AI), `logo.js`
+- `worker/` – server Cloudflare: `index.js` (API, WebSocket, foto), `ai.js` (foto pro AI), `push.js` (notifikasi push), `logo.js`
+- `sw.js` – service worker: menerima notifikasi panggilan di HP (tombol Siap / Skip dulu)
 - `config.js` – alamat API (`/api`) dan URL Apps Script lama (hanya untuk pindahan data)
 - `wrangler.jsonc` – konfigurasi Worker
 
@@ -39,7 +40,7 @@ Akun admin yang dibuat di langkah 3 adalah akun terpisah dari data pemain lama d
 |---|---|---|
 | Tanpa login | Melihat siapa yang main, antrean, klasemen, host | Dashboard HP |
 | Pemain | + status giliran, notifikasi panggilan, Skip/Siap main, Keluar dari game, foto tampil, unggah foto sendiri, ganti PIN | Dashboard HP |
-| Host | Semua urusan sesi: mulai sesi, skor, panggil, ganti pemain, court, database pemain | Dashboard HP + menu bawah |
+| Host | Semua urusan sesi: mulai sesi, Game start/ended, hitung skor, panggil, ganti pemain, court, database pemain | Dashboard HP + menu bawah |
 | Admin | Semua akses host + atur peran, username, reset PIN | Papan court besar di iPad, bisa pindah ke tampilan HP |
 
 ## Cara mengundi
@@ -68,11 +69,34 @@ rata pada beberapa jumlah pemain, dengan harga court lebih sering menganggur. Pe
 sampai jumlah mainnya menyusul (tetap dengan jeda istirahat). "Semua pemain bertemu" diupayakan, tidak dijamin: dengan
 banyak pemain dan sedikit match per orang, jumlah pasangan memang lebih banyak daripada jumlah match.
 
+## Host & wasit per court (v2.3)
+
+- Satu sesi boleh punya **beberapa host** (dipilih di Mulai sesi atau **Atur**). Tiap host bisa ditugaskan sebagai
+  **wasit satu court**; court miliknya tampil paling atas di HP-nya dengan tanda *Court kamu*. Host tetap bisa
+  mengurus court lain; admin bisa semuanya.
+- **Warna court**: biru, oranye, hijau, hitam (Mulai sesi atau Atur).
+- Alur match: court terisi → **Game start** (bola padel bolak-balik + *Match in progress…*) → **Game ended** →
+  popup skor. **Hitung skor** membuka papan skor besar: ketuk tim yang mendapat poin. Mode Poin menghitung 1, 2, 3…;
+  mode Tenis menampilkan game besar dan poin 0–15–30–40, deuce bisa **golden point** (bawaan) atau **advantage**.
+  Skor langsung terlihat di semua perangkat; saat Game ended popup skor sudah terisi.
+- **Ganti pemain** bisa dengan pemain menunggu, atau **pemain/pasangan di court lain yang belum Game start**.
+  Court yang sudah mulai tidak muncul di daftar (server juga menolaknya).
+
 ## Sinkron & notifikasi
 
 Server mengirim perubahan ke semua perangkat lewat WebSocket begitu terjadi; cek berkala tetap jalan setiap 30 detik
-sebagai cadangan (3–4 detik bila WebSocket terputus). Notifikasi giliran hanya muncul kalau app sedang terbuka di HP;
-minta pemain menekan **Aktifkan suara** dan **Jaga layar menyala** di kartu statusnya.
+sebagai cadangan (3–4 detik bila WebSocket terputus).
+
+**Panggil pemain**: tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
+lawan, dengan tombol **Siap** / **Skip dulu**. Kunci VAPID dibuat otomatis oleh server, tidak perlu disetel.
+
+- HP yang pertama kali membuka link diarahkan dulu untuk **memasang aplikasi ke layar utama**, lalu **mengizinkan
+  notifikasi**, baru login. Keduanya bisa dilewati.
+- iPhone/iPad: notifikasi hanya bisa bila app dipasang lewat *Bagikan → Tambah ke Layar Utama* (iOS 16.4+) dan izin
+  diberikan dari dalam app.
+- Notifikasi push berbunyi satu kali (suara bawaan HP; Android juga bergetar panjang). Alarm berulang hanya berjalan
+  selama app terbuka, sampai pemain menekan Siap atau Skip.
+- Pemain yang belum mengizinkan bisa menekan **Aktifkan notifikasi HP** di kartu statusnya.
 
 ## Keamanan
 
@@ -85,7 +109,7 @@ minta pemain menekan **Aktifkan suara** dan **Jaga layar menyala** di kartu stat
 ## Foto pro AI
 
 Sama dengan v2.1: variasi baju/warna/raket/pose, logo Padel Doc di dada kiri, aturan hijab (lengan panjang, hijab
-dipertahankan), host berseragam wasit. Model dicoba berurutan (`gpt-image-2.5-sunburst`, `gpt-image-2`,
+dipertahankan), host berseragam wasit. Admin difoto dengan **jas ala CEO** (pin Padel Doc di kerah, latar lounge padel). Model dicoba berurutan (`gpt-image-2.5-sunburst`, `gpt-image-2`,
 `gpt-image-1.5`, `gpt-image-1`) dan yang berhasil diingat. Opsional (Variables di Cloudflare): `OPENAI_IMAGE_MODEL`
 untuk memaksa model, `OPENAI_IMAGE_QUALITY` (`low`/`medium`/`high`, bawaan `medium`), `OPENAI_IMAGE_PROMPT` untuk prompt
 sendiri (`{nama}` diganti nama pemain).

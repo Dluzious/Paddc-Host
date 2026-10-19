@@ -12,6 +12,7 @@ import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import Core from '../core.js';
 import { generateAI } from './ai.js';
+import { newVapidKeys, sendPush } from './push.js';
 
 const MAX_BODY = 8 * 1024 * 1024;
 const MAX_B64 = 1900000; // batas baris SQLite Durable Object 2 MB
@@ -53,6 +54,8 @@ export class PaddocHost extends DurableObject {
       team_mode TEXT, players INTEGER, courts INTEGER, matches INTEGER, updated INTEGER, data TEXT NOT NULL, rows TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS props (k TEXT PRIMARY KEY, v TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS photos (id TEXT PRIMARY KEY, mime TEXT NOT NULL, b64 TEXT NOT NULL, created INTEGER NOT NULL)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, pid TEXT NOT NULL, json TEXT NOT NULL, created INTEGER NOT NULL)`);
+    this.outbox = [];
     this.cache = new Map();
     this.origin = '';
     this.dirty = false;
@@ -83,9 +86,11 @@ export class PaddocHost extends DurableObject {
       if (body.fn === 'createAdmin' && !this.env.APP_PIN) throw new Error('SETUP: Isi secret APP_PIN di pengaturan Worker Cloudflare dulu, lalu pakai sebagai kode pemasangan.');
       Core.init(this.A);
       this.dirty = false;
+      this.outbox = [];
       let data = Core.call(body.fn, body.req || {});
       if (data && typeof data.then === 'function') data = await data;
       if (this.dirty) this.broadcast();
+      if (this.outbox.length) await this.flushPush();
       return json({ ok: true, data: data === undefined ? null : data });
     } catch (e) {
       if (this.dirty) this.broadcast();
@@ -105,6 +110,26 @@ export class PaddocHost extends DurableObject {
       msg = JSON.stringify({ type: 'poll', data: Core.call('poll', {}) });
     } catch (e) { console.error('broadcast', e); return; }
     socks.forEach((ws) => { try { ws.send(msg); } catch (e) { /* koneksi sudah putus */ } });
+  }
+  /* kirim notifikasi push yang dikumpulkan Core (Panggil) ke semua HP milik pemain itu */
+  async flushPush() {
+    const jobs = this.outbox.splice(0);
+    const vapid = await this.vapid();
+    const subject = this.origin || 'https://paddoc.app';
+    await Promise.all(jobs.map(async (j) => {
+      const subs = this.sql.exec('SELECT endpoint, json FROM push_subs WHERE pid = ?', j.pid).toArray();
+      await Promise.all(subs.map(async (r) => {
+        const res = await sendPush(JSON.parse(r.json), j.payload, vapid, subject);
+        if (res === 'gone') this.sql.exec('DELETE FROM push_subs WHERE endpoint = ?', r.endpoint);
+      }));
+    }));
+  }
+  async vapid() {
+    const r = this.sql.exec("SELECT v FROM props WHERE k = 'VAPID'").toArray()[0];
+    if (r) return JSON.parse(r.v);
+    const keys = await newVapidKeys();
+    this.sql.exec("INSERT INTO props (k, v) VALUES ('VAPID', ?) ON CONFLICT(k) DO NOTHING", JSON.stringify(keys));
+    return JSON.parse(this.sql.exec("SELECT v FROM props WHERE k = 'VAPID'").toArray()[0].v);
   }
   webSocketMessage() { /* HP hanya mengirim ping, dijawab otomatis */ }
   webSocketClose(ws, code) { try { ws.close(code, 'bye'); } catch (e) { /* sudah tertutup */ } }
@@ -196,6 +221,13 @@ export class PaddocHost extends DurableObject {
       },
       photoRow: (id) => self.photoRow(id),
       aiEnabled: () => !!env.OPENAI_API_KEY,
+      pushKey: () => self.vapid().then((v) => v.publicKey),
+      savePush: (pid, sub) => {
+        sql.exec(`INSERT INTO push_subs (endpoint, pid, json, created) VALUES (?, ?, ?, ?)
+          ON CONFLICT(endpoint) DO UPDATE SET pid = excluded.pid, json = excluded.json`, sub.endpoint, pid, JSON.stringify(sub), Date.now());
+      },
+      deletePush: (endpoint) => { sql.exec('DELETE FROM push_subs WHERE endpoint = ?', endpoint); },
+      notify: (pid, payload) => { self.outbox.push({ pid, payload }); },
       generateAI: (p, kind) => generateAI(env, A, clone(p), kind)
     };
     return A;

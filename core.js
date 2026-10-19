@@ -94,7 +94,7 @@ var Core = (function () {
   }
   function status() {
     var hasAdmin = people().some(function (p) { return p.role === 'admin' && !p.archived; });
-    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.2', migrated: !!A.prop('MIGRATED_AT') };
+    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.3', migrated: !!A.prop('MIGRATED_AT') };
   }
   function createAdmin(r) {
     return A.lock(function () {
@@ -194,7 +194,7 @@ var Core = (function () {
     if (!A.aiEnabled()) throw err('AI_OFF', 'OPENAI_API_KEY belum diisi');
     // generateAI bisa async (server memanggil OpenAI); data orang dibaca ulang setelah selesai
     return Promise.resolve().then(function () {
-      return A.generateAI(p, p.role === 'host' ? 'host' : 'player');
+      return A.generateAI(p, p.role === 'host' || p.role === 'admin' ? p.role : 'player');
     }).then(function (out) {
       return A.lock(function () {
         var q = person(r.id);
@@ -225,6 +225,18 @@ var Core = (function () {
     });
   }
   function photoData(r) { return A.photoData(r.id); }
+
+  /* ---------------- notifikasi push ke HP (panggilan giliran) ---------------- */
+  function pushKey() { return A.pushKey ? A.pushKey() : null; }
+  function pushSubscribe(r) {
+    var actor = auth(r.token);
+    var sub = r.sub || {};
+    if (!A.savePush) throw err('INVALID', 'Notifikasi push tidak tersedia di versi ini');
+    if (!/^https:\/\//.test(String(sub.endpoint || '')) || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) throw err('INVALID', 'Data notifikasi tidak valid');
+    A.savePush(actor.id, { endpoint: String(sub.endpoint), keys: { p256dh: String(sub.keys.p256dh), auth: String(sub.keys.auth) } });
+    return true;
+  }
+  function pushUnsubscribe(r) { if (A.deletePush && r.endpoint) A.deletePush(String(r.endpoint)); return true; }
 
   /* ---------------- pindahan dari Google Sheet v1.0 (admin) ---------------- */
   function truthy(v) { return v === true || v === 1 || /^(true|1|ya|yes)$/i.test(String(v || '')); }
@@ -352,13 +364,22 @@ var Core = (function () {
         courts: (st.courts || []).slice(0, 6), playerIds: ids,
         teams: (st.teams || []).filter(function (t) { return ids.indexOf(t.a) >= 0 && ids.indexOf(t.b) >= 0; })
       });
-      S.hostId = st.hostId !== undefined ? st.hostId : (actor.role === 'host' ? actor.id : null);
+      // host sesi bisa lebih dari satu; masing-masing bisa ditugaskan sebagai wasit di satu court
+      setHosts(S, st.hosts || (st.hostId ? [st.hostId] : actor.role === 'host' ? [actor.id] : []));
       S.calls = {}; S.lastDone = {};
       Engine.fillCourts(S, P);
       saveS(S, P);
       A.setProp('ACTIVE_SID', S.id);
       return { sid: S.id, v: S.v, S: publicS(S) };
     });
+  }
+
+  /* host sesi: hanya akun host/admin aktif; court yang wasitnya bukan host sesi dikosongkan */
+  function setHosts(S, ids) {
+    var staff = people().filter(function (p) { return (p.role === 'host' || p.role === 'admin') && !p.archived; }).map(function (p) { return p.id; });
+    S.hosts = (ids || []).filter(function (id, i, a) { return staff.indexOf(id) >= 0 && a.indexOf(id) === i; }).slice(0, 12);
+    S.hostId = S.hosts[0] || null; // kompatibel dengan v2.1 (satu host)
+    S.courts.forEach(function (c) { if (c.hostId && S.hosts.indexOf(c.hostId) < 0) c.hostId = null; });
   }
 
   /* keluarkan pid dari semua match berjalan atau menunggu: ganti dengan antrean teratas yang cocok, atau batalkan match */
@@ -461,9 +482,38 @@ var Core = (function () {
       case 'settings': applySettings(S, d); fill(S, P); break;
       case 'call':
         m = findM(S, d.m, true);
-        m.A.concat(m.B).forEach(function (pid) { S.calls[pid] = { at: now(), m: m.id, by: actor.id }; });
+        var cname = (S.courts.filter(function (c) { return c.id === m.court; })[0] || {}).name || 'Court';
+        var nm = function (id) { return (P[id] || {}).name || '?'; };
+        m.A.concat(m.B).forEach(function (pid) {
+          S.calls[pid] = { at: now(), m: m.id, by: actor.id };
+          // notifikasi push ke HP pemain (bila aplikasinya terpasang & izin notifikasi aktif)
+          if (A.notify) {
+            var mine = m.A.indexOf(pid) >= 0 ? m.A : m.B, opp = mine === m.A ? m.B : m.A;
+            var partner = mine.filter(function (x) { return x !== pid; })[0];
+            A.notify(pid, { title: 'Giliran kamu main: ' + cname, body: 'Partner ' + nm(partner) + ' · lawan ' + nm(opp[0]) + ' & ' + nm(opp[1]) + '. Buka untuk Siap atau Skip.', tag: 'call-' + m.id, m: m.id, at: S.calls[pid].at });
+          }
+        });
         break;
-      case 'host': S.hostId = d.hostId || null; break;
+      case 'go': // Game start
+        m = findM(S, d.m, true);
+        if (Engine.isWaiting(m)) throw err('INVALID', 'Match ini masih menunggu pemain dari court lain');
+        if (!m.go) m.go = now();
+        break;
+      case 'tally': // hitung skor langsung oleh host
+        m = findM(S, d.m, true);
+        if (Engine.isWaiting(m)) throw err('INVALID', 'Match ini masih menunggu pemain dari court lain');
+        Engine.tally(S, m.id, d.side, !!d.undo);
+        break;
+      case 'swapX': // tukar dengan pemain di court lain yang belum mulai
+        m = findM(S, d.m, true);
+        if (!Engine.swapAcross(S, m.id, d.out, findM(S, d.m2, true).id, d['in'])) throw err('STALE', 'Pemain itu sudah mulai bertanding. Data diperbarui');
+        break;
+      case 'swapTeamX':
+        m = findM(S, d.m, true);
+        if (!Engine.swapTeamAcross(S, m.id, d.side, findM(S, d.m2, true).id, d.side2)) throw err('STALE', 'Pasangan itu sudah mulai bertanding. Data diperbarui');
+        break;
+      case 'host': setHosts(S, d.hostId ? [d.hostId] : []); break;
+      case 'hosts': setHosts(S, d.hosts || []); break;
       case 'rename': if (d.name) S.name = String(d.name).slice(0, 60); break;
       case 'end':
         Engine.liveMatches(S).forEach(function (x) { Engine.voidMatch(S, x.id); });
@@ -479,7 +529,12 @@ var Core = (function () {
     var keep = {};
     (d.courts || []).forEach(function (c) { if (c.id) keep[c.id] = c; });
     S.courts.forEach(function (c) {
-      if (keep[c.id]) { c.name = keep[c.id].name || c.name; c.gender = keep[c.id].gender || 'mix'; c.active = true; }
+      if (keep[c.id]) {
+        var k = keep[c.id];
+        c.name = k.name || c.name; c.gender = k.gender || 'mix'; c.active = true;
+        if (Engine.COURT_COLORS.indexOf(k.color) >= 0) c.color = k.color;
+        if (k.hostId !== undefined) c.hostId = k.hostId || null;
+      }
       else if (c.active) {
         c.active = false;
         var lm = Engine.courtLive(S, c.id);
@@ -489,7 +544,8 @@ var Core = (function () {
     var ordered = [];
     (d.courts || []).slice(0, 6).forEach(function (c) {
       if (c.id && S.courts.some(function (x) { return x.id === c.id; })) ordered.push(S.courts.filter(function (x) { return x.id === c.id; })[0]);
-      else ordered.push({ id: Engine.uid('c_'), name: c.name || 'Court', gender: c.gender || 'mix', active: true });
+      else ordered.push({ id: Engine.uid('c_'), name: c.name || 'Court', gender: c.gender || 'mix', active: true,
+        color: Engine.COURT_COLORS.indexOf(c.color) >= 0 ? c.color : 'blue', hostId: c.hostId || null });
     });
     S.courts = ordered.concat(S.courts.filter(function (c) { return ordered.indexOf(c) < 0; }));
     if (d.format) S.format = d.format;
@@ -498,14 +554,17 @@ var Core = (function () {
     if (d.catchUp != null) S.rules.catchUp = !!d.catchUp;
     if (d.drawMode) S.rules.drawMode = ['round', 'wait'].indexOf(d.drawMode) >= 0 ? d.drawMode : 'rolling';
     if (d.scoring) S.scoring = { type: d.scoring.type, mode: d.scoring.mode, n: Number(d.scoring.n) };
+    if (d.deuce) S.rules.deuce = d.deuce === 'adv' ? 'adv' : 'golden';
+    setHosts(S, d.hosts || S.hosts || (S.hostId ? [S.hostId] : []));
   }
 
   /* pintu tunggal: dipakai server Cloudflare (Durable Object) dan mode demo */
-  var PUBLIC = { poll: poll, status: status, login: login, createAdmin: createAdmin, photoData: photoData, logout: logout };
+  var PUBLIC = { poll: poll, status: status, login: login, createAdmin: createAdmin, photoData: photoData, logout: logout, pushKey: pushKey, pushUnsubscribe: pushUnsubscribe };
   var PRIVATE = {
     me: me, changePin: changePin, updateMe: updateMe, listPeople: listPeople, savePerson: savePersonReq, resetPin: resetPin,
     generatePro: generatePro, listSessions: listSessions, openSession: openSession, deleteSession: deleteSession,
-    createSession: createSession, act: act, importPerson: importPerson, importSession: importSession, markMigrated: markMigrated
+    createSession: createSession, act: act, importPerson: importPerson, importSession: importSession, markMigrated: markMigrated,
+    pushSubscribe: pushSubscribe
   };
   function call(fn, req) {
     var f = PUBLIC[fn] || PRIVATE[fn];
