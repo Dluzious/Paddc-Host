@@ -1,0 +1,17 @@
+// Konfigurasi Cloudflare Worker untuk Paddoc Host v2.
+// Semua data (orang, sesi, foto) disimpan di satu Durable Object berbasis SQLite; tidak perlu membuat database terpisah.
+{
+  "name": "paddoc-host",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // file aplikasi (index.html, engine.js, core.js, ikon, config.js); yang tidak perlu ikut diatur di .assetsignore
+  "assets": { "directory": ".", "binding": "ASSETS" },
+  "durable_objects": {
+    "bindings": [{ "name": "PADDOC", "class_name": "PaddocHost" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PaddocHost"] }],
+  // APP_PIN (kode pemasangan admin pertama) dan OPENAI_API_KEY diisi sebagai Secret di dashboard Cloudflare.
+  // Opsional (Variables): OPENAI_IMAGE_MODEL untuk memaksa model, OPENAI_IMAGE_QUALITY (low/medium/high, bawaan medium).
+  "observability": { "enabled": true }
+}
