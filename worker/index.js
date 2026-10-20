@@ -87,6 +87,8 @@ export class PaddocHost extends DurableObject {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS props (k TEXT PRIMARY KEY, v TEXT)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS photos (id TEXT PRIMARY KEY, mime TEXT NOT NULL, b64 TEXT NOT NULL, created INTEGER NOT NULL)`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS push_subs (endpoint TEXT PRIMARY KEY, pid TEXT NOT NULL, json TEXT NOT NULL, created INTEGER NOT NULL)`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS kudos (sid TEXT NOT NULL, giver TEXT NOT NULL, target TEXT NOT NULL, k TEXT NOT NULL, at INTEGER NOT NULL)`);
+    this.sql.exec(`CREATE INDEX IF NOT EXISTS kudos_target ON kudos (target)`);
     this.outbox = [];
     this.cache = new Map();
     this.origin = '';
@@ -258,7 +260,7 @@ export class PaddocHost extends DurableObject {
       },
       setProp: (k, v) => {
         sql.exec('INSERT INTO props (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v', k, String(v));
-        if (k === 'ACTIVE_SID' || k === 'PV') touch();
+        if (k === 'ACTIVE_SID' || k === 'PV' || k === 'LOBBY_THEMES') touch();
         if (k.indexOf('tok_') === 0 && Math.random() < 0.05) self.cleanTokens();
       },
       delProp: (k) => { sql.exec('DELETE FROM props WHERE k = ?', k); if (k === 'ACTIVE_SID') touch(); },
@@ -297,6 +299,14 @@ export class PaddocHost extends DurableObject {
       deletePush: (endpoint) => { sql.exec('DELETE FROM push_subs WHERE endpoint = ?', endpoint); },
       notify: (pid, payload) => { self.outbox.push({ pid, payload }); },
       geocode: (q) => geocode(env, q),
+      // kudos: satu baris per kudos; pemberi mengganti semua kudos-nya untuk sesi itu sekaligus
+      saveKudos: (sid, giver, rows, at) => {
+        sql.exec('DELETE FROM kudos WHERE sid = ? AND giver = ?', sid, giver);
+        rows.forEach((r) => sql.exec('INSERT INTO kudos (sid, giver, target, k, at) VALUES (?, ?, ?, ?, ?)', sid, giver, r.target, r.k, at));
+      },
+      kudosBy: (sid, giver) => sql.exec('SELECT target, k FROM kudos WHERE sid = ? AND giver = ?', sid, giver).toArray(),
+      kudosFor: (target) => sql.exec('SELECT sid, giver, k, at FROM kudos WHERE target = ? ORDER BY at DESC', target).toArray(),
+      kudosAll: () => sql.exec('SELECT sid, giver, target, k, at FROM kudos ORDER BY at DESC').toArray(),
       generateAI: (p, kind) => generateAI(env, A, clone(p), kind),
       generateChibi: (p, kind) => generateChibi(env, A, clone(p), kind)
     };
