@@ -3844,6 +3844,13 @@ function MemoryAdapter(store, persist) {
     if (isAdmin() && S && (UI.boardPref !== false) && fitMode()) return 'board';
     return 'dash';
   }
+  /* halaman pembuka: Home untuk semua yang login. Pengecualian: perangkat yang sengaja dipilih admin sebagai
+     papan court (Menu → Papan court besar) langsung ke papan selama sesi berjalan, supaya papan tidak hilang saat app dibuka ulang */
+  function landingView() {
+    if (!me()) return homeView();
+    if (isAdmin() && S && S.status === 'live' && UI.boardPref === true && fitMode()) return 'board';
+    return 'home';
+  }
   setInterval(function () { $$('[data-start]').forEach(function (el) { el.textContent = elapsed(+el.dataset.start); }); }, 1000);
   var rzT = null;
   window.addEventListener('resize', function () {
@@ -3924,7 +3931,7 @@ function MemoryAdapter(store, persist) {
       if (back && back.kudos) openKudos(back.kudos);
       else if (back && back.pay) { go(homeView()); openPayment(back.pay); }
       else if (back && planById(back.lobby)) { openLobby(back.lobby); if (back.join) lobbyJoin(back.lobby); }
-      else go('home');                               // Home: halaman pembuka semua yang login
+      else go(landingView());                        // Home: halaman pembuka semua yang login
       checkMyTurn();
       schedulePoll(); connectLive();
       syncPush();
@@ -5100,7 +5107,7 @@ function MemoryAdapter(store, persist) {
       return refreshMe().then(function () { return pollNow(); }).then(function () {
         if (isStaff()) return loadStaffData();
       }).then(function () {
-        UI.view = me() ? 'home' : homeView();            // Home untuk semua yang login; penonton tanpa akun ke dashboard
+        UI.view = landingView();                         // Home untuk semua yang login; penonton tanpa akun ke dashboard
         var L = LOBBY_LINK; LOBBY_LINK = null;
         if (L && planById(L.sid)) { UI.lobbySid = L.sid; UI.view = 'lobby'; }
         render(); schedulePoll(); connectLive();
