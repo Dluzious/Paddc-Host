@@ -1,4 +1,4 @@
-# Paddoc Host v2.5
+# Paddoc Host v2.6
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -167,12 +167,42 @@ Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas 
 - Kudos tersimpan per orang dan terakumulasi antar sesi. **Profil → Kudos untukmu** menampilkan jumlah per kudos dan
   siapa pemberinya; orang lain tidak bisa melihatnya. Admin melihat semua di **Database → Kudos**.
 
+## Host sesi dari pemain (v2.6)
+
+Admin/host bisa menunjuk pemain jadi **host sesi** (lobi: *Ubah rencana*; saat main: panel **Pemain**, tombol bendera).
+Host sesi bisa Game start, Panggil, memasukkan/mengubah skor, mengganti dan mengeluarkan/menambah pemain, serta
+mereview koreksi skor, **hanya di sesi itu**. Mengakhiri sesi, mengatur court, mengganti host, payment collector,
+dan database tetap khusus admin/host.
+
+## Pembayaran sesi (v2.6)
+
+- **Biaya per orang** diisi saat membuat rencana (bisa diubah di *Ubah rencana* atau panel Pembayaran). Tampil di kartu
+  *Sesi berikutnya*, header lobi, teks ajakan yang dibagikan, dashboard, dan riwayat sesi.
+- Admin/host memilih **payment collector** dari host atau pemain. Collector mengisi bank, nama, dan nomor rekening
+  (tersimpan di akunnya, otomatis terisi di sesi berikutnya). Pemain bisa **Salin** nomor rekening (angka saja) dan nominal.
+- Pemain menekan **Bayar** (lobi, dashboard, Menu → Pembayaran sesi) lalu **unggah bukti**: tanda hijau langsung
+  muncul dan collector mendapat notifikasi. Collector bisa **Batalkan** (dengan alasan; pemain diberi tahu) atau
+  **Tandai lunas** untuk bayar tunai. Pembayaran tetap bisa setelah sesi selesai.
+- Yang membayar: pemain yang hadir (host tidak). Rekening hanya terlihat oleh yang login dan ikut sesi; foto bukti hanya
+  oleh pengirim, collector, dan admin/host. Status hijau terlihat semua yang ikut.
+
+## Riwayat match, koreksi skor, riwayat sesi (v2.6)
+
+- **Riwayat match** (tombol di dashboard) untuk semua: lama tiap match (dari Game start sampai skor masuk), filter
+  **Match saya**.
+- Pemain di match yang sudah selesai bisa **Koreksi skor** (skor usulan mengikuti aturan skor sesi + keterangan).
+  Admin, host sesi, dan host mendapat notifikasi dan bar *koreksi menunggu review*; **Simpan skor ini** memperbaiki skor
+  (klasemen ikut berubah) atau **Tolak**, dan pemain diberi tahu hasilnya.
+- **Riwayat sesi** (Menu atau dashboard) untuk semua yang login: daftar sesi yang selesai (podium, *Kamu ikut*, filter
+  *Yang saya ikuti*), detail berisi klasemen akhir, durasi sesi, riwayat match + durasi, dan status pembayaran.
+
 ## Sinkron & notifikasi
 
 Server mengirim perubahan ke semua perangkat lewat WebSocket begitu terjadi; cek berkala tetap jalan setiap 30 detik
 sebagai cadangan (3–4 detik bila WebSocket terputus).
 
-**Notifikasi**: sesi baru, pengingat 12 jam & 3 jam sebelum main, panggilan court, dan ajakan kudos setelah sesi. Tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
+**Notifikasi**: sesi baru, pengingat 12 jam & 3 jam sebelum main, panggilan court, ajakan kudos setelah sesi, ditunjuk
+jadi host sesi/payment collector, bukti bayar masuk/dibatalkan, dan koreksi skor (masuk & hasil review). Tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
 lawan, dengan tombol **Siap** / **Skip dulu**. Kunci VAPID dibuat otomatis oleh server, tidak perlu disetel.
 
 - Link Paddoc Host di **Android** terbuka langsung di aplikasi yang sudah terpasang (aplikasi yang sedang terbuka

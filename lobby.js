@@ -29,7 +29,8 @@ var Lobby = (function () {
     play: '<path d="m6 4 14 8-14 8Z"/>', music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
     send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>', login: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
     back: '<path d="m15 18-6-6 6-6"/>', check: '<path d="M20 6 9 17l-5-5"/>',
-    pencil: '<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>'
+    pencil: '<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+    wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>'
   };
   function ic(n) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + IC[n] + '</svg>'; }
 
@@ -358,7 +359,7 @@ var Lobby = (function () {
   function shareText(s, url) {
     var v = s.venue || {};
     return 'Yuk hadir di ' + s.name + '!\n' + (s.whenText || '') + '\n' + [v.name, v.address].filter(Boolean).join(' · ') +
-      (v.maps ? '\nMaps: ' + v.maps : '') + '\n\nKonfirmasi hadir di lobi: ' + url;
+      (v.maps ? '\nMaps: ' + v.maps : '') + (s.price ? '\nBiaya: ' + s.price + ' per orang' : '') + '\n\nKonfirmasi hadir di lobi: ' + url;
   }
   function copyShare(s, url) {
     var text = shareText(s, url);
@@ -385,7 +386,7 @@ var Lobby = (function () {
       '<header class="lb-head">' + (handlers.exit ? '<button type="button" class="lb-exit" data-lb="exit" aria-label="Kembali ke beranda" title="Kembali">' + ic('back') + '</button>' : '') +
       '<img class="lb-logo" src="icon-192.png" alt="Logo Padel Doc">' +
       '<div class="lb-ttl"><div class="lb-kick" data-k="kick"></div><h1 data-k="name"></h1><div class="lb-meta">' +
-      '<span>' + ic('cal') + '<span data-k="when"></span></span><span>' + ic('pin') + '<span data-k="venue"></span></span><span data-k="maps"></span></div></div>' +
+      '<span>' + ic('cal') + '<span data-k="when"></span></span><span>' + ic('pin') + '<span data-k="venue"></span></span><span data-k="priceWrap" hidden>' + ic('wallet') + '<span data-k="price"></span></span><span data-k="maps"></span></div></div>' +
       '<div class="lb-cd"><small>Sesi dimulai dalam</small><strong data-k="cd">--:--:--</strong></div></header>' +
       '<div class="lb-main"><div class="lb-stagecol">' +
       '<div class="lb-stage"><div class="lb-bg"></div><canvas class="lb-canvas"></canvas><div class="lb-motes"></div><div class="lb-layer"></div>' +
@@ -398,6 +399,7 @@ var Lobby = (function () {
       '<div class="lb-controls" data-k="controls"></div>' +
       '<p class="lb-pubnote" data-k="pubnote" hidden>Kamu sedang menonton lobi. <b>Belum terdaftar?</b> Hubungi host atau admin untuk dibuatkan akun, lalu masuk untuk bergabung.</p>' +
       '<aside class="lb-side">' +
+      '<div class="lb-pay" data-k="pay" hidden></div>' +
       '<label class="lb-themerow" data-k="themeWrap" hidden><span>Tema lobi</span><select data-k="theme"></select></label>' +
       '<section class="lb-box"><button class="lb-boxh" type="button" data-lb="box" data-box="chat" aria-expanded="true">Chat <span class="badge" data-k="badge" hidden></span><span class="chev">' + ic('chev') + '</span></button>' +
       '<div class="lb-boxb" data-k="chatBody"><div class="lb-chat">' +
@@ -596,6 +598,7 @@ var Lobby = (function () {
       el.when.textContent = s.whenText || 'Jadwal belum diisi';
       el.venue.textContent = [v.name, v.address].filter(Boolean).join(' · ') || 'Venue belum diisi';
       el.maps.innerHTML = v.maps ? '<a href="' + esc(v.maps) + '" target="_blank" rel="noopener">Buka Google Maps</a>' : '';
+      el.priceWrap.hidden = !s.price; el.price.textContent = s.price ? 'Biaya ' + s.price + ' / orang' : '';
       el.theme.value = S.theme;
     }
     function renderCount() {
@@ -606,9 +609,20 @@ var Lobby = (function () {
     function renderRoster() {
       var list = people().slice().sort(function (a, b) { return (a.role === 'host' ? 0 : 1) - (b.role === 'host' ? 0 : 1) || ((ents[b.id] || {}).at || 0) - ((ents[a.id] || {}).at || 0); });
       el.roster.innerHTML = list.length ? list.map(function (p) {
-        return '<div class="lb-row' + (p.role === 'host' ? ' host' : '') + '">' + head(p) + '<span class="lb-nm">' + esc(p.name) + '<small>' + (p.role === 'host' ? 'Host · wasit' : p.id === S.meId ? 'Kamu' : 'Pemain') + '</small></span>' +
+        var paid = S.paid && S.paid[p.id], co = (S.cohosts || []).indexOf(p.id) >= 0;
+        return '<div class="lb-row' + (p.role === 'host' ? ' host' : '') + '">' + head(p) + '<span class="lb-nm">' + esc(p.name) + '<small>' + (p.role === 'host' ? 'Host · wasit' : (p.id === S.meId ? 'Kamu' : 'Pemain') + (co ? ' · host sesi' : '')) + '</small></span>' +
+          (paid ? '<span class="lb-paid" title="Sudah bayar" aria-label="Sudah bayar">' + ic('check') + '</span>' : '') +
           (S.role === 'host' && !S.started ? '<button class="lb-x" type="button" data-lb="remove" data-pid="' + esc(p.id) + '" aria-label="Tandai ' + esc(p.name) + ' tidak hadir" title="Tandai tidak hadir">' + ic('x') + '</button>' : '<span></span>') + '</div>';
       }).join('') : '<p class="lb-empty">Belum ada yang hadir. Bagikan link lobi ke grup.</p>';
+    }
+    /* pembayaran: ringkasan dari app (collector, nominal, sudah bayar), rinciannya dibuka lewat handlers.pay */
+    function renderPay() {
+      var v = S.payView;
+      el.pay.hidden = !v || !handlers.pay;
+      if (el.pay.hidden) return;
+      el.pay.className = 'lb-pay' + (v.cls ? ' ' + v.cls : '');
+      el.pay.innerHTML = '<span class="lb-payic">' + ic(v.cls === 'ok' ? 'check' : 'wallet') + '</span><span class="lb-paytx"><b>' + esc(v.title) + '</b><small>' + esc(v.sub) + '</small></span>' +
+        '<button class="lb-btn sm' + (v.cls === 'due' ? ' primary' : '') + '" type="button" data-lb="pay">' + esc(v.btn) + '</button>';
     }
     function renderControls() {
       var me = S.meId && people().some(function (p) { return p.id === S.meId; }), pl = people().filter(function (p) { return p.role !== 'host'; }).length, h = '';
@@ -708,7 +722,7 @@ var Lobby = (function () {
         else e.p = p;
       });
       if (S.started) { musicOn(false); var mb = root.querySelector('[data-lb="music"]'); if (mb) mb.setAttribute('aria-pressed', 'false'); }
-      renderInfo(); renderCount(); renderRoster(); renderControls(); renderChat(first); countdown();
+      renderInfo(); renderCount(); renderRoster(); renderControls(); renderPay(); renderChat(first); countdown();
     }
     update(state);
     if (!LY) requestAnimationFrame(function () { relayout(true); people().forEach(function (p) { if (!ents[p.id]) enter(p, true); }); renderRoster(); });

@@ -97,7 +97,7 @@ var Core = (function () {
   }
   function status() {
     var hasAdmin = people().some(function (p) { return p.role === 'admin' && !p.archived; });
-    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.5', migrated: !!A.prop('MIGRATED_AT') };
+    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.6', migrated: !!A.prop('MIGRATED_AT') };
   }
   function createAdmin(r) {
     return A.lock(function () {
@@ -355,6 +355,7 @@ var Core = (function () {
     var o = JSON.parse(JSON.stringify(S));
     o.matches.forEach(function (m) { delete m.snap; });
     if (o.plan) { o.plan.chatN = (o.plan.chat || []).length; delete o.plan.chat; } // chat lobi hanya lewat plans (anggota)
+    if (o.pay) o.pay = paySummary(S);                                                  // rekening & bukti bayar lewat payInfo (login)
     return o;
   }
 
@@ -379,7 +380,8 @@ var Core = (function () {
     var o = { id: S.id, v: S.v || 0, name: S.name, status: S.status, format: S.format, teamMode: S.teamMode,
       courts: S.courts.filter(function (c) { return c.active; }).length, hosts: S.hosts || [],
       when: p.when, whenText: p.whenText, venue: p.venue || {}, theme: p.theme || 'court', by: p.by,
-      rsvp: (p.rsvp || []).map(function (x) { return { pid: x.pid, role: x.role, at: x.at }; }), chatN: (p.chat || []).length };
+      rsvp: (p.rsvp || []).map(function (x) { return { pid: x.pid, role: x.role, at: x.at }; }), chatN: (p.chat || []).length,
+      cohosts: S.cohosts || [], pay: paySummary(S) };
     if (member) o.chat = (p.chat || []).slice(-100);
     if (S.teamMode === 'fixed') o.teams = (p.teams || []).map(function (t) { return { a: t.a, b: t.b }; });
     return o;
@@ -442,8 +444,8 @@ var Core = (function () {
       if (prev && prev.status === 'live') A.setProp('ACTIVE_SID', prev.id); else A.delProp('ACTIVE_SID');
     }
   }
-  function applyPlan(S, P, type, d, actor) {
-    var p = S.plan, staff = actor.role === 'admin' || actor.role === 'host';
+  function applyPlan(S, P, type, d, actor, sessStaff) {
+    var p = S.plan, staff = !!sessStaff;
     if (type === 'chat') {
       var text = String(d.text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
       if (!text) throw err('INVALID', 'Pesan kosong');
@@ -462,7 +464,7 @@ var Core = (function () {
       }
       return null;
     }
-    if (!staff) throw err('FORBIDDEN', 'Aksi ini khusus admin atau host');
+    if (!roleStaff(actor)) throw err('FORBIDDEN', 'Aksi ini khusus admin atau host');
     if (type === 'theme') { p.theme = planFields({ theme: d.theme }, p).theme; return null; }
     if (type === 'editPlan') {
       var f = planFields(d, p);
@@ -679,6 +681,10 @@ var Core = (function () {
       // host sesi bisa lebih dari satu; masing-masing bisa ditugaskan sebagai wasit di satu court
       setHosts(S, st.hosts || (st.hostId ? [st.hostId] : actor.role === 'host' ? [actor.id] : []));
       S.calls = {}; S.lastDone = {};
+      if (st.pay) {                                                   // biaya per orang (opsional) diisi saat membuat sesi
+        var amt0 = Math.round(Number(st.pay.amount) || 0), col0 = st.pay.collector ? person(st.pay.collector) : null;
+        S.pay = { collector: col0 && !col0.archived ? col0.id : null, amount: amt0 > 0 ? Math.min(amt0, 100000000) : null, bank: col0 && !col0.archived ? col0.bank || null : null, st: {} };
+      }
       if (st.plan) {
         // rencana: buka ruang tunggu dulu; pemain yang dipilih host langsung tercatat hadir
         var f = planFields(st.plan);
@@ -729,22 +735,201 @@ var Core = (function () {
     return { voided: m.id };
   }
 
+  /* ---------------- host sesi dari pemain, pembayaran, koreksi skor ---------------- */
+  // pemain yang ditunjuk jadi host sesi: mengurus skor & pemain di sesi itu saja (bukan mengakhiri, mengatur court, atau database)
+  var COHOST_ACTIONS = { fill: 1, score: 1, reshuffle: 1, void: 1, swap: 1, swapTeam: 1, unwait: 1, kick: 1, join: 1, skip: 1, ready: 1, pair: 1,
+    call: 1, go: 1, tally: 1, swapX: 1, swapTeamX: 1, rsvp: 1 };
+  // aksi dengan aturan izin sendiri (dicek di applyCommon), berlaku di lobi, saat main, dan setelah selesai
+  var COMMON_ACTIONS = { cohost: 1, payCollector: 1, payBank: 1, payProof: 1, payMark: 1, dispute: 1, disputeDone: 1 };
+  function roleStaff(p) { return p.role === 'admin' || p.role === 'host'; }
+  function isCohost(S, pid) { return (S.cohosts || []).indexOf(pid) >= 0; }
+  /* yang membayar: pemain yang hadir (bukan host) */
+  function payers(S) {
+    if (S.status === 'plan') return ((S.plan || {}).rsvp || []).filter(function (x) { return x.role === 'player'; }).map(function (x) { return x.pid; });
+    return Object.keys(S.parts || {});
+  }
+  function inSession(S, pid) {
+    return payers(S).indexOf(pid) >= 0 || (S.hosts || []).indexOf(pid) >= 0 || isCohost(S, pid) ||
+      (S.status === 'plan' && ((S.plan || {}).rsvp || []).some(function (x) { return x.pid === pid; }));
+  }
+  function rupiah(n) { return 'Rp ' + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  function cleanBank(b) {
+    b = b || {};
+    var holder = String(b.holder || '').replace(/\s+/g, ' ').trim().slice(0, 60), bank = String(b.bank || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    var number = String(b.number || '').replace(/[^\d\s-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 34);
+    if (!holder || !bank || number.replace(/\D/g, '').length < 5) throw err('INVALID', 'Isi nama pemilik rekening, nama bank, dan nomor rekening');
+    return { holder: holder, bank: bank, number: number };
+  }
+  /* ringkasan pembayaran untuk data sesi publik: tanpa rekening & bukti */
+  function paySummary(S) {
+    var pay = S.pay;
+    if (!pay) return null;
+    var paid = {};
+    Object.keys(pay.st || {}).forEach(function (pid) { if (pay.st[pid].paid) paid[pid] = pay.st[pid].by === 'proof' ? 'proof' : 'ok'; });
+    return { collector: pay.collector || null, amount: pay.amount || null, hasBank: !!pay.bank, paid: paid };
+  }
+  function reviewers(S) {
+    var ids = people().filter(function (p) { return p.role === 'admin' && !p.archived; }).map(function (p) { return p.id; }).concat(S.hosts || [], S.cohosts || []);
+    return ids.filter(function (x, i, a) { return a.indexOf(x) === i; });
+  }
+  function applyCommon(S, P, type, d, actor, co) {
+    var staff = roleStaff(actor), notify = A.notify || function () {};
+    var pay = S.pay = S.pay || { collector: null, amount: null, bank: null, st: {} };
+    pay.st = pay.st || {};
+    var isCollector = !!pay.collector && pay.collector === actor.id;
+    var payUrl = '/?pay=' + S.id;
+    if (type === 'cohost') {
+      if (!staff) throw err('FORBIDDEN', 'Hanya admin atau host yang bisa menunjuk host sesi');
+      var who = person(d.pid);
+      if (!who || who.archived || who.role !== 'user') throw err('INVALID', 'Pilih akun pemain');
+      var was = isCohost(S, who.id);
+      S.cohosts = (S.cohosts || []).filter(function (x) { return x !== who.id; });
+      if (d.on !== false) {
+        if (S.cohosts.length >= 6) throw err('INVALID', 'Maksimal 6 pemain jadi host sesi');
+        S.cohosts.push(who.id);
+        if (!was) notify(who.id, { title: 'Kamu jadi host sesi: ' + S.name, body: 'Kamu bisa memasukkan skor dan mengatur pemain di sesi ini.', tag: 'cohost-' + S.id,
+          url: S.status === 'plan' ? '/?lobby=' + S.id : '/' });
+      }
+      return null;
+    }
+    if (type === 'payCollector') {
+      if (!staff) throw err('FORBIDDEN', 'Hanya admin atau host yang bisa menentukan payment collector');
+      if (d.pid) {
+        var c = person(d.pid);
+        if (!c || c.archived) throw err('NOT_FOUND', 'Orang tidak ditemukan');
+        if (pay.collector !== c.id) {
+          pay.collector = c.id; pay.bank = c.bank || null;
+          if (c.id !== actor.id) notify(c.id, { title: 'Kamu payment collector: ' + S.name, body: c.bank ? 'Rekeningmu sudah terisi. Cek siapa saja yang sudah bayar.' : 'Isi nama bank dan nomor rekening supaya pemain bisa transfer.', tag: 'paycol-' + S.id, url: payUrl });
+        }
+      } else if (d.pid === null || d.pid === '') { pay.collector = null; pay.bank = null; }
+      if (d.amount !== undefined) { var amt = Math.round(Number(d.amount) || 0); pay.amount = amt > 0 ? Math.min(amt, 100000000) : null; }
+      return null;
+    }
+    if (type === 'payBank') {
+      if (!isCollector && !staff) throw err('FORBIDDEN', 'Hanya payment collector yang bisa mengisi rekening');
+      if (!pay.collector) throw err('INVALID', 'Belum ada payment collector');
+      pay.bank = cleanBank(d);
+      if (isCollector) { var self = person(actor.id); self.bank = pay.bank; A.savePerson(self); A.cachePut('PEOPLE', null); } // dipakai lagi di sesi berikutnya
+      return null;
+    }
+    if (type === 'payProof') {
+      if (payers(S).indexOf(actor.id) < 0) throw err('FORBIDDEN', 'Kamu tidak terdaftar sebagai pemain di sesi ini');
+      if (!pay.collector) throw err('INVALID', 'Belum ada payment collector untuk sesi ini');
+      if (!/^data:image\/(jpeg|png|webp);base64,/.test(String(d.data || '')) || String(d.data).length > 1400000) throw err('INVALID', 'Foto bukti bayar tidak valid');
+      var old = pay.st[actor.id] || {}, ph = A.savePhoto(d.data, actor.name + '_bayar');
+      if (old.proof) A.trash(old.proof);
+      pay.st[actor.id] = { paid: true, by: 'proof', at: now(), proof: ph };
+      if (pay.collector !== actor.id) notify(pay.collector, { title: 'Bukti bayar: ' + actor.name, body: S.name + (pay.amount ? ' · ' + rupiah(pay.amount) : '') + '. Batalkan tanda hijaunya bila transfer belum masuk.', tag: 'pay-' + S.id + '-' + actor.id, url: payUrl });
+      return null;
+    }
+    if (type === 'payMark') {
+      if (!isCollector && !staff) throw err('FORBIDDEN', 'Hanya payment collector, admin, atau host');
+      if (payers(S).indexOf(d.pid) < 0 && !pay.st[d.pid]) throw err('NOT_FOUND', 'Pemain tidak ada di sesi ini');
+      var cur = pay.st[d.pid] || {}, note = String(d.note || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      pay.st[d.pid] = { paid: !!d.paid, by: 'collector', at: now(), proof: cur.proof || null, byId: actor.id, note: d.paid ? '' : note, rejected: !d.paid && !!cur.paid };
+      if (!d.paid && cur.paid && d.pid !== actor.id) notify(d.pid, { title: 'Pembayaran belum diterima', body: S.name + (note ? ': ' + note : '') + '. Cek lagi lalu unggah bukti yang benar.', tag: 'pay-' + S.id, url: payUrl });
+      return null;
+    }
+    if (type === 'dispute') {
+      var m = Engine.findMatch(S, d.m);
+      if (!m || m.status !== 'done') throw err('INVALID', 'Koreksi hanya untuk match yang sudah selesai');
+      if (m.A.concat(m.B).indexOf(actor.id) < 0) throw err('FORBIDDEN', 'Koreksi skor hanya untuk pemain di match itu');
+      var a = Math.round(Number(d.a)), b = Math.round(Number(d.b));
+      var v = Engine.validateScore(S, a, b);
+      if (!v.ok) throw err('INVALID', v.msg);
+      if (a === m.sA && b === m.sB) throw err('INVALID', 'Skor usulan sama dengan skor sekarang');
+      S.disputes = S.disputes || [];
+      if (S.disputes.some(function (x) { return x.m === m.id && x.st === 'open'; })) throw err('INVALID', 'Koreksi untuk match ini sedang direview');
+      var dp = { id: A.uuid('d_'), m: m.id, no: m.no, by: actor.id, a: a, b: b, was: [m.sA, m.sB], at: now(), st: 'open',
+        note: String(d.note || '').replace(/\s+/g, ' ').trim().slice(0, 200) };
+      S.disputes.push(dp);
+      reviewers(S).forEach(function (pid) {
+        if (pid !== actor.id) notify(pid, { title: 'Koreksi skor: Match #' + m.no, body: actor.name + ' mengusulkan ' + a + '-' + b + ' (tercatat ' + m.sA + '-' + m.sB + ')' + (dp.note ? ': ' + dp.note : '') + ' · ' + S.name,
+          tag: 'dispute-' + dp.id, url: '/?dispute=' + S.id });
+      });
+      return { dispute: dp.id };
+    }
+    if (type === 'disputeDone') {
+      if (!staff && !co) throw err('FORBIDDEN', 'Hanya admin atau host yang bisa mereview koreksi skor');
+      var x = (S.disputes || []).filter(function (q) { return q.id === d.id; })[0];
+      if (!x) throw err('NOT_FOUND', 'Koreksi tidak ditemukan');
+      if (x.st !== 'open') throw err('STALE', 'Koreksi ini sudah direview');
+      if (d.ok) {
+        var mm = Engine.findMatch(S, x.m);
+        if (!mm || mm.status !== 'done') throw err('STALE', 'Match sudah berubah');
+        var na = d.a != null ? Math.round(Number(d.a)) : x.a, nb = d.b != null ? Math.round(Number(d.b)) : x.b, vv = Engine.validateScore(S, na, nb);
+        if (!vv.ok) throw err('INVALID', vv.msg);
+        Engine.submitScore(S, mm.id, na, nb);
+        x.st = 'fixed'; x.final = [na, nb];
+      } else x.st = 'rejected';
+      x.reply = String(d.reply || '').replace(/\s+/g, ' ').trim().slice(0, 200); x.doneBy = actor.id; x.doneAt = now();
+      notify(x.by, { title: x.st === 'fixed' ? 'Skor Match #' + x.no + ' diperbaiki' : 'Koreksi skor Match #' + x.no + ' ditolak',
+        body: (x.st === 'fixed' ? 'Skor sekarang ' + x.final[0] + '-' + x.final[1] : 'Skor tetap ' + x.was[0] + '-' + x.was[1]) + (x.reply ? '. ' + actor.name + ': ' + x.reply : '') + ' · ' + S.name,
+        tag: 'dispute-' + x.id, url: '/' });
+      return null;
+    }
+    throw err('INVALID', 'Aksi tidak dikenal: ' + type);
+  }
+  /* rincian pembayaran: rekening & daftar bayar untuk yang ikut sesi; bukti foto hanya untuk pengirim, collector, admin/host */
+  function payInfo(r) {
+    var actor = auth(r.token), S = loadS(r.sid);
+    if (!S) throw err('NOT_FOUND', 'Sesi tidak ditemukan');
+    var pay = S.pay || {}, st = pay.st || {}, staff = roleStaff(actor), coll = !!pay.collector && pay.collector === actor.id;
+    if (!staff && !coll && !inSession(S, actor.id)) throw err('FORBIDDEN', 'Kamu tidak terdaftar di sesi ini');
+    var full = staff || coll, ids = payers(S);
+    Object.keys(st).forEach(function (pid) { if (ids.indexOf(pid) < 0) ids.push(pid); });
+    return { sid: S.id, name: S.name, status: S.status, collector: pay.collector || null, amount: pay.amount || null, bank: pay.bank || null,
+      canSet: staff, canManage: full, isCollector: coll, isPayer: payers(S).indexOf(actor.id) >= 0,
+      choices: staff ? payers(S).concat(S.hosts || [], S.status === 'plan' ? S.plan.rsvp.map(function (x) { return x.pid; }) : []).filter(function (x, i, a) { return a.indexOf(x) === i; }) : [],
+      list: ids.map(function (pid) {
+        var x = st[pid] || {};
+        return { pid: pid, paid: !!x.paid, by: x.by || '', at: x.at || 0, note: x.note || '', rejected: !!x.rejected, proofUrl: x.proof && (full || pid === actor.id) ? A.photoUrl(x.proof) : '' };
+      }) };
+  }
+  /* riwayat sesi yang sudah selesai: untuk semua yang login */
+  function pastSessions(r) {
+    var actor = auth(r.token), P = playersMap();
+    return A.sessions().filter(function (x) { return x.status === 'done'; }).slice(0, 60).map(function (x) {
+      var S = loadS(x.id);
+      if (!S) return null;
+      var key = 'PAST_' + S.id + '_' + S.v, c = A.cacheGet(key);
+      if (!c) {
+        var fixed = S.teamMode === 'fixed', rows = Engine.standings(S, P, fixed ? { unit: 'team', sortBy: S.rules.sortBy } : { sortBy: S.rules.sortBy });
+        c = { id: S.id, name: S.name, date: S.date, endedAt: S.endedAt || S.updated || 0, venue: (S.plan && S.plan.venue) || null, format: S.format, teamMode: S.teamMode,
+          players: Object.keys(S.parts).length, matches: S.matches.filter(function (m) { return m.status === 'done'; }).length,
+          top: rows.slice(0, 3).map(function (q) { return fixed ? [q.team.a, q.team.b] : [q.id]; }), ids: Object.keys(S.parts).concat(S.hosts || [], S.cohosts || []) };
+        A.cachePut(key, c, 86400);
+      }
+      var o = JSON.parse(JSON.stringify(c));
+      o.mine = o.ids.indexOf(actor.id) >= 0; delete o.ids;
+      return o;
+    }).filter(Boolean).sort(function (a, b) { return (b.endedAt || 0) - (a.endedAt || 0); });
+  }
+  function pastSession(r) {
+    auth(r.token);
+    var S = loadS(r.sid);
+    if (!S || S.status !== 'done') throw err('NOT_FOUND', 'Sesi tidak ditemukan');
+    return { S: publicS(S) };
+  }
+
   var SELF_ACTIONS = { skip: 1, ready: 1, leave: 1, rsvp: 1, chat: 1 };
   function act(r) {
     var actor = auth(r.token);
     var type = r.type, d = r.payload || {};
-    var staff = actor.role === 'admin' || actor.role === 'host';
-    if (!staff && !SELF_ACTIONS[type]) throw err('FORBIDDEN', 'Aksi ini khusus admin atau host');
-    if (!staff) d.pid = actor.id;
+    if (!roleStaff(actor) && !SELF_ACTIONS[type] && !COMMON_ACTIONS[type] && !COHOST_ACTIONS[type]) throw err('FORBIDDEN', 'Aksi ini khusus admin atau host');
     return A.lock(function () {
       var S = loadS(r.sid || A.prop('ACTIVE_SID'));
       if (!S) throw err('NOT_FOUND', 'Sesi tidak ditemukan');
+      var co = isCohost(S, actor.id), staff = roleStaff(actor) || (co && !!COHOST_ACTIONS[type]);
+      if (!staff && !SELF_ACTIONS[type] && !COMMON_ACTIONS[type]) throw err('FORBIDDEN', 'Aksi ini khusus admin atau host');
+      if (!staff && !COMMON_ACTIONS[type]) d.pid = actor.id;
       var P = playersMap();
       var info;
-      if (S.status === 'plan') {
+      if (COMMON_ACTIONS[type]) info = applyCommon(S, P, type, d, actor, co);
+      else if (S.status === 'plan') {
         if (!PLAN_ACTIONS[type]) throw err('INVALID', 'Sesi ini masih di ruang tunggu');
-        info = applyPlan(S, P, type, d, actor);
-      } else if (type === 'backToLobby') { if (!staff) throw err('FORBIDDEN'); backToLobby(S); }
+        info = applyPlan(S, P, type, d, actor, staff);
+      } else if (type === 'backToLobby') { if (!roleStaff(actor)) throw err('FORBIDDEN'); backToLobby(S); }
       else if (PLAN_ACTIONS[type]) throw err('STALE', 'Sesi sudah dimulai');
       else info = apply(S, P, type, d, actor);
       saveS(S, P);
@@ -905,7 +1090,8 @@ var Core = (function () {
     generatePro: generatePro, listSessions: listSessions, openSession: openSession, deleteSession: deleteSession,
     createSession: createSession, act: act, importPerson: importPerson, importSession: importSession, markMigrated: markMigrated,
     pushSubscribe: pushSubscribe, venueSearch: venueSearch, generateChibi: generateChibi, saveSprite: saveSprite,
-    saveTheme: saveTheme, deleteTheme: deleteTheme, kudosForm: kudosForm, giveKudos: giveKudos, myKudos: myKudos, kudosAdmin: kudosAdmin
+    saveTheme: saveTheme, deleteTheme: deleteTheme, kudosForm: kudosForm, giveKudos: giveKudos, myKudos: myKudos, kudosAdmin: kudosAdmin,
+    payInfo: payInfo, pastSessions: pastSessions, pastSession: pastSession
   };
   function call(fn, req) {
     var f = PUBLIC[fn] || PRIVATE[fn];

@@ -511,6 +511,91 @@ body.drawer .scrim { opacity: 1; pointer-events: auto; }
 .players-h { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .players-h h1 { margin: 0; flex: 1; font-family: var(--f-display); font-size: 34px; text-transform: uppercase; letter-spacing: 0.02em; min-width: 200px; }
 .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+/* pembayaran sesi */
+.pay-strip { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); }
+.pay-strip > div { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.pay-strip small { color: var(--muted); font-size: 12.5px; }
+.pay-strip.due { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.pay-strip.ok { border-color: color-mix(in srgb, #2FAF6B 55%, var(--line)); }
+.ps-ic { width: 38px; height: 38px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--accent); }
+.ps-ic .ic { width: 20px; height: 20px; }
+.ok > .ps-ic { background: #2FAF6B; color: #fff; }
+.bad > .ps-ic { background: color-mix(in srgb, var(--danger, #D9534F) 20%, var(--surface-2)); color: var(--danger, #D9534F); }
+.pay-amt { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 12%, var(--bg-2)); }
+.pay-amt small { color: var(--muted); font-size: 12px; display: block; }
+.pay-amt b { flex: 1; font-family: var(--f-display); font-size: 28px; letter-spacing: 0.02em; }
+.pay-set { display: grid; gap: 8px; padding: 12px; border-radius: 14px; border: 1px dashed var(--line-strong); }
+.pay-card { display: grid; gap: 10px; padding: 14px; border-radius: 16px; background: var(--bg-2); border: 1px solid var(--line); }
+.pay-col { display: flex; align-items: center; gap: 10px; }
+.pay-col .av { width: 42px; height: 42px; }
+.pay-col span { display: grid; } .pay-col small { color: var(--muted); font-size: 12px; }
+.pay-bank { display: grid; gap: 6px; }
+.pb-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--surface); min-height: 52px; }
+.pb-row span { flex: 1; min-width: 0; display: grid; }
+.pb-row small { color: var(--muted); font-size: 11.5px; }
+.pb-row b { font-size: 16px; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.pay-bankf { display: grid; gap: 8px; }
+.pay-me { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.pay-me.ok { border-color: color-mix(in srgb, #2FAF6B 55%, var(--line)); background: color-mix(in srgb, #2FAF6B 8%, var(--surface)); }
+.pay-me > div { flex: 1; min-width: 200px; display: grid; gap: 3px; }
+.pay-me small { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+.linkbtn { justify-self: start; padding: 0; border: 0; background: none; color: var(--accent); font-weight: 700; font-size: 13px; text-decoration: underline; }
+.pay-h { margin: 4px 0 8px; font-size: 14px; color: var(--muted); font-weight: 700; }
+.pay-h b { color: #2FAF6B; font-size: 16px; }
+.pay-row { gap: 10px; }
+.li.pay-row { grid-template-columns: 24px 38px minmax(0, 1fr); grid-auto-flow: column; grid-auto-columns: auto; }
+.pay-dot { width: 24px; height: 24px; flex: none; border-radius: 50%; border: 2px solid var(--line-strong); display: grid; place-items: center; }
+.pay-dot.ok { background: #2FAF6B; border-color: #2FAF6B; color: #fff; }
+.pay-dot .ic { width: 15px; height: 15px; }
+.proof-img { display: block; width: 100%; max-height: 72vh; object-fit: contain; border-radius: 12px; background: #000; }
+.cotag { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); vertical-align: middle; }
+.icon-btn.cobtn.on { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+/* riwayat match, koreksi skor, riwayat sesi */
+.dash-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 14px; }
+.dash-tools .chipbtn { color: var(--fg); }
+.hist.mine { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.hist .tm small .ic { width: 12px; height: 12px; vertical-align: -2px; margin: 0 2px 0 0; }
+.h-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.dtag { display: inline-block; margin-top: 4px; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; background: var(--surface-2); color: var(--muted); }
+.dtag.open { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.dtag.fixed { color: #2FAF6B; background: color-mix(in srgb, #2FAF6B 15%, transparent); }
+.dispute-bar { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; margin-bottom: 14px; border-radius: 16px; text-align: left; color: var(--fg);
+  border: 1px solid color-mix(in srgb, var(--warn) 55%, var(--line)); background: color-mix(in srgb, var(--warn) 12%, var(--surface)); }
+.dispute-bar > .ic:first-child { width: 26px; height: 26px; color: var(--warn); flex: none; }
+.dispute-bar span { flex: 1; min-width: 0; display: grid; gap: 2px; } .dispute-bar small { color: var(--muted); font-size: 12.5px; }
+.modal .dispute-bar { margin: 10px 0; }
+.dp-score { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: end; }
+.dp-score label { display: grid; gap: 6px; font-size: 12.5px; font-weight: 700; color: var(--muted); min-width: 0; }
+.dp-score label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dp-score .input { text-align: center; font-family: var(--f-display); font-size: 30px; font-weight: 800; height: 58px; }
+.dp-score > b { font-family: var(--f-display); font-size: 28px; padding-bottom: 12px; }
+.dp-score.sm { max-width: 240px; } .dp-score.sm .input { font-size: 22px; height: 46px; } .dp-score.sm > b { padding-bottom: 8px; }
+.dp-msg { margin: 0; font-size: 13px; color: var(--muted); } .dp-msg.err { color: var(--warn); font-weight: 700; }
+.dp-card { display: grid; gap: 10px; padding: 14px; border-radius: 16px; background: var(--bg-2); border: 1px solid var(--line); }
+.dp-card + .dp-card { margin-top: 12px; }
+.dp-h { display: flex; gap: 10px; align-items: center; } .dp-h .av { width: 38px; height: 38px; } .dp-h span { display: grid; } .dp-h small { color: var(--muted); font-size: 12px; }
+.dp-teams { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; font-weight: 700; } .dp-teams span:nth-child(2) { color: var(--muted); }
+.dp-note { margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--surface); font-size: 13.5px; }
+.acc { color: var(--accent); }
+.past { display: grid; gap: 14px; padding: 16px 16px 120px; max-width: 1200px; margin: 0 auto; }
+.past > .btn.ghost { justify-self: start; }
+.past-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.past-card { display: grid; gap: 6px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); text-align: left; color: var(--fg); }
+.past-card .pc-top { display: flex; gap: 8px; align-items: center; justify-content: space-between; } .past-card .pc-top b { font-size: 16px; }
+.past-card small { font-size: 12.5px; line-height: 1.4; }
+.past-top { display: grid; gap: 4px; margin-top: 4px; }
+.past-top > span { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.past-top > span b { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; background: var(--surface-2); flex: none; }
+.past-top .pt1 b { background: var(--gold, #E8B931); color: #1b1300; } .past-top .pt1 .ic { width: 14px; height: 14px; color: var(--gold, #E8B931); }
+.past-h h1 { margin: 0 0 8px; font-family: var(--f-display); font-size: 34px; text-transform: uppercase; line-height: 1; }
+.past-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 18px; align-items: start; }
+@media (max-width: 860px) { .past-grid { grid-template-columns: minmax(0, 1fr); } }
+.past-stand .li { grid-template-columns: 26px auto minmax(0, 1fr) auto; }
+.past-stand .rk { font-family: var(--f-display); font-size: 20px; color: var(--muted); text-align: center; }
+.past-stand .top1 .rk { color: var(--gold, #E8B931); }
+.past-stand .li.me { border-color: var(--accent); }
+.past-stand .num { display: grid; justify-items: end; } .past-stand .num b { font-family: var(--f-display); font-size: 22px; } .past-stand .num small { color: var(--muted); font-size: 11px; }
+.past-stand .av.duo { width: 56px; }
 /* kudos */
 .kudos { max-width: 760px; margin: 0 auto; padding: 16px 0 140px; display: grid; gap: 12px; }
 .kd-head { display: flex; gap: 12px; align-items: center; }
@@ -1012,6 +1097,9 @@ var ICONS = (function () {
   return {
     plus: p('M12 5v14M5 12h14'),
     star: p('M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z'),
+    wallet: p('M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1') + p('M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4'),
+    copy: '<rect x="9" y="9" width="13" height="13" rx="2"/>' + p('M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'),
+    alertMsg: p('M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z') + p('M12 7v4M12 14h.01'),
     minus: p('M5 12h14'),
     x: p('M18 6 6 18M6 6l12 12'),
     check: p('M20 6 9 17l-5-5'),
@@ -1149,7 +1237,7 @@ function MemoryAdapter(store, persist) {
   'use strict';
 
   var LOGO = 'data:image/webp;base64,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';
-  var APP_VERSION = '2.5';
+  var APP_VERSION = '2.6';
   var API_URL = window.PADDOC_API && /^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)[:/]|\/[^/])/.test(window.PADDOC_API) ? window.PADDOC_API : '';
   var LIVE_MODE = !!API_URL && !(location.protocol === 'file:' && API_URL.charAt(0) === '/'); // tersambung ke server Cloudflare
   var OLD_API = window.PADDOC_OLD_API && /^https:\/\/script\.google\.com\//.test(window.PADDOC_OLD_API) ? window.PADDOC_OLD_API : '';
@@ -1197,6 +1285,9 @@ function MemoryAdapter(store, persist) {
   function role() { return AUTH.me ? AUTH.me.role : 'guest'; }
   function isStaff() { return role() === 'admin' || role() === 'host'; }
   function isAdmin() { return role() === 'admin'; }
+  /* pemain yang ditunjuk jadi host sesi: mengurus skor & pemain di sesi ini saja */
+  function isCohostMe() { var u = me(); return !!(u && S && (S.cohosts || []).indexOf(u.id) >= 0); }
+  function canRun() { return isStaff() || isCohostMe(); }
   function srvNow() { return Date.now() + LIVE.offset; }
   function saveAuth() { authSet(AUTH); }
 
@@ -1361,12 +1452,14 @@ function MemoryAdapter(store, persist) {
     var ta = $('#turn-alert'), tm = ta && S && Engine.findMatch(S, ta.dataset.m);
     if (ta && (!tm || tm.status !== 'live')) { ta.remove(); stopAlarm(); }
     checkMyTurn();
+    refreshPay();
     if (UI.view === 'lobby') renderLobby();
     else if (['dash', 'board', 'scoreboard'].indexOf(UI.view) >= 0) render();
     else paintTopOnly();
     scheduleResultExpiry();
   }
   function onPlansChange() {
+    refreshPay();
     if (UI.view === 'lobby') renderLobby();
     else if (['dash', 'home', 'install', 'themes'].indexOf(UI.view) >= 0) render();
   }
@@ -1505,6 +1598,7 @@ function MemoryAdapter(store, persist) {
       if (e.data.type === 'open' && e.data.url) {
         var u = new URL(e.data.url, location.href), sid = u.searchParams.get('lobby'), ks = u.searchParams.get('kudos');
         if (ks) pollNow().catch(function () {}).then(function () { openKudos(ks); });
+        if (u.searchParams.get('pay') || u.searchParams.get('dispute')) pollNow().catch(function () {}).then(function () { handleLink(u.searchParams.get('pay'), u.searchParams.get('dispute')); });
         if (sid) pollNow().catch(function () {}).then(function () { handleLobbyLink({ sid: sid, join: u.searchParams.get('do') === 'join' }); });
       }
     });
@@ -1534,7 +1628,7 @@ function MemoryAdapter(store, persist) {
     if (!pl) return '';
     var v = pl.venue || {};
     return '<div class="plan-card"><span class="lbl-sm">Kamu diundang ke ruang tunggu</span><h3>' + esc(pl.name) + '</h3><div class="pc-meta">' + esc(pl.whenText || '') +
-      (v.name || v.address ? '<br>' + esc([v.name, v.address].filter(Boolean).join(' · ')) : '') + '</div>' +
+      (v.name || v.address ? '<br>' + esc([v.name, v.address].filter(Boolean).join(' · ')) : '') + (pl.pay && pl.pay.amount ? '<br>Biaya <b>' + rupiah(pl.pay.amount) + '</b> / orang' : '') + '</div>' +
       '<div class="pc-faces">' + pl.rsvp.slice(0, 8).map(function (x) { return av(x.pid); }).join('') + '<span class="muted">' + pl.rsvp.length + ' hadir</span></div>' +
       '<p class="muted" style="font-size:13px;margin:0">Setelah aplikasi terpasang, sesi ini muncul di beranda. Ketuk <b>Buka lobi</b> lalu <b>Saya Bergabung</b>.</p></div>';
   }
@@ -1791,7 +1885,7 @@ function MemoryAdapter(store, persist) {
     if (!LIVE.loaded) return loaderHTML();
     if (!S) {
       var pc = planCards();
-      return '<div class="dash">' + pc + '<div class="empty' + (pc ? '' : ' big') + '">' + icon('court') + '<div><b>Belum ada sesi berjalan.</b><br>' +
+      return '<div class="dash">' + (u ? '<div class="dash-tools"><button class="chipbtn" data-act="pastView">' + icon('list') + 'Riwayat sesi</button></div>' : '') + pc + '<div class="empty' + (pc ? '' : ' big') + '">' + icon('court') + '<div><b>Belum ada sesi berjalan.</b><br>' +
         (pc ? 'Konfirmasi hadir di lobi; dashboard court tampil saat host menekan Mulai Sesi.' : isStaff() ? 'Buat rencana sesi; pemain konfirmasi hadir di lobi.' : 'Dashboard akan tampil otomatis saat host memulai sesi.') + '</div>' +
         (isStaff() ? '<button class="btn primary lg" data-act="newSession">' + icon('play') + 'Buat rencana sesi</button>' : '') +
         (!u ? '<button class="btn lg" data-act="login">' + icon('login') + 'Masuk</button>' : '') + '</div></div>' + staffNav();
@@ -1805,7 +1899,10 @@ function MemoryAdapter(store, persist) {
       '<span class="chip">' + icon('users') + Object.keys(S.parts).filter(function (k) { return S.parts[k].active; }).length + '</span>' +
       (S.status !== 'live' ? '<span class="chip">Selesai</span>' : '') + '</div></div>' + hostCard() + '</section>';
     h += kudosPrompt();
+    h += disputeBanner();
     h += myStatus();
+    h += payCard();
+    h += '<div class="dash-tools"><button class="chipbtn" data-act="history">' + icon('history') + 'Riwayat match</button>' + (me() ? '<button class="chipbtn" data-act="pastView">' + icon('list') + 'Riwayat sesi</button>' : '') + '</div>';
     if (isStaff() && startedFromLobby()) h += '<div class="demo-note">' + icon('info') + '<div><b>Sesi baru dimulai dari lobi.</b> Salah tekan? Lobi bisa dibuka lagi selama belum ada match yang dimulai.' +
       '<div class="row" style="margin-top:8px"><button class="btn" data-act="toLobby">' + icon('undo') + 'Kembali ke Lobi</button></div></div></div>';
     h += planCards();
@@ -1880,12 +1977,12 @@ function MemoryAdapter(store, persist) {
     }).join('') + '</div>';
   }
   function staffNav() {
-    if (!isStaff()) return '';
+    if (!canRun()) return '';
     var on = function (v) { return UI.view === v ? ' on' : ''; };
     return '<nav class="bottomnav">' +
       '<button class="' + on('dash') + '" data-act="dash">' + icon('court') + '<span>Court</span></button>' +
       '<button data-act="people" ' + (S ? '' : 'disabled') + '>' + icon('users') + '<span>Pemain</span></button>' +
-      '<button data-act="settings" ' + (S ? '' : 'disabled') + '>' + icon('sliders') + '<span>Atur</span></button>' +
+      (isStaff() ? '<button data-act="settings" ' + (S ? '' : 'disabled') + '>' + icon('sliders') + '<span>Atur</span></button>' : '') +
       '<button data-act="history" ' + (S ? '' : 'disabled') + '>' + icon('history') + '<span>Riwayat</span></button>' +
       '<button data-act="menu">' + icon('menu') + '<span>Menu</span></button></nav>';
   }
@@ -1944,7 +2041,7 @@ function MemoryAdapter(store, persist) {
       var aw = fin && fin.sA > fin.sB, bw = fin && fin.sB > fin.sA;
       var team = function (ids, side, win, lose) {
         return '<div class="cm-team ' + (win ? 'win' : lose ? 'lose' : '') + '">' + ids.map(function (pid) {
-          var tag = isStaff() && m ? 'button data-act="swap" data-m="' + m.id + '" data-p="' + pid + '" data-side="' + side + '"' : 'div';
+          var tag = canRun() && m ? 'button data-act="swap" data-m="' + m.id + '" data-p="' + pid + '" data-side="' + side + '"' : 'div';
           var pt = playerTag(pid, m);
           return '<' + tag + ' class="cm-p ' + (pt && pt.cls === 'waittag' ? 'waitp' : '') + '">' + av(pid) + '<span class="cmn">' + esc(P(pid).name) +
             (pt ? '<small class="' + pt.cls + '" title="' + esc(pt.txt) + '">' + esc(pt.short) + '</small>' : '') + '</span>' + (win ? icon('crown', 'crown-s') : '') + '</' + tag.split(' ')[0] + '>';
@@ -1957,7 +2054,7 @@ function MemoryAdapter(store, persist) {
     } else {
       h += '<div class="cm-empty">' + icon('coffee') + (!c.active ? 'Court tidak dipakai' : waitingRound() ? 'Menunggu court lain selesai, lalu semua diundi bersamaan' : 'Menunggu pemain yang cukup') + '</div>';
     }
-    if (isStaff() && S.status === 'live') {
+    if (canRun() && S.status === 'live') {
       if (m) {
         h += '<footer>' + courtButtons(m, true) + '</footer>';
       } else if (!fin && c.active) {
@@ -1970,10 +2067,10 @@ function MemoryAdapter(store, persist) {
     var b = Engine.bench(S);
     var paused = Object.keys(S.parts).filter(function (k) { return S.parts[k].active && S.parts[k].paused; });
     var chips = b.map(function (x, i) {
-      return '<button class="bchip ' + (i < 4 ? 'next' : '') + '" ' + (isStaff() ? 'data-act="benchP" data-p="' + x.id + '"' : 'disabled') + '>' + av(x.id) +
+      return '<button class="bchip ' + (i < 4 ? 'next' : '') + '" ' + (canRun() ? 'data-act="benchP" data-p="' + x.id + '"' : 'disabled') + '>' + av(x.id) +
         '<span>' + esc(P(x.id).name) + '</span><span class="cnt">' + x.played + '×</span>' + (x.rest ? icon('moon') : '') + '</button>';
     }).join('') + paused.map(function (k) {
-      return '<button class="bchip paused" ' + (isStaff() ? 'data-act="benchP" data-p="' + k + '"' : 'disabled') + '>' + av(k) + '<span>' + esc(P(k).name) + '</span><span class="cnt">belum siap</span></button>';
+      return '<button class="bchip paused" ' + (canRun() ? 'data-act="benchP" data-p="' + k + '"' : 'disabled') + '>' + av(k) + '<span>' + esc(P(k).name) + '</span><span class="cnt">belum siap</span></button>';
     }).join('');
     return '<div class="bench-wrap">' + (chips || '<span class="muted">' + (S.status === 'live' ? 'Semua pemain sedang bermain.' : 'Sesi selesai.') + '</span>') + '</div>';
   }
@@ -2221,7 +2318,9 @@ function MemoryAdapter(store, persist) {
     (pl.chat || []).forEach(function (c) { if (!dir[c.pid]) dir[c.pid] = lobbyPerson(c.pid, c.role); });
     return {
       role: lobbyRole(), meId: me() ? me().id : null, theme: pl.theme || 'court', themes: LIVE.themes, started: false, directory: dir, pairing: pl.teamMode === 'fixed',
-      session: { name: pl.name, whenText: pl.whenText, startAt: pl.when, venue: pl.venue || {}, url: lobbyUrl(pl.id),
+      cohosts: pl.cohosts || [], paid: (pl.pay && pl.pay.paid) || {},
+      payView: me() ? payLine(pl.pay, pl.rsvp.filter(function (x) { return x.role === 'player'; }).map(function (x) { return x.pid; }), me().id, isStaff()) : null,
+      session: { name: pl.name, whenText: pl.whenText, startAt: pl.when, venue: pl.venue || {}, url: lobbyUrl(pl.id), price: pl.pay && pl.pay.amount ? rupiah(pl.pay.amount) : '',
         kicker: 'Ruang tunggu · ' + (pl.format === 'mexicano' ? 'Mexicano' : 'Americano') + ' · ' + pl.courts + ' court' + (pl.teamMode === 'fixed' ? ' · pasangan tetap' : '') },
       people: pl.rsvp.map(function (x) { return lobbyPerson(x.pid, x.role); }),
       chat: pl.chat || []
@@ -2276,7 +2375,8 @@ function MemoryAdapter(store, persist) {
       join: function () { lobbyJoin(sid); },
       leave: function () { planAct(sid, 'rsvp', { on: false }).catch(function () {}); },
       chat: function (text) { planAct(sid, 'chat', { text: text }).catch(function () {}); },
-      login: function () { UI.afterLogin = { lobby: sid }; go('login'); }
+      login: function () { UI.afterLogin = { lobby: sid }; go('login'); },
+      pay: function () { openPayment(sid); }
     };
     if (isStaff()) {
       h.add = function () { openLobbyAdd(sid); };
@@ -2351,6 +2451,8 @@ function MemoryAdapter(store, persist) {
       '<div class="field"><label for="' + pf + '-vaddr">Alamat</label><input id="' + pf + '-vaddr" class="input" maxlength="160" value="' + esc(v.address) + '"></div>' +
       '<div class="field"><label for="' + pf + '-vmaps">Link Google Maps</label><input id="' + pf + '-vmaps" class="input" inputmode="url" maxlength="400" placeholder="https://maps.app.goo.gl/…" value="' + esc(v.maps) + '">' +
       (v.maps ? '<a class="muted" style="font-size:13px" href="' + esc(v.maps) + '" target="_blank" rel="noopener">Cek lokasi di Google Maps</a>' : '<small class="muted">Terisi otomatis dari Cari alamat, atau tempel link dari aplikasi Google Maps.</small>') + '</div>' +
+      '<div class="field"><label for="' + pf + '-price">Biaya per orang (Rp)</label><input id="' + pf + '-price" class="input" inputmode="numeric" maxlength="12" placeholder="mis. 75000 (kosongkan bila belum tahu)" value="' + (d.price || '') + '">' +
+        '<small class="muted">' + (d.price ? rupiah(d.price) + ' per pemain. ' : '') + 'Tampil di lobi, ajakan yang dibagikan, dan halaman Pembayaran.</small></div>' +
       '<div class="field"><label for="' + pf + '-theme">Tema ruang tunggu</label><select id="' + pf + '-theme" class="input">' + themeChoices(d.theme).map(function (t) {
         return '<option value="' + esc(t.id) + '"' + (t.id === d.theme ? ' selected' : '') + '>' + esc(t.name) + '</option>'; }).join('') + '</select>' +
       (isAdmin() ? '<small class="muted">Tambah tema event atau gambar untuk HP di Menu → Tema ruang tunggu.</small>' : '') + '</div>';
@@ -2372,6 +2474,7 @@ function MemoryAdapter(store, persist) {
     on('vaddr', 'input', function (e) { d.venue.address = e.target.value; });
     on('vmaps', 'input', function (e) { d.venue.maps = e.target.value.trim(); });
     on('theme', 'change', function (e) { d.theme = e.target.value; });
+    on('price', 'input', function (e) { d.price = Number(digitsOnly(e.target.value)) || 0; });
     var find = root.querySelector('[data-pf="find"]');
     if (find) find.addEventListener('click', function () {
       var q = (d.venue.name || '').trim();
@@ -2385,16 +2488,30 @@ function MemoryAdapter(store, persist) {
   }
   function openPlanEdit(sid) {
     var pl = planById(sid); if (!pl) return;
-    var d = { name: pl.name, date: ymd(pl.when || defaultWhen()), time: hm(pl.when || defaultWhen()), venue: Object.assign({}, pl.venue || {}), vres: null, theme: pl.theme || 'court' };
+    var d = { name: pl.name, date: ymd(pl.when || defaultWhen()), time: hm(pl.when || defaultWhen()), venue: Object.assign({}, pl.venue || {}), vres: null, theme: pl.theme || 'court',
+      price: (pl.pay && pl.pay.amount) || 0 }, price0 = d.price;
     var w = openModal({ title: 'Ubah rencana sesi', icon: 'pencil', wide: true, body: '',
       foot: '<button class="btn danger" id="pe-del">' + icon('trash') + 'Hapus rencana</button><button class="btn" data-act="close">Batal</button><button class="btn primary" id="pe-save">' + icon('check') + 'Simpan</button>' });
-    function draw() { setModal(w, planFieldsHTML(d, 'pe', true)); bindPlanFields(w, d, 'pe', draw); }
+    function draw() {
+      setModal(w, planFieldsHTML(d, 'pe', true) + cohostHTML(sid) +
+        '<div class="row"><button type="button" class="btn" id="pe-pay">' + icon('wallet') + 'Pembayaran & payment collector</button></div>');
+      bindPlanFields(w, d, 'pe', draw);
+      $$('[data-pco]', w).forEach(function (b) {
+        b.addEventListener('click', function () {
+          var on = b.getAttribute('aria-pressed') !== 'true';
+          planAct(sid, 'cohost', { pid: b.dataset.pco, on: on }).then(function () { toast(P(b.dataset.pco).name + (on ? ' jadi host sesi' : ' bukan host sesi lagi')); draw(); }).catch(function () {});
+        });
+      });
+      $('#pe-pay', w).addEventListener('click', function () { openPayment(sid); });
+    }
     draw();
     $('#pe-save', w).addEventListener('click', function () {
       var when = whenFrom(d);
       if (!when) { toast('Isi tanggal dan jam main', 'err'); return; }
       closeModal(w);
-      planAct(sid, 'editPlan', { name: d.name, when: when, whenText: whenLabel(when), venue: d.venue, theme: d.theme }).then(function () { toast('Rencana diperbarui'); }).catch(function () {});
+      planAct(sid, 'editPlan', { name: d.name, when: when, whenText: whenLabel(when), venue: d.venue, theme: d.theme })
+        .then(function () { return d.price !== price0 ? planAct(sid, 'payCollector', { amount: d.price || 0 }) : null; })
+        .then(function () { toast('Rencana diperbarui'); }).catch(function () {});
     });
     $('#pe-del', w).addEventListener('click', function () {
       confirmBox('Hapus rencana sesi?', 'Lobi, daftar hadir, dan chat untuk ' + esc(pl.name) + ' ikut terhapus.', [{ label: 'Batal', value: null }, { label: 'Hapus', value: 1, kind: 'danger' }]).then(function (v) {
@@ -2425,7 +2542,7 @@ function MemoryAdapter(store, persist) {
       return '<article class="plan-card' + (soon ? ' soon' : '') + '"><div class="pc-top"><span class="chip' + (soon ? ' accent' : '') + '">' + icon('timer') + esc(planCountdown(pl)) + '</span>' +
         (mine ? '<span class="chip ok">' + icon('check') + 'Kamu hadir</span>' : '') + '</div>' +
         '<h3>' + esc(pl.name) + '</h3><div class="pc-meta">' + esc(pl.whenText || '') + (v.name || v.address ? '<br>' + esc([v.name, v.address].filter(Boolean).join(' · ')) : '') +
-        (v.maps ? ' · <a href="' + esc(v.maps) + '" target="_blank" rel="noopener">Google Maps</a>' : '') + '</div>' +
+        (v.maps ? ' · <a href="' + esc(v.maps) + '" target="_blank" rel="noopener">Google Maps</a>' : '') + (pl.pay && pl.pay.amount ? '<br>Biaya <b>' + rupiah(pl.pay.amount) + '</b> / orang' : '') + '</div>' +
         '<div class="pc-faces">' + pl.rsvp.slice(0, 8).map(function (x) { return av(x.pid); }).join('') + '<span class="muted">' + pl.rsvp.length + ' hadir</span></div>' +
         '<div class="pc-acts"><button class="btn primary" data-act="openLobby" data-id="' + pl.id + '">' + icon('users') + 'Buka lobi</button>' +
         (u ? (mine ? '<button class="btn" data-act="planLeave" data-id="' + pl.id + '">Batal hadir</button>' : '<button class="btn" data-act="planJoin" data-id="' + pl.id + '">' + icon('check') + 'Saya hadir</button>') : '') +
@@ -2882,6 +2999,354 @@ function MemoryAdapter(store, persist) {
   }
   function setThemeList(list) { LIVE.themes = list || []; LIVE.themesSig = JSON.stringify(LIVE.themes); Lobby.setThemes(LIVE.themes); }
 
+  /* ---------- pembayaran sesi: biaya per orang, payment collector, rekening, bukti bayar ---------- */
+  function rupiah(n) { return 'Rp ' + String(Math.round(n || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  function digitsOnly(v) { return String(v || '').replace(/\D/g, ''); }
+  /* ringkasan satu baris (dashboard & lobi). payerIds: pemain yang membayar */
+  function payLine(pay, payerIds, uid, staff) {
+    if (!uid) return null;
+    var payer = payerIds.indexOf(uid) >= 0, coll = pay && pay.collector, amt = pay && pay.amount;
+    if (!coll && !amt) return staff ? { cls: '', title: 'Pembayaran', sub: 'Atur biaya per orang & payment collector', btn: 'Atur' } : null;
+    var paid = (pay && pay.paid) || {}, n = payerIds.filter(function (id) { return paid[id]; }).length;
+    var who = coll ? 'Collector ' + P(coll).name : 'Collector belum ditentukan';
+    if (payer && !coll) return { cls: '', title: 'Biaya ' + rupiah(amt) + ' / orang', sub: who, btn: 'Lihat' };
+    if (payer) return paid[uid] ? { cls: 'ok', title: 'Kamu sudah bayar', sub: (amt ? rupiah(amt) + ' · ' : '') + who, btn: 'Lihat' }
+      : { cls: 'due', title: 'Belum bayar' + (amt ? ' · ' + rupiah(amt) : ''), sub: who + ' · ' + n + '/' + payerIds.length + ' sudah bayar', btn: 'Bayar' };
+    if (!staff && coll !== uid) return null;
+    return { cls: '', title: 'Pembayaran · ' + n + '/' + payerIds.length + ' lunas', sub: (amt ? rupiah(amt) + ' / orang · ' : '') + who, btn: 'Lihat' };
+  }
+  function payCard() {
+    var u = me();
+    if (!u || !S) return '';
+    var v = payLine(S.pay, Object.keys(S.parts), u.id, isStaff() || isCohostMe());
+    if (!v) return '';
+    return '<section class="pay-strip ' + v.cls + '">' + '<span class="ps-ic">' + icon(v.cls === 'ok' ? 'check' : 'wallet') + '</span><div><b>' + esc(v.title) + '</b><small>' + esc(v.sub) + '</small></div>' +
+      '<button class="btn' + (v.cls === 'due' ? ' primary' : '') + '" data-act="payOpen" data-sid="' + S.id + '">' + esc(v.btn) + '</button></section>';
+  }
+  function copyText(t, label) {
+    var done = function () { toast(label + ' disalin'); };
+    var fallback = function () {
+      var ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      try { if (document.execCommand('copy')) done(); else toast('Tidak bisa menyalin. Tekan lama untuk menyalin manual.', 'err'); } catch (e) { toast('Tidak bisa menyalin', 'err'); }
+      ta.remove();
+    };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(done, fallback); else fallback();
+  }
+  /* aksi pembayaran/host sesi pada sesi mana pun (lobi, berjalan, atau sudah selesai) */
+  function sessAct(sid, type, payload) {
+    return withBusy(api('act', { sid: sid, type: type, payload: payload || {} })).then(function (r) {
+      if (r.plan) { upsertPlan(r.plan); onPlansChange(); }
+      else if (r.sid === LIVE.sid) { LIVE.S = r.S; LIVE.v = r.v; onLiveChange(); }
+      if (UI.past && UI.past.S && UI.past.S.id === r.sid) { UI.past.S = r.S; if (UI.view === 'past') render(); }
+      return r;
+    }).catch(function (e) { toast(errMsg(e), 'err'); throw e; });
+  }
+  var PAY = null; // panel pembayaran yang sedang terbuka
+  function paySig(sid) {
+    var src = LIVE.sid === sid && LIVE.S ? LIVE.S.pay : (planById(sid) || {}).pay;
+    return JSON.stringify(src || null);
+  }
+  function refreshPay() {
+    if (!PAY || !document.body.contains(PAY.w)) { PAY = null; return; }
+    var sg = paySig(PAY.sid);
+    if (sg !== PAY.sig) { PAY.sig = sg; PAY.load(); }
+  }
+  function openPayment(sid) {
+    if (!me()) { UI.afterLogin = { pay: sid }; toast('Masuk dulu untuk melihat pembayaran'); go('login'); return; }
+    if (PAY && document.body.contains(PAY.w)) closeModal(PAY.w);
+    var w = openModal({ title: 'Pembayaran', icon: 'wallet', wide: true, body: '<div class="muted">Memuat…</div>' });
+    var st = PAY = { sid: sid, w: w, info: null, editBank: false, sig: paySig(sid) };
+    st.load = function () {
+      return api('payInfo', { sid: sid }).then(function (i) { if (PAY !== st) return; st.info = i; draw(); })
+        .catch(function (e) { toast(errMsg(e), 'err'); if (PAY === st) { closeModal(w); PAY = null; } });
+    };
+    var bankRow = function (label, val, copyVal) {
+      return '<div class="pb-row"><span><small>' + label + '</small><b>' + esc(val) + '</b></span>' +
+        (copyVal ? '<button type="button" class="btn sm" data-copy="' + esc(copyVal) + '" data-lbl="' + esc(label) + '">' + icon('copy') + 'Salin</button>' : '') + '</div>';
+    };
+    function draw() {
+      var i = st.info, u = me(), coll = i.collector, bank = i.bank;
+      var paidN = i.list.filter(function (x) { return x.paid; }).length;
+      var h = '<p class="muted" style="margin:0">' + esc(i.name) + '</p>';
+      if (i.amount) h += '<div class="pay-amt"><small>Biaya per orang</small><b>' + rupiah(i.amount) + '</b><button type="button" class="btn sm" data-copy="' + i.amount + '" data-lbl="Nominal">' + icon('copy') + 'Salin</button></div>';
+      if (i.canSet) {
+        h += '<section class="pay-set"><div class="row"><div class="field" style="flex:2;min-width:180px"><label for="pay-col">Payment collector</label><select id="pay-col" class="input"><option value="">— Belum ditentukan —</option>' +
+          i.choices.concat(coll && i.choices.indexOf(coll) < 0 ? [coll] : []).map(function (id) {
+            return '<option value="' + id + '"' + (id === coll ? ' selected' : '') + '>' + esc(P(id).name) + (P(id).role === 'user' ? '' : ' (' + roleLabel(P(id).role).toLowerCase() + ')') + '</option>';
+          }).join('') + '</select></div>' +
+          '<div class="field" style="flex:1;min-width:140px"><label for="pay-amt">Biaya per orang (Rp)</label><input id="pay-amt" class="input" inputmode="numeric" placeholder="mis. 75000" value="' + (i.amount || '') + '"></div></div>' +
+          '<button type="button" class="btn" id="pay-setsave">' + icon('check') + 'Simpan collector & biaya</button></section>';
+      }
+      if (!coll) h += '<div class="empty">' + icon('wallet') + '<div>' + (i.canSet ? 'Pilih payment collector dari host atau pemain di atas.' : 'Host belum menentukan payment collector.') + '</div></div>';
+      else {
+        h += '<section class="pay-card"><div class="pay-col">' + av(coll) + '<span><small>Payment collector</small><b>' + esc(P(coll).name) + '</b></span></div>';
+        if (bank && !st.editBank) {
+          h += '<div class="pay-bank">' + bankRow('Bank', bank.bank) + bankRow('Nama rekening', bank.holder) + bankRow('No. rekening', bank.number, digitsOnly(bank.number)) + '</div>' +
+            (i.canManage ? '<button type="button" class="btn ghost sm" id="pay-editbank">' + icon('pencil') + 'Ubah rekening</button>' : '');
+        } else if (i.canManage) {
+          h += '<form id="pay-bankf" class="pay-bankf"><div class="field"><label for="pb-bank">Nama bank / e-wallet</label><input id="pb-bank" class="input" maxlength="40" placeholder="mis. BCA, Mandiri, DANA" value="' + esc(bank ? bank.bank : '') + '"></div>' +
+            '<div class="field"><label for="pb-holder">Nama pemilik rekening</label><input id="pb-holder" class="input" maxlength="60" value="' + esc(bank ? bank.holder : P(coll).name) + '"></div>' +
+            '<div class="field"><label for="pb-number">Nomor rekening</label><input id="pb-number" class="input" inputmode="numeric" maxlength="34" value="' + esc(bank ? bank.number : '') + '"></div>' +
+            '<div class="row">' + (bank ? '<button type="button" class="btn" id="pay-cancelbank">Batal</button>' : '') + '<button class="btn primary" type="submit">' + icon('check') + 'Simpan rekening</button></div>' +
+            (i.isCollector ? '<small class="muted">Rekening disimpan di akunmu dan otomatis terisi saat kamu jadi collector lagi.</small>' : '') + '</form>';
+        } else h += '<p class="muted" style="margin:0">Collector belum mengisi rekening.</p>';
+        h += '</section>';
+      }
+      if (coll && i.isPayer && !i.isCollector) {             // collector menandai bayarnya sendiri di daftar
+        var my = i.list.filter(function (x) { return x.pid === u.id; })[0] || {};
+        h += '<section class="pay-me' + (my.paid ? ' ok' : my.rejected ? ' bad' : '') + '"><span class="ps-ic">' + icon(my.paid ? 'check' : 'wallet') + '</span><div><b>' +
+          (my.paid ? 'Kamu sudah bayar' : my.rejected ? 'Pembayaran belum diterima' : 'Kamu belum bayar') + '</b><small>' +
+          (my.paid ? (my.by === 'proof' ? 'Bukti terkirim, tanda hijau sudah muncul. Collector bisa membatalkan bila transfer belum masuk.' : 'Ditandai lunas oleh collector.')
+            : my.rejected ? (my.note ? 'Catatan collector: ' + esc(my.note) + '. ' : '') + 'Cek transfer lalu unggah bukti yang benar.'
+            : 'Transfer ke rekening di atas lalu unggah bukti; tanda hijau muncul otomatis.') + '</small>' +
+          (my.proofUrl ? '<button type="button" class="linkbtn" data-proof="' + esc(my.proofUrl) + '" data-who="' + esc(P(u.id).name) + '">Lihat bukti</button>' : '') + '</div>' +
+          '<label class="btn' + (my.paid ? '' : ' primary') + '" for="pay-file">' + icon('camera') + (my.proofUrl ? 'Ganti bukti' : 'Unggah bukti') + '</label><input id="pay-file" type="file" accept="image/*" hidden></section>';
+      }
+      if (coll) {
+        var rows = i.list.slice().sort(function (a, b) { return (a.paid - b.paid) || P(a.pid).name.localeCompare(P(b.pid).name); });
+        h += '<section class="pay-listw"><h3 class="pay-h">Sudah bayar <b>' + paidN + '</b> dari ' + i.list.length + '</h3><div class="list pay-list">' + rows.map(function (x) {
+          var stt = x.paid ? (x.by === 'proof' ? 'Bukti terkirim' : 'Ditandai lunas') : x.rejected ? 'Dibatalkan' + (x.note ? ': ' + x.note : '') : 'Belum bayar';
+          return '<div class="li pay-row' + (x.paid ? ' ok' : '') + '"><span class="pay-dot' + (x.paid ? ' ok' : '') + '" title="' + (x.paid ? 'Sudah bayar' : 'Belum bayar') + '">' + (x.paid ? icon('check') : '') + '</span>' + av(x.pid) +
+            '<span><b>' + esc(P(x.pid).name) + (x.pid === u.id ? ' (kamu)' : '') + '</b><small>' + esc(stt) + '</small></span>' +
+            (x.proofUrl ? '<button type="button" class="icon-btn" data-proof="' + esc(x.proofUrl) + '" data-who="' + esc(P(x.pid).name) + '" aria-label="Lihat bukti ' + esc(P(x.pid).name) + '" title="Lihat bukti">' + icon('image') + '</button>' : '') +
+            (i.canManage ? '<button type="button" class="btn sm" data-mark="' + x.pid + '" data-paid="' + (x.paid ? 0 : 1) + '">' + (x.paid ? 'Batalkan' : 'Tandai lunas') + '</button>' : '') + '</div>';
+        }).join('') + '</div></section>';
+      }
+      setModal(w, h);
+      bind();
+    }
+    function bind() {
+      $$('[data-copy]', w).forEach(function (b) { b.addEventListener('click', function () { copyText(b.dataset.copy, b.dataset.lbl); }); });
+      $$('[data-proof]', w).forEach(function (b) {
+        b.addEventListener('click', function () { openModal({ title: 'Bukti bayar · ' + b.dataset.who, icon: 'image', body: '<img class="proof-img" src="' + esc(b.dataset.proof) + '" alt="Bukti bayar ' + esc(b.dataset.who) + '">' }); });
+      });
+      var ss = $('#pay-setsave', w);
+      if (ss) ss.addEventListener('click', function () {
+        sessAct(sid, 'payCollector', { pid: $('#pay-col', w).value || null, amount: Number(digitsOnly($('#pay-amt', w).value)) || 0 })
+          .then(function () { toast('Pembayaran diperbarui'); st.load(); }).catch(function () {});
+      });
+      var eb = $('#pay-editbank', w); if (eb) eb.addEventListener('click', function () { st.editBank = true; draw(); });
+      var cb = $('#pay-cancelbank', w); if (cb) cb.addEventListener('click', function () { st.editBank = false; draw(); });
+      var bf = $('#pay-bankf', w);
+      if (bf) bf.addEventListener('submit', function (e) {
+        e.preventDefault();
+        sessAct(sid, 'payBank', { bank: $('#pb-bank', w).value, holder: $('#pb-holder', w).value, number: $('#pb-number', w).value })
+          .then(function () { st.editBank = false; toast('Rekening disimpan'); st.load(); }).catch(function () {});
+      });
+      var fi = $('#pay-file', w);
+      if (fi) fi.addEventListener('change', function () {
+        var f = fi.files[0]; if (!f) return;
+        readImage(f, 1400, .75).then(function (d) { return d.length > 1300000 ? readImage(f, 1000, .65) : d; })
+          .then(function (d) { return sessAct(sid, 'payProof', { data: d }); })
+          .then(function () { toast('Bukti terkirim. Tanda hijau sudah muncul.'); st.load(); })
+          .catch(function (e) { if (e && e.message && !/INVALID|FORBIDDEN/.test(e.message)) toast(errMsg(e), 'err'); });
+      });
+      $$('[data-mark]', w).forEach(function (b) {
+        b.addEventListener('click', function () {
+          var pid = b.dataset.mark, paid = b.dataset.paid === '1';
+          var send = function (note) { sessAct(sid, 'payMark', { pid: pid, paid: paid, note: note || '' }).then(function () { st.load(); }).catch(function () {}); };
+          if (paid) { send(''); return; }
+          var cw = openModal({ title: 'Batalkan tanda lunas?', icon: 'alert', body: '<p style="margin:0">' + esc(P(pid).name) + ' akan ditandai belum bayar dan mendapat notifikasi.</p>' +
+            '<div class="field"><label for="pm-note">Alasan (opsional)</label><input id="pm-note" class="input" maxlength="120" placeholder="mis. Transfer belum masuk"></div>',
+            foot: '<button class="btn" data-act="close">Batal</button><button class="btn danger" id="pm-ok">Batalkan tanda lunas</button>' });
+          $('#pm-ok', cw).addEventListener('click', function () { var n = $('#pm-note', cw).value; closeModal(cw); send(n); });
+        });
+      });
+    }
+    st.load();
+  }
+  /* pemain yang ditunjuk jadi host sesi (di lobi; saat main lewat panel Pemain) */
+  function cohostHTML(sid) {
+    var pl = planById(sid); if (!pl) return '';
+    var ids = pl.rsvp.filter(function (x) { return x.role === 'player' && P(x.pid).role === 'user'; }).map(function (x) { return x.pid; }), co = pl.cohosts || [];
+    return '<div class="field"><span class="lbl-sm">Pemain jadi host sesi · boleh isi skor & atur pemain di sesi ini saja</span>' +
+      (ids.length ? '<div class="host-pick">' + ids.map(function (id) {
+        return '<button type="button" class="hp' + (co.indexOf(id) >= 0 ? ' on' : '') + '" data-pco="' + id + '" aria-pressed="' + (co.indexOf(id) >= 0) + '">' + av(id) + esc(P(id).name) + '</button>';
+      }).join('') + '</div>' : '<div class="muted">Belum ada pemain yang hadir.</div>') + '</div>';
+  }
+
+  /* ---------- riwayat match: durasi, filter "match saya", koreksi skor ---------- */
+  function fmtDur(ms) {
+    if (!(ms > 0)) return '';
+    var mn = Math.max(1, Math.round(ms / 60000));
+    return mn < 60 ? mn + ' mnt' : Math.floor(mn / 60) + ' j ' + ('0' + mn % 60).slice(-2) + ' mnt';
+  }
+  /* lama match: dari Game start (atau saat court terisi bila tidak ditekan) sampai skor masuk */
+  function matchDur(m) {
+    var t0 = m.go || m.start;
+    if (!t0) return '';
+    if (m.status === 'done' && m.end) return fmtDur(m.end - t0);
+    if (m.status === 'live' && m.go) return 'berjalan ' + fmtDur(srvNow() - m.go);
+    return '';
+  }
+  function sessionDur(S0) {
+    var ds = S0.matches.filter(function (m) { return m.status === 'done' && m.end; });
+    if (!ds.length) return '';
+    var t0 = Math.min.apply(null, ds.map(function (m) { return m.go || m.start || m.end; })), t1 = Math.max.apply(null, ds.map(function (m) { return m.end; }));
+    return fmtDur(t1 - t0);
+  }
+  function disputeOf(S0, mid) {
+    var list = (S0.disputes || []).filter(function (x) { return x.m === mid; });
+    return list.filter(function (x) { return x.st === 'open'; })[0] || list[list.length - 1] || null;
+  }
+  function openDisputes(S0) { return (S0.disputes || []).filter(function (x) { return x.st === 'open'; }); }
+  /* boleh mengubah skor / mereview koreksi di sesi ini */
+  function canFix(S0) { var u = me(); return !!(u && (isStaff() || (S0.cohosts || []).indexOf(u.id) >= 0)); }
+  function matchRows(S0, mine) {
+    var u = me(), cn = function (id) { var i = S0.courts.findIndex(function (c) { return c.id === id; }); return 'C' + (i + 1); };
+    var edit = canFix(S0) && S0 === S;
+    var ms = S0.matches.filter(function (m) { return !mine || (u && m.A.concat(m.B).indexOf(u.id) >= 0); }).sort(function (a, b) { return b.no - a.no; });
+    if (!ms.length) return '<div class="empty">' + icon('history') + '<div>' + (mine ? 'Kamu belum main di sesi ini.' : 'Belum ada match.') + '</div></div>';
+    return '<div class="list">' + ms.map(function (m) {
+      var done = m.status === 'done', aw = done && m.sA > m.sB, bw = done && m.sB > m.sA, inM = u && m.A.concat(m.B).indexOf(u.id) >= 0;
+      var dp = disputeOf(S0, m.id), dur = matchDur(m);
+      var stt = m.status === 'live' ? (Engine.isWaiting(m) ? 'menunggu pemain dari court lain' : m.go ? 'sedang bermain' : 'siap mulai') : m.status === 'void' ? 'dibatalkan' : 'selesai';
+      var badge = dp ? '<span class="dtag ' + dp.st + '">' + (dp.st === 'open' ? 'Koreksi ' + dp.a + '-' + dp.b + ' direview' : dp.st === 'fixed' ? 'Skor dikoreksi' : 'Koreksi ditolak' + (dp.reply ? ': ' + esc(dp.reply) : '')) + '</span>' : '';
+      var acts = '';
+      if (done && edit) acts += '<button type="button" class="btn sm" data-h="' + m.id + '">' + icon('pencil') + 'Ubah skor</button>';
+      if (done && inM && !(dp && dp.st === 'open')) acts += '<button type="button" class="btn sm ghost" data-dispute="' + m.id + '">' + icon('alertMsg') + 'Koreksi skor</button>';
+      return '<div class="hist' + (m.status === 'void' ? ' void' : '') + (inM ? ' mine' : '') + '"><span class="no">#' + m.no + '</span><span class="tm"><span class="' + (aw ? 'w' : '') + '">' + esc(P(m.A[0]).name) + ' & ' + esc(P(m.A[1]).name) + '</span><br>' +
+        '<span class="' + (bw ? 'w' : '') + '">' + esc(P(m.B[0]).name) + ' & ' + esc(P(m.B[1]).name) + '</span><br><small class="muted">' + cn(m.court) + ' · ' + stt + (dur ? ' · ' + icon('timer') + dur : '') + '</small>' +
+        (badge ? '<br>' + badge : '') + (acts ? '<span class="h-acts">' + acts + '</span>' : '') + '</span>' +
+        '<span class="sc">' + (done ? m.sA + '-' + m.sB : m.status === 'live' ? icon('timer') : '–') + '</span></div>';
+    }).join('') + '</div>';
+  }
+  function bindMatchRows(root, S0) {
+    $$('[data-h]', root).forEach(function (el) { el.addEventListener('click', function () { openScore(el.dataset.h, true); }); });
+    $$('[data-dispute]', root).forEach(function (el) { el.addEventListener('click', function () { openDispute(S0, el.dataset.dispute); }); });
+  }
+  function openHistory() {
+    if (!S) return;
+    var existing = $$('#modals .modal-wrap').filter(function (x) { return x.dataset.k === 'hist'; })[0];
+    var u = me(), inS = !!(u && S.parts[u.id]), open = openDisputes(S), mine = inS && UI.histMine;
+    var body = (inS ? segBtns('histMine', [['all', 'Semua match'], ['mine', 'Match saya']], mine ? 'mine' : 'all') : '') +
+      (canFix(S) && open.length ? '<button type="button" class="dispute-bar" id="hist-disp">' + icon('alertMsg') + '<span><b>' + open.length + ' koreksi skor menunggu review</b><small>Ketuk untuk mereview</small></span>' + icon('chevR') + '</button>' : '') +
+      matchRows(S, mine);
+    if (existing) existing.remove();
+    var w = openModal({ title: 'Riwayat match', icon: 'history', wide: true, body: body,
+      foot: isStaff() ? '<button class="btn" id="hist-csv">' + icon('download') + 'Unduh CSV (klasemen & match)</button>' : '' });
+    w.dataset.k = 'hist';
+    var csvBtn = $('#hist-csv', w); if (csvBtn) csvBtn.addEventListener('click', function () { exportCSV(S); });
+    var db = $('#hist-disp', w); if (db) db.addEventListener('click', function () { openDisputeReview(S); });
+    UI.histOpen = true;
+    bindMatchRows(w, S);
+    $('[data-act="close"]', w).addEventListener('click', function () { UI.histOpen = false; });
+  }
+  /* pemain mengusulkan koreksi skor; diteruskan ke admin & host */
+  function openDispute(S0, mid) {
+    var m = Engine.findMatch(S0, mid); if (!m) return;
+    var st = { a: m.sA, b: m.sB };
+    var w = openModal({ title: 'Koreksi skor · Match #' + m.no, icon: 'alertMsg', body: '',
+      foot: '<button class="btn" data-act="close">Batal</button><button class="btn primary" id="dp-send">' + icon('check') + 'Kirim ke admin & host</button>' });
+    function draw() {
+      var v = Engine.validateScore(S0, st.a, st.b), same = st.a === m.sA && st.b === m.sB;
+      setModal(w, '<p class="muted" style="margin:0">Tercatat <b>' + m.sA + '-' + m.sB + '</b>. Isi skor yang benar; admin dan host akan mereview lalu memperbaikinya.</p>' +
+        '<div class="dp-score"><label><span>' + esc(P(m.A[0]).name) + ' & ' + esc(P(m.A[1]).name) + '</span><input id="dp-a" class="input" inputmode="numeric" maxlength="2" value="' + st.a + '"></label>' +
+        '<b>:</b><label><span>' + esc(P(m.B[0]).name) + ' & ' + esc(P(m.B[1]).name) + '</span><input id="dp-b" class="input" inputmode="numeric" maxlength="2" value="' + st.b + '"></label></div>' +
+        '<p class="dp-msg' + (v.ok && !same ? '' : ' err') + '">' + (same ? 'Ubah skornya dulu.' : v.ok ? 'Contoh aturan: ' + esc(Engine.scoringLabel(S0.scoring)) : esc(v.msg)) + '</p>' +
+        '<div class="field"><label for="dp-note">Keterangan (opsional)</label><textarea id="dp-note" class="input" rows="2" maxlength="200" placeholder="mis. skor terbalik, harusnya 13-8"></textarea></div>');
+      $('#dp-send', w).disabled = !v.ok || same;
+      ['a', 'b'].forEach(function (k) {
+        var inp = $('#dp-' + k, w);
+        inp.addEventListener('input', function () { var note = $('#dp-note', w).value; st[k] = parseInt(digitsOnly(inp.value), 10); if (isNaN(st[k])) st[k] = null; draw(); $('#dp-note', w).value = note; var n = $('#dp-' + k, w); n.focus(); n.setSelectionRange(n.value.length, n.value.length); });
+      });
+    }
+    draw();
+    $('#dp-send', w).addEventListener('click', function () {
+      sessAct(S0.id, 'dispute', { m: m.id, a: st.a, b: st.b, note: $('#dp-note', w).value }).then(function () {
+        closeModal(w); toast('Koreksi dikirim ke admin & host');
+        if (UI.histOpen && S0 === S) openHistory();
+      }).catch(function () {});
+    });
+  }
+  /* admin/host (dan pemain host sesi) mereview koreksi */
+  function openDisputeReview(S0) {
+    var w = openModal({ title: 'Koreksi skor', icon: 'alertMsg', wide: true, body: '' });
+    function cur() { return S0.id === LIVE.sid && LIVE.S ? LIVE.S : UI.past && UI.past.S && UI.past.S.id === S0.id ? UI.past.S : S0; }
+    function draw() {
+      var S1 = cur(), list = openDisputes(S1);
+      if (!list.length) { setModal(w, '<div class="empty">' + icon('check') + '<div>Semua koreksi sudah direview.</div></div>'); return; }
+      setModal(w, list.map(function (x) {
+        var m = Engine.findMatch(S1, x.m) || { A: ['?', '?'], B: ['?', '?'], sA: x.was[0], sB: x.was[1], no: x.no };
+        return '<section class="dp-card" data-id="' + x.id + '"><div class="dp-h">' + av(x.by) + '<span><b>' + esc(P(x.by).name) + ' · Match #' + x.no + '</b><small>' + fmtDate(x.at) + '</small></span></div>' +
+          '<div class="dp-teams"><span>' + esc(P(m.A[0]).name) + ' & ' + esc(P(m.A[1]).name) + '</span><span>vs</span><span>' + esc(P(m.B[0]).name) + ' & ' + esc(P(m.B[1]).name) + '</span></div>' +
+          '<p style="margin:0">Tercatat <b>' + x.was[0] + '-' + x.was[1] + '</b> → usulan <b class="acc">' + x.a + '-' + x.b + '</b></p>' + (x.note ? '<p class="dp-note">“' + esc(x.note) + '”</p>' : '') +
+          '<div class="dp-score sm"><input class="input" data-k="a" inputmode="numeric" maxlength="2" value="' + x.a + '" aria-label="Skor tim 1"><b>:</b><input class="input" data-k="b" inputmode="numeric" maxlength="2" value="' + x.b + '" aria-label="Skor tim 2"></div>' +
+          '<input class="input" data-k="reply" maxlength="200" placeholder="Balasan untuk ' + esc(P(x.by).name) + ' (opsional)">' +
+          '<div class="row"><button type="button" class="btn danger" data-ok="0">Tolak</button><button type="button" class="btn primary" data-ok="1">' + icon('check') + 'Simpan skor ini</button></div></section>';
+      }).join(''));
+      $$('.dp-card', w).forEach(function (c) {
+        $$('[data-ok]', c).forEach(function (b) {
+          b.addEventListener('click', function () {
+            var ok = b.dataset.ok === '1', a = parseInt($('[data-k="a"]', c).value, 10), bb = parseInt($('[data-k="b"]', c).value, 10);
+            if (ok) { var v = Engine.validateScore(cur(), a, bb); if (!v.ok) { toast(v.msg, 'err'); return; } }
+            sessAct(S0.id, 'disputeDone', { id: c.dataset.id, ok: ok, a: a, b: bb, reply: $('[data-k="reply"]', c).value })
+              .then(function () { toast(ok ? 'Skor diperbaiki, pemain diberi tahu' : 'Koreksi ditolak, pemain diberi tahu'); draw(); if (UI.histOpen && S0.id === LIVE.sid) openHistory(); }).catch(function () {});
+          });
+        });
+      });
+    }
+    draw();
+  }
+  function disputeBanner() {
+    if (!S || !canFix(S)) return '';
+    var n = openDisputes(S).length;
+    return n ? '<button type="button" class="dispute-bar" data-act="disputes">' + icon('alertMsg') + '<span><b>' + n + ' koreksi skor menunggu review</b><small>Dari pemain di sesi ini</small></span>' + icon('chevR') + '</button>' : '';
+  }
+  function handleLink(paySid, disputeSid) {
+    if (paySid) openPayment(paySid);
+    if (!disputeSid) return;
+    if (LIVE.S && LIVE.sid === disputeSid) { if (canFix(LIVE.S)) openDisputeReview(LIVE.S); else openHistory(); return; }
+    if (!me()) return;
+    api('pastSession', { sid: disputeSid }).then(function (r) { UI.past = { list: null, S: r.S, mine: false }; go('past'); if (canFix(r.S)) openDisputeReview(r.S); }).catch(function (e) { toast(errMsg(e), 'err'); });
+  }
+
+  /* ---------- riwayat sesi yang sudah selesai (semua yang login) ---------- */
+  function loadPast() {
+    UI.past = UI.past || { list: null, S: null, mine: false, onlyMine: false };
+    api('pastSessions').then(function (l) { UI.past.list = l; if (UI.view === 'past') render(); }).catch(function (e) { toast(errMsg(e), 'err'); });
+  }
+  function viewPast() {
+    var X = UI.past || {};
+    if (X.S) return viewPastDetail(X.S);
+    if (!X.list) return loaderHTML();
+    var list = X.list.filter(function (s) { return !X.onlyMine || s.mine; });
+    return '<div class="past"><div class="players-h"><h1>Riwayat sesi</h1>' + segBtns('pastMine', [['all', 'Semua sesi'], ['mine', 'Yang saya ikuti']], X.onlyMine ? 'mine' : 'all') + '</div>' +
+      (list.length ? '<div class="past-list">' + list.map(function (s) {
+        var v = s.venue || {};
+        return '<button class="past-card" data-act="pastOpen" data-sid="' + s.id + '"><span class="pc-top"><b>' + esc(s.name) + '</b>' + (s.mine ? '<span class="chip ok">' + icon('check') + 'Kamu ikut</span>' : '') + '</span>' +
+          '<small class="muted">' + fmtDate(s.endedAt || s.date) + (v.name ? ' · ' + esc(v.name) : '') + ' · ' + (s.format === 'mexicano' ? 'Mexicano' : 'Americano') + ' · ' + s.players + ' pemain · ' + s.matches + ' match</small>' +
+          '<span class="past-top">' + s.top.map(function (ids, i) { return '<span class="pt' + (i + 1) + '">' + (i ? '' : icon('crown')) + '<b>' + (i + 1) + '</b>' + esc(ids.map(function (id) { return P(id).name; }).join(' & ')) + '</span>'; }).join('') + '</span></button>';
+      }).join('') + '</div>' : '<div class="empty">' + icon('history') + '<div>' + (X.onlyMine ? 'Kamu belum ikut sesi yang sudah selesai.' : 'Belum ada sesi yang selesai.') + '</div></div>') + '</div>' + staffNav();
+  }
+  function viewPastDetail(S0) {
+    var u = me(), fixed = S0.teamMode === 'fixed', v = (S0.plan && S0.plan.venue) || {};
+    var rows = Engine.standings(S0, LIVE.people, fixed ? { unit: 'team', sortBy: S0.rules.sortBy } : { sortBy: S0.rules.sortBy });
+    var inS = !!(u && (S0.parts[u.id] || (S0.hosts || []).indexOf(u.id) >= 0));
+    var unit = S0.scoring.type === 'tennis' ? 'game' : 'poin', dur = sessionDur(S0), payer = u && S0.parts[u.id];
+    var face = function (r) { return fixed ? '<span class="av duo">' + miniFace(r.team.a) + miniFace(r.team.b) + '</span>' : av(r.id); };
+    var nm = function (r) { return fixed ? esc(P(r.team.a).name) + ' & ' + esc(P(r.team.b).name) : esc(P(r.id).name); };
+    var isMe = function (r) { return u && (fixed ? (r.team.a === u.id || r.team.b === u.id) : r.id === u.id); };
+    var h = '<div class="past"><button class="btn ghost sm" data-act="pastBack">' + icon('chevL') + 'Semua sesi</button>' +
+      '<header class="past-h"><h1>' + esc(S0.name) + '</h1><div class="sess-meta"><span class="chip">' + fmtDate(S0.endedAt || S0.date) + '</span>' + (v.name ? '<span class="chip">' + icon('pin') + esc(v.name) + '</span>' : '') +
+      '<span class="chip accent">' + (S0.format === 'mexicano' ? 'Mexicano' : 'Americano') + '</span><span class="chip">' + esc(Engine.scoringLabel(S0.scoring)) + '</span>' +
+      '<span class="chip">' + icon('users') + Object.keys(S0.parts).length + '</span>' + (dur ? '<span class="chip">' + icon('timer') + dur + '</span>' : '') + '</div></header>';
+    if (S0.pay && (S0.pay.amount || S0.pay.collector) && (inS || isStaff())) {
+      var pv = payLine(S0.pay, Object.keys(S0.parts), u.id, isStaff());
+      if (pv) h += '<section class="pay-strip ' + pv.cls + '"><span class="ps-ic">' + icon(pv.cls === 'ok' ? 'check' : 'wallet') + '</span><div><b>' + esc(pv.title) + '</b><small>' + esc(pv.sub) + '</small></div>' +
+        '<button class="btn' + (pv.cls === 'due' ? ' primary' : '') + '" data-act="payOpen" data-sid="' + S0.id + '">' + esc(pv.btn) + '</button></section>';
+    }
+    if (canFix(S0) && openDisputes(S0).length) h += '<button type="button" class="dispute-bar" data-act="pastDisputes">' + icon('alertMsg') + '<span><b>' + openDisputes(S0).length + ' koreksi skor menunggu review</b><small>Ketuk untuk mereview</small></span>' + icon('chevR') + '</button>';
+    h += '<div class="past-grid"><section><h2 class="sec-title">' + icon('trophy') + 'Klasemen akhir</h2><div class="list past-stand">' + rows.map(function (r) {
+      return '<div class="li' + (isMe(r) ? ' me' : '') + (r.rank <= 3 ? ' top' + r.rank : '') + '"><span class="rk">' + r.rank + '</span>' + face(r) + '<span><b>' + nm(r) + (isMe(r) ? ' (kamu)' : '') + '</b><small>' + r.played + ' main · ' + r.w + '-' + r.d + '-' + r.l + ' · selisih ' + (r.diff > 0 ? '+' : '') + r.diff + '</small></span><span class="num"><b>' + r.pf + '</b><small>' + unit + '</small></span></div>';
+    }).join('') + '</div></section>';
+    var mine = inS && UI.past.mine;
+    h += '<section><h2 class="sec-title">' + icon('history') + 'Riwayat match</h2>' + (S0.parts[u.id] ? segBtns('pastMatchMine', [['all', 'Semua match'], ['mine', 'Match saya']], mine ? 'mine' : 'all') : '') +
+      '<div id="past-matches">' + matchRows(S0, mine) + '</div></section></div></div>';
+    return h + staffNav();
+  }
+
   /* ---------- kudos setelah sesi ----------
      tiap orang memberi 1–2 kudos untuk tiap pemain/host yang hadir; penerima melihat siapa pemberinya, orang lain tidak (admin melihat semua) */
   function kLabel(k) { return String(k).split('_').map(function (w) { return w.charAt(0).toUpperCase() + w.slice(1); }).join(' '); }
@@ -3045,12 +3510,13 @@ function MemoryAdapter(store, persist) {
     else if (v === 'profile') body = viewProfile();
     else if (v === 'themes' && isAdmin()) body = viewThemes();
     else if (v === 'kudos' && me()) body = viewKudos();
+    else if (v === 'past' && me()) body = viewPast();
     else if (v === 'scoreboard' && S) body = viewScoreboard();
     else if (v === 'install') body = viewInstall();
     else if (v === 'notify') body = viewNotify();
     else { UI.view = v = 'dash'; body = viewDash(); }
     var bare = v === 'firstrun' || v === 'login' || v === 'scoreboard' || v === 'install' || v === 'notify';
-    $('#app').innerHTML = (bare ? '' : topbar()) + '<main id="view" class="v-' + v + (isStaff() ? ' staff' : '') + '">' + body + '</main>';
+    $('#app').innerHTML = (bare ? '' : topbar()) + '<main id="view" class="v-' + v + (canRun() ? ' staff' : '') + '">' + body + '</main>';
     $('#app').classList.toggle('board-app', v === 'board' && !!S && fitMode());
     fitCourts();
     var nl = $('.stand-list'); if (nl) nl.scrollTop = scrollTop;
@@ -3090,6 +3556,7 @@ function MemoryAdapter(store, persist) {
 
   /* form di halaman (masuk, admin pertama, profil) */
   function bindView() {
+    if (UI.view === 'past' && UI.past && UI.past.S) bindMatchRows($('#app'), UI.past.S);
     if (UI.view === 'setup' && UI.setup) {
       bindPlanFields($('#app'), UI.setup, 'su', render);
       var pe = $('#su-pairs');
@@ -3151,6 +3618,7 @@ function MemoryAdapter(store, persist) {
       DB.full[AUTH.me.id] = DB.full[AUTH.me.id] || AUTH.me;
       var back = UI.afterLogin; UI.afterLogin = null;
       if (back && back.kudos) openKudos(back.kudos);
+      else if (back && back.pay) { go(homeView()); openPayment(back.pay); }
       else if (back && planById(back.lobby)) { openLobby(back.lobby); if (back.join) lobbyJoin(back.lobby); }
       else if (isStaff() && !S) go('home'); else go(homeView());
       checkMyTurn();
@@ -3379,7 +3847,7 @@ function MemoryAdapter(store, persist) {
   function viewScoreboard() {
     var c = S.courts.filter(function (x) { return x.id === UI.sbCourt; })[0];
     if (!c) { UI.view = 'dash'; return viewDash(); }
-    var m = Engine.courtLive(S, c.id), staff = isStaff() && S.status === 'live';
+    var m = Engine.courtLive(S, c.id), staff = canRun() && S.status === 'live';
     var head = '<header class="sb-h"><button class="icon-btn" data-act="sbBack" aria-label="Kembali">' + icon('chevL') + '</button>' +
       '<div style="flex:1;min-width:0"><b>' + esc(c.name) + '</b><small>' + (m ? 'Match #' + m.no + ' · ' : '') + esc(Engine.scoringLabel(S.scoring)) +
       (c.hostId ? ' · wasit ' + esc(P(c.hostId).name) : '') + '</small></div>' + (m ? timerHTML(m) : '') + '</header>';
@@ -3545,7 +4013,9 @@ function MemoryAdapter(store, persist) {
           var btn = !a ? '<button class="btn" data-join="' + k + '">' + icon('login') + 'Ikut lagi</button>'
             : pt.paused ? '<button class="btn" data-ready="' + k + '">' + icon('play') + 'Siapkan</button><button class="btn danger" data-kick="' + k + '">' + icon('logout') + '</button>'
             : '<button class="btn danger" data-kick="' + k + '">' + icon('logout') + 'Keluar</button>';
-          return '<div class="li ' + (a ? '' : 'off') + '">' + av(k) + '<span><b>' + esc(P(k).name) + '</b><small>' + (played[k] || 0) + ' main · ' + stt + '</small></span><span class="row" style="gap:6px;flex-wrap:nowrap">' + btn + '</span></div>';
+          var co = (S.cohosts || []).indexOf(k) >= 0;
+          var coBtn = isStaff() && P(k).role === 'user' ? '<button class="icon-btn cobtn' + (co ? ' on' : '') + '" data-co="' + k + '" aria-pressed="' + co + '" aria-label="' + (co ? 'Cabut host sesi dari ' : 'Jadikan host sesi: ') + esc(P(k).name) + '" title="' + (co ? 'Cabut host sesi' : 'Jadikan host sesi (boleh isi skor & atur pemain)') + '">' + icon('flag') + '</button>' : '';
+          return '<div class="li ' + (a ? '' : 'off') + '">' + av(k) + '<span><b>' + esc(P(k).name) + (co ? ' <span class="cotag">Host sesi</span>' : '') + '</b><small>' + (played[k] || 0) + ' main · ' + stt + '</small></span><span class="row" style="gap:6px;flex-wrap:nowrap">' + coBtn + btn + '</span></div>';
         }).join('') + '</div></div>';
       if (S.teamMode === 'fixed') {
         var un = Engine.unpairedPlayers(S);
@@ -3555,7 +4025,7 @@ function MemoryAdapter(store, persist) {
             '<button class="btn primary" id="mkPair">' + icon('users') + 'Pasangkan</button></div>' :
             '<div class="muted">' + (un.length ? esc(P(un[0]).name) + ' menunggu satu pemain lagi untuk dipasangkan.' : 'Semua pemain sudah berpasangan.') + '</div>') + '</div>';
       }
-      h += '<div class="field"><span class="lbl-sm">Tambah dari database</span><div class="row"><input id="pq2" class="input" style="flex:1" placeholder="Cari nama" value="' + esc(q) + '"><button class="btn" id="newP">' + icon('userPlus') + 'Pemain baru</button></div>' +
+      h += '<div class="field"><span class="lbl-sm">Tambah dari database</span><div class="row"><input id="pq2" class="input" style="flex:1" placeholder="Cari nama" value="' + esc(q) + '">' + (isStaff() ? '<button class="btn" id="newP">' + icon('userPlus') + 'Pemain baru</button>' : '') + '</div>' +
         '<div class="list">' + (outside.length ? outside.map(function (p) {
           return '<button class="li" data-add="' + p.id + '">' + av(p.id) + '<span><b>' + esc(p.name) + '</b><small>' + gLabel(p.gender) + '</small></span>' + icon('plus') + '</button>';
         }).join('') : '<div class="muted">Semua pemain di database sudah ikut.</div>') + '</div></div>';
@@ -3567,7 +4037,14 @@ function MemoryAdapter(store, persist) {
       $$('[data-add]', w).forEach(function (el) { el.addEventListener('click', function () { act('join', { pid: el.dataset.add }).then(function () { toast(P(el.dataset.add).name + ' masuk ke acakan'); redraw(); }).catch(function () {}); }); });
       var inp = $('#pq2', w);
       inp.addEventListener('input', function () { q = inp.value; var pos = inp.selectionStart; draw(); var ni = $('#pq2', w); ni.focus(); ni.setSelectionRange(pos, pos); });
-      $('#newP', w).addEventListener('click', function () { openEditor(null, 'user', function (p) { act('join', { pid: p.id }).then(redraw).catch(function () {}); }); });
+      var np = $('#newP', w);
+      if (np) np.addEventListener('click', function () { openEditor(null, 'user', function (p) { act('join', { pid: p.id }).then(redraw).catch(function () {}); }); });
+      $$('[data-co]', w).forEach(function (el) {
+        el.addEventListener('click', function () {
+          var on = el.getAttribute('aria-pressed') !== 'true';
+          act('cohost', { pid: el.dataset.co, on: on }).then(function () { toast(P(el.dataset.co).name + (on ? ' jadi host sesi ini' : ' bukan host sesi lagi')); redraw(); }).catch(function () {});
+        });
+      });
       var mk = $('#mkPair', w);
       if (mk) mk.addEventListener('click', function () { act('pair', { a: $('#pa', w).value, b: $('#pb', w).value }).then(function () { toast('Pasangan baru dibuat'); redraw(); }).catch(function () {}); });
     }
@@ -3659,29 +4136,6 @@ function MemoryAdapter(store, persist) {
   }
 
   /* ---------- riwayat & podium ---------- */
-  function openHistory() {
-    if (!S) return;
-    var existing = $$('#modals .modal-wrap').filter(function (x) { return x.dataset.k === 'hist'; })[0];
-    var ms = S.matches.slice().sort(function (a, b) { return b.no - a.no; });
-    var cn = function (id) { var i = S.courts.findIndex(function (c) { return c.id === id; }); return 'C' + (i + 1); };
-    var staff = isStaff();
-    var body = ms.length ? '<div class="list">' + ms.map(function (m) {
-      var aw = m.status === 'done' && m.sA > m.sB, bw = m.status === 'done' && m.sB > m.sA;
-      return '<button class="hist ' + (m.status === 'void' ? 'void' : '') + '" ' + (m.status === 'done' && staff ? 'data-h="' + m.id + '"' : 'disabled') + '>' +
-        '<span class="no">#' + m.no + '</span><span class="tm"><span class="' + (aw ? 'w' : '') + '">' + esc(P(m.A[0]).name) + ' & ' + esc(P(m.A[1]).name) + '</span><br>' +
-        '<span class="' + (bw ? 'w' : '') + '">' + esc(P(m.B[0]).name) + ' & ' + esc(P(m.B[1]).name) + '</span><br><small class="muted">' + cn(m.court) + ' · ' +
-        (m.status === 'live' ? (Engine.isWaiting(m) ? 'menunggu pemain dari court lain' : 'sedang bermain') : m.status === 'void' ? 'dibatalkan' : staff ? 'ketuk untuk ubah skor' : 'selesai') + '</small></span>' +
-        '<span class="sc">' + (m.status === 'done' ? m.sA + '-' + m.sB : m.status === 'live' ? icon('timer') : '–') + '</span></button>';
-    }).join('') + '</div>' : '<div class="empty">' + icon('history') + '<div>Belum ada match.</div></div>';
-    if (existing) existing.remove();
-    var w = openModal({ title: 'Riwayat match', icon: 'history', body: body,
-      foot: staff ? '<button class="btn" id="hist-csv">' + icon('download') + 'Unduh CSV (klasemen & match)</button>' : '' });
-    w.dataset.k = 'hist';
-    var csvBtn = $('#hist-csv', w); if (csvBtn) csvBtn.addEventListener('click', function () { exportCSV(S); });
-    UI.histOpen = true;
-    $$('[data-h]', w).forEach(function (el) { el.addEventListener('click', function () { openScore(el.dataset.h, true); }); });
-    $('[data-act="close"]', w).addEventListener('click', function () { UI.histOpen = false; });
-  }
   /* ---------- unduh CSV: pengganti tab Pertandingan & Klasemen di Google Sheet ---------- */
   function saveFile(name, text, mime) {
     var file = new Blob(['\ufeff' + text], { type: mime + ';charset=utf-8' });
@@ -3750,6 +4204,8 @@ function MemoryAdapter(store, persist) {
       if (S && S.status === 'live') items.push(['end', 'flag', 'Akhiri sesi']);
       if (S && S.status === 'done') items.push(['podium', 'medal', 'Podium']);
     }
+    if (u) items.splice(2, 0, ['pastView', 'history', 'Riwayat sesi']);
+    if (u && S && (isStaff() || (S.pay && (S.pay.collector || S.pay.amount) && (S.parts[u.id] || S.pay.collector === u.id || isCohostMe())))) items.splice(1, 0, ['payOpen', 'wallet', 'Pembayaran sesi']);
     items.push(['theme', isDark() ? 'sun' : 'moon', isDark() ? 'Tema terang' : 'Tema gelap']);
     var voiceOn = lsGet('paddoc_voice') !== false;
     var body = '<div class="list">' + items.map(function (it) {
@@ -4065,7 +4521,7 @@ function MemoryAdapter(store, persist) {
       var d = UI.setup, when = whenFrom(d);
       var setup = {
         name: d.name.trim() || 'Sesi Paddoc', format: d.format, teamMode: d.teamMode, hosts: d.hosts,
-        plan: { when: when, whenText: whenLabel(when), venue: d.venue, theme: d.theme },
+        plan: { when: when, whenText: whenLabel(when), venue: d.venue, theme: d.theme }, pay: d.price ? { amount: d.price } : null,
         scoring: { type: d.scType, mode: d.scMode, n: d.n }, rules: { maxStreak: d.maxStreak, catchUp: d.catchUp, sortBy: d.sortBy, drawMode: d.drawMode, deuce: d.deuce },
         courts: d.courts, playerIds: Object.keys(d.sel).filter(function (k) { return d.sel[k]; }),
         teams: d.teamMode === 'fixed' ? d.teams.filter(function (t) { return t.a && t.b; }) : []
@@ -4138,6 +4594,17 @@ function MemoryAdapter(store, persist) {
     ptab: function (el) { UI.ptab = el.dataset.v; if (UI.ptab === 'kudos') DB.kudosAdmin = null; render(); },
     kdAdminToggle: function (el) { UI.kdOpen = UI.kdOpen === el.dataset.p ? null : el.dataset.p; render(); },
     kudosOpen: function () { if (S) openKudos(S.id); },
+    histMine: function (el) { UI.histMine = el.dataset.v === 'mine'; openHistory(); },
+    disputes: function () { if (S) openDisputeReview(S); },
+    pastView: function () { UI.past = { list: null, S: null, mine: false, onlyMine: !!(UI.past && UI.past.onlyMine) }; go('past'); loadPast(); },
+    pastMine: function (el) { UI.past.onlyMine = el.dataset.v === 'mine'; render(); },
+    pastOpen: function (el) {
+      withBusy(api('pastSession', { sid: el.dataset.sid })).then(function (r) { UI.past.S = r.S; UI.past.mine = false; render(); window.scrollTo(0, 0); }).catch(function (e) { toast(errMsg(e), 'err'); });
+    },
+    pastBack: function () { UI.past.S = null; if (!UI.past.list) loadPast(); render(); },
+    pastMatchMine: function (el) { UI.past.mine = el.dataset.v === 'mine'; render(); },
+    pastDisputes: function () { if (UI.past && UI.past.S) openDisputeReview(UI.past.S); },
+    payOpen: function (el) { var sid = (el && el.dataset && el.dataset.sid) || (S && S.id); if (sid) openPayment(sid); },
     kudosSkip: function () {
       var sid = UI.view === 'kudos' && UI.kudos ? UI.kudos.sid : S && S.id;
       if (sid && !kudosDone(sid)) { setKudosDone(sid, 'skip'); toast('Kudos dilewati'); }
@@ -4306,6 +4773,8 @@ function MemoryAdapter(store, persist) {
     toast('Lobi tidak ditemukan atau sudah dihapus', 'err');
   }
   var KUDOS_LINK = new URLSearchParams(location.search).get('kudos') || '';
+  var PAY_LINK = new URLSearchParams(location.search).get('pay') || '';
+  var DISPUTE_LINK = new URLSearchParams(location.search).get('dispute') || '';
   var CALL_LINK = (function () {
     var q = new URLSearchParams(location.search), m = q.get('call');
     if (m && history.replaceState) history.replaceState(null, '', location.pathname);
@@ -4345,6 +4814,7 @@ function MemoryAdapter(store, persist) {
         if (L) { if (UI.view === 'lobby') { if (L.join) lobbyJoin(L.sid); } else handleLobbyLink(L); }
         if (CALL_LINK) { handleCallLink(CALL_LINK.m, CALL_LINK.act); CALL_LINK = null; }
         if (KUDOS_LINK) { var ks = KUDOS_LINK; KUDOS_LINK = ''; openKudos(ks); }
+        if (PAY_LINK || DISPUTE_LINK) { if (history.replaceState) history.replaceState(null, '', location.pathname); handleLink(PAY_LINK, DISPUTE_LINK); PAY_LINK = DISPUTE_LINK = ''; }
       });
     }).catch(function (e) {
       $('#app').innerHTML = '<div class="empty big" style="margin:40px 16px">' + icon('alert') + '<div><b>Gagal memuat data.</b><br>' + esc(errMsg(e)) + '</div><button class="btn" id="retry">Coba lagi</button></div>';
