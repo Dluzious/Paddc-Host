@@ -1,4 +1,4 @@
-# Paddoc Host v2.9
+# Paddoc Host v2.9.1
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -169,6 +169,18 @@ Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas 
   Silent Killer. Kudos host: Super Host, Organized Host, Vibe Master, Problem Solver, Game Day Hero, Reliable Host.
 - Kudos tersimpan per orang dan terakumulasi antar sesi. **Profil → Kudos untukmu** menampilkan jumlah per kudos dan
   siapa pemberinya; orang lain tidak bisa melihatnya. Admin melihat semua di **Database → Kudos**.
+
+## Home: halaman pembuka (v2.9.1)
+
+- Semua yang login (admin, host, pemain) membuka app langsung di **Home**; di **Menu**, *Home* ada paling atas, di
+  atas *Profil saya*. Penonton tanpa akun tetap ke dashboard publik. Link khusus (lobi, panggilan court, kudos,
+  podium) tetap langsung ke halamannya.
+- Pengecualian: perangkat yang sengaja dipilih admin sebagai papan court (*Menu → Papan court besar (iPad)*) langsung
+  membuka papan court **selama sesi berjalan**, supaya papan tidak hilang dari layar penonton saat app dimuat ulang.
+- Admin/host: tombol **Buat rencana sesi** & **Database pemain**, sesi berikutnya, sesi berjalan, sesi sebelumnya.
+- Pemain: sapaan, sesi berikutnya (Buka lobi / Saya hadir), sesi yang sedang berjalan (ketuk atau **Buka dashboard
+  court**), dan 4 sesi terakhir (ketuk → ringkasan & klasemen; *Lihat semua riwayat sesi*). Home berganti sendiri saat
+  sesi dimulai atau selesai.
 
 ## Main bola di lobi (v2.9)
 
