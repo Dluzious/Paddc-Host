@@ -238,3 +238,31 @@
 .lb-hours i { font-style: normal; color: var(--accent); }
 
 .lb-walink { color: #25D366; font-weight: 800; text-decoration: underline; }
+
+/* mode main: analog, tombol lempar, bola */
+.lb-round[hidden], .lb-pad[hidden], .lb-padnote[hidden] { display: none; }
+.lb-round.wait { opacity: .55; }
+.lb-pad { position: absolute; inset: 0; z-index: 2900; pointer-events: none; }
+.lb-joy { --joy: clamp(92px, 17vmin, 132px); position: absolute; left: 14px; bottom: 14px; width: var(--joy); height: var(--joy); border-radius: 50%; pointer-events: auto; touch-action: none;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; cursor: grab;
+  background: radial-gradient(closest-side, rgba(255,255,255,.04), rgba(255,255,255,.10) 78%, rgba(255,255,255,.18)); border: 2px solid rgba(255,255,255,.32);
+  box-shadow: 0 6px 18px rgba(0,0,0,.35); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.lb-joy i { position: absolute; left: 28%; top: 28%; width: 44%; height: 44%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #dfe3ea 55%, #9aa3b2); box-shadow: 0 4px 12px rgba(0,0,0,.45); }
+.lb-throw { --tb: clamp(64px, 12vmin, 88px); position: absolute; right: 14px; bottom: 14px; width: var(--tb); height: var(--tb); border-radius: 50%; pointer-events: auto; touch-action: none;
+  -webkit-user-select: none; user-select: none; display: grid; place-items: center; cursor: pointer; color: #2c3300; border: 2px solid rgba(0,0,0,.25);
+  background: radial-gradient(circle at 35% 30%, #f8ffa0, #d8e43a 58%, #a3b018); box-shadow: 0 6px 16px rgba(0,0,0,.45); transition: transform .08s, filter .2s; }
+.lb-throw .ic { width: 50%; height: 50%; }
+.lb-throw:active { transform: scale(.93); }
+.lb-throw.wait { filter: grayscale(.75) brightness(.75); }
+.lb-padnote { position: absolute; left: 50%; top: 58px; transform: translateX(-50%); width: max-content; max-width: 86%; margin: 0; padding: 6px 10px; border-radius: 10px;
+  background: rgba(6,12,22,.82); color: #F2EBDD; font: 700 12px/1.3 var(--f-body, system-ui, sans-serif); text-align: center; }
+.lb-stage.playing .lb-logomark { display: none; }
+.lb-ball { position: absolute; left: 0; top: 0; width: var(--bs, 12px); height: var(--bs, 12px); margin: calc(var(--bs, 12px) / -2) 0 0 calc(var(--bs, 12px) / -2);
+  pointer-events: none; will-change: transform; }
+.lb-ball .sh { position: absolute; left: -10%; right: -10%; top: 30%; height: 40%; border-radius: 50%; background: rgba(0,0,0,.42); }
+.lb-ball .b { position: absolute; left: 0; top: -50%; width: 100%; height: 100%; border-radius: 50%; will-change: transform;
+  background: radial-gradient(circle at 35% 30%, #fbffb8, #dbe636 55%, #98a812); box-shadow: inset -1px -2px 0 rgba(0,0,0,.18), 0 0 6px rgba(240,255,120,.55); }
+.lb-ball.end .b { animation: lbBlink .26s steps(2) infinite; }
+@keyframes lbBlink { 50% { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .lb-ball.end .b { animation: none; opacity: .5; } }

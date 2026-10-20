@@ -7,21 +7,34 @@
    GET  /ws              ->  WebSocket: server mengirim data terbaru setiap ada perubahan
                             (HP yang login mengirim "auth <token>" supaya ikut menerima chat lobi)
    GET  /photo/<id>.jpg  ->  file foto
+   GET  /play?lobby=<id> ->  WebSocket mode main lobi (analog & bola), dilayani Durable Object kecil per lobi
+                            ("PaddocPlay"), terpisah dari skor & chat. Pemakaiannya dibatasi bersama untuk semua lobi
+                            (PLAY_BUDGET, bawaan 7,5% kuota harian gratis); bila habis, mode main berhenti sampai 07.00 WIB.
    ============================================================ */
 import { DurableObject } from 'cloudflare:workers';
 import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import Core from '../core.js';
+import LobbyPlay from '../play.js';
 import { generateAI, generateChibi } from './ai.js';
 import { newVapidKeys, sendPush } from './push.js';
 
 const MAX_BODY = 8 * 1024 * 1024;
 const MAX_B64 = 1900000; // batas baris SQLite Durable Object 2 MB
+// mode main: satuan pemakaian = 1 pesan WebSocket masuk; 1 request (sambungan baru / cek ke server utama) = 20 satuan,
+// sama dengan cara Cloudflare menghitung (20 pesan = 1 request). 150.000 satuan = 7.500 request = 7,5% dari 100.000/hari.
+const PLAY_BUDGET = 150000;
+const PLAY_REPORT = 1000;   // pemakaian dilaporkan ke server utama tiap 1.000 satuan (≈2% tambahan)
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const p = url.pathname;
+    if (p === '/play') {
+      const sid = url.searchParams.get('lobby') || '';
+      if (!/^[A-Za-z0-9_-]{1,40}$/.test(sid)) return new Response('Lobi tidak valid', { status: 400 });
+      return env.PLAY.get(env.PLAY.idFromName('play:' + sid)).fetch(request);
+    }
     if (p === '/api' || p === '/api/' || p === '/ws' || /^\/photo\/ph_[a-f0-9]{32}(\.jpg)?$/.test(p)) {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors() });
       return env.PADDOC.get(env.PADDOC.idFromName('paddoc')).fetch(request);
@@ -100,6 +113,8 @@ export class PaddocHost extends DurableObject {
 
   async fetch(request) {
     const url = new URL(request.url);
+    // dari Durable Object mode main (bukan dari internet: Worker hanya meneruskan /api, /ws, /photo ke sini)
+    if (url.pathname === '/internal/play') return json(this.playInternal(await request.json().catch(() => ({}))));
     if (this.origin !== url.origin) {           // dipakai alarm pengingat (tanpa request) untuk identitas VAPID
       this.origin = url.origin;
       this.sql.exec("INSERT INTO props (k, v) VALUES ('ORIGIN', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v", url.origin);
@@ -203,6 +218,22 @@ export class PaddocHost extends DurableObject {
     } catch (e) { try { ws.serializeAttachment({ member: false }); } catch (x) { /* abaikan */ } }
   }
   webSocketClose(ws, code) { try { ws.close(code, 'bye'); } catch (e) { /* sudah tertutup */ } }
+
+  /* mode main: catat pemakaian harian semua lobi (hari UTC, sama dengan reset kuota Cloudflare) dan,
+     bila ada token, cek pemiliknya sudah bergabung di lobi itu */
+  playInternal(b) {
+    const day = Math.floor(Date.now() / 864e5), cap = Number(this.env.PLAY_BUDGET) || PLAY_BUDGET;
+    let st = { day, used: 0 };
+    const r = this.sql.exec("SELECT v FROM props WHERE k = 'PLAY_USE'").toArray()[0];
+    if (r) { try { const o = JSON.parse(r.v); if (o.day === day) st = o; } catch (e) { /* rusak: mulai lagi */ } }
+    st.used += Math.max(0, Math.min(1e7, Number(b.used) || 0)) + 20;      // + permintaan ini sendiri
+    this.sql.exec("INSERT INTO props (k, v) VALUES ('PLAY_USE', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v", JSON.stringify(st));
+    const out = { left: cap - st.used, pid: null, ok: false };
+    if (typeof b.token === 'string') {
+      try { Core.init(this.A); Object.assign(out, Core.playCheck(b.token, b.sid)); } catch (e) { /* token tidak sah */ }
+    }
+    return out;
+  }
 
   servePhoto(id) {
     const r = this.photoRow(id);
@@ -321,4 +352,163 @@ export class PaddocHost extends DurableObject {
       if (!(exp > now)) this.sql.exec('DELETE FROM props WHERE k = ?', r.k);
     });
   }
+}
+
+/* ============================================================
+   Mode main lobi: satu Durable Object kecil per lobi, hanya meneruskan pesan (tidak menyimpan data sesi).
+   Pesan dari HP:  {t:'tm', c} sinkron jam (penonton) · {t:'auth', k: token, c} pemain yang sudah bergabung
+                   {t:'m', x, y} posisi analog · {t:'a'} kembali otomatis · {t:'b', id, x, y, vx, vy} lempar
+                   {t:'h', id, n, x, y, vx, vy, by} bola kena avatar `by`
+   Ke HP:          {t:'hi', c, now, pid, ok, ids, man} · {t:'p', ids} yang sedang main · m / a / b / h diteruskan
+                   (b & h juga ke pengirim, dengan `at` = jam server, sebagai urutan resmi) · {t:'bx', id} lemparan ditolak
+                   {t:'off'} batas harian tercapai
+   ============================================================ */
+const PW = LobbyPlay.WALL;
+function pnum(x, a, b) { const n = Number(x); return Number.isFinite(n) && n >= a && n <= b ? Math.round(n * 100) / 100 : null; }
+
+export class PaddocPlay extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
+    this.sql = ctx.storage.sql;
+    this.sql.exec('CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT)');
+    const r = this.sql.exec("SELECT v FROM kv WHERE k = 'pending'").toArray()[0];
+    this.pending = r ? Number(r.v) || 0 : 0;    // pemakaian yang belum dilaporkan (disimpan supaya tidak hilang saat tidur)
+    this.saved = this.pending;
+    this.left = null;                           // sisa satuan hari ini (dari laporan terakhir)
+    this.leftDay = 0;
+    this.offDay = 0;
+    this.man = new Map();                       // pid → posisi analog terakhir (untuk yang baru membuka lobi)
+    this.balls = new Map();                     // id → { o: pemilik, exp, hard }
+    this.bucket = new WeakMap();                // batas kirim per HP
+  }
+  day() { return Math.floor(Date.now() / 864e5); }
+  use(n) {
+    this.pending += n;
+    if (this.pending - this.saved >= 100) this.persist();
+  }
+  persist() {
+    this.saved = this.pending;
+    this.sql.exec("INSERT INTO kv (k, v) VALUES ('pending', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v", String(this.pending));
+  }
+  isOff() {
+    const d = this.day();
+    if (this.leftDay !== d) this.left = null;   // hari baru (07.00 WIB): kuota mulai lagi
+    return this.offDay === d || (this.left !== null && this.left - this.pending <= 0);
+  }
+  /* laporkan pemakaian ke server utama (sekaligus cek token bila ada) */
+  async report(token, sid) {
+    const used = this.pending;
+    this.pending = 0; this.persist();
+    try {
+      const body = { used };
+      if (token) { body.token = token; body.sid = sid; }
+      const res = await this.env.PADDOC.get(this.env.PADDOC.idFromName('paddoc')).fetch('https://paddoc.internal/internal/play',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await res.json();
+      this.left = Number(j.left); this.leftDay = this.day();
+      if (!(this.left > 0)) this.offDay = this.day();
+      return j;
+    } catch (e) {
+      this.use(used);                           // gagal lapor: dicoba lagi nanti
+      return { pid: null, ok: false };
+    }
+  }
+  async fetch(request) {
+    if (request.headers.get('Upgrade') !== 'websocket') return new Response('Butuh WebSocket', { status: 426 });
+    const sid = new URL(request.url).searchParams.get('lobby') || '';
+    this.use(20);
+    const pair = new WebSocketPair();
+    this.ctx.acceptWebSocket(pair[1]);
+    pair[1].serializeAttachment({ sid, pid: null, ok: false });
+    return new Response(null, { status: 101, webSocket: pair[0] });
+  }
+  socks(except) { return this.ctx.getWebSockets().filter((w) => w !== except); }
+  present(except) {
+    const ids = new Set();
+    this.socks(except).forEach((w) => { const a = w.deserializeAttachment() || {}; if (a.ok && a.pid) ids.add(a.pid); });
+    return [...ids];
+  }
+  send(obj, except) { const s = JSON.stringify(obj); this.socks(except).forEach((w) => { try { w.send(s); } catch (e) { /* putus */ } }); }
+  shutdown() { this.send({ t: 'off' }); this.ctx.getWebSockets().forEach((w) => { try { w.close(4000, 'off'); } catch (e) { /* sudah */ } }); }
+  /* maksimal ±6 pesan/detik per HP (lonjakan 12); terus melanggar → diputus */
+  allow(ws) {
+    const now = Date.now(), b = this.bucket.get(ws) || { tok: 12, t: now, bad: 0 };
+    b.tok = Math.min(12, b.tok + (now - b.t) / 1000 * 6); b.t = now;
+    this.bucket.set(ws, b);
+    if (b.tok >= 1) { b.tok -= 1; b.bad = 0; return true; }
+    if (++b.bad > 30) { try { ws.close(4001, 'rate'); } catch (e) { /* sudah */ } }
+    return false;
+  }
+  live(now) {
+    let n = 0;
+    for (const [id, b] of this.balls) { if (now > b.exp || now > b.hard) this.balls.delete(id); else n++; }
+    return n;
+  }
+  async webSocketMessage(ws, raw) {
+    this.use(1);
+    if (typeof raw !== 'string' || raw.length > 300 || !this.allow(ws)) return;
+    let m;
+    try { m = JSON.parse(raw); } catch (e) { return; }
+    if (!m || typeof m !== 'object') return;
+    if (this.isOff()) {
+      if (this.offDay !== this.day()) await this.report();     // batas tercapai di lobi ini: lapor dulu supaya lobi lain ikut berhenti
+      if (this.isOff()) { this.shutdown(); return; }
+    }
+    const at = ws.deserializeAttachment() || {}, now = Date.now();
+    if (m.t === 'tm' || m.t === 'auth') {
+      const was = at.ok ? at.pid : null;
+      let res = { pid: null, ok: false };
+      if (m.t === 'auth' && typeof m.k === 'string' && /^[A-Za-z0-9_-]{8,80}$/.test(m.k)) res = await this.report(m.k, at.sid);
+      else if (this.left === null || this.pending >= PLAY_REPORT) await this.report();
+      if (this.isOff()) { this.shutdown(); return; }
+      at.pid = res.pid || null; at.ok = !!res.ok;
+      ws.serializeAttachment(at);
+      const man = {};
+      this.man.forEach((v, k) => { if (now - v.at < 12000) man[k] = { x: v.x, y: v.y }; });
+      try { ws.send(JSON.stringify({ t: 'hi', c: Number(m.c) || 0, now: Date.now(), pid: at.pid, ok: at.ok, ids: this.present(), man })); } catch (e) { /* putus */ }
+      if (was !== (at.ok ? at.pid : null)) this.send({ t: 'p', ids: this.present() }, ws);
+      return;
+    }
+    if (!at.ok || !at.pid) return;
+    const pid = at.pid;
+    if (m.t === 'm') {
+      const x = pnum(m.x, PW.x0, PW.x1), y = pnum(m.y, PW.y0, 11.5);
+      if (x === null || y === null) return;
+      this.man.set(pid, { x, y, at: now });
+      this.send({ t: 'm', p: pid, x, y }, ws);
+    } else if (m.t === 'a') {
+      this.man.delete(pid);
+      this.send({ t: 'a', p: pid }, ws);
+    } else if (m.t === 'b' || m.t === 'h') {
+      const x = pnum(m.x, PW.x0, PW.x1), y = pnum(m.y, PW.y0, PW.y1), vx = pnum(m.vx, -15, 15), vy = pnum(m.vy, -15, 15);
+      const id = typeof m.id === 'string' && /^[a-z0-9]{3,24}$/.test(m.id) ? m.id : null;
+      if (x === null || y === null || vx === null || vy === null || !id) return;
+      const n = this.live(now);
+      if (m.t === 'b') {
+        let mine = false;
+        this.balls.forEach((b) => { if (b.o === pid) mine = true; });
+        if (this.balls.has(id) || mine || n >= LobbyPlay.MAX_BALLS) { try { ws.send(JSON.stringify({ t: 'bx', id })); } catch (e) { /* putus */ } return; }
+        this.balls.set(id, { o: pid, exp: now + LobbyPlay.TTL + 500, hard: now + LobbyPlay.MAX_AGE + 500 });
+        this.send({ t: 'b', p: pid, id, x, y, vx, vy, at: now });
+      } else {
+        const b = this.balls.get(id), hn = Number(m.n), by = typeof m.by === 'string' ? m.by.slice(0, 40) : '';
+        if (!b || !Number.isInteger(hn) || hn < 1 || hn > 9999 || !by) return;
+        // pantulan sah: avatar sendiri, atau pelempar untuk avatar yang pemiliknya tidak sedang membuka lobi
+        if (by !== pid && !(b.o === pid && this.present().indexOf(by) < 0)) return;
+        b.exp = now + LobbyPlay.TTL + 500;
+        this.send({ t: 'h', p: pid, id, n: hn, x, y, vx, vy, by, at: now });
+      }
+    }
+    if (this.pending >= PLAY_REPORT) { await this.report(); if (this.isOff()) this.shutdown(); }
+  }
+  webSocketClose(ws, code) {
+    const at = ws.deserializeAttachment() || {};
+    try { ws.close(code, 'bye'); } catch (e) { /* sudah tertutup */ }
+    if (!at.ok || !at.pid) return;
+    const ids = this.present(ws);
+    if (ids.indexOf(at.pid) < 0 && this.man.delete(at.pid)) this.send({ t: 'a', p: at.pid }, ws);
+    this.send({ t: 'p', ids }, ws);
+  }
+  webSocketError(ws) { this.webSocketClose(ws, 1011); }
 }

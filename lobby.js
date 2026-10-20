@@ -3,7 +3,8 @@
    Karakter pemain & host berkeliaran di panggung berperspektif sampai host menekan Mulai Sesi.
    - Layar lebar (iPad, laptop): latar gambar ilustrasi per tema, area lantai dikalibrasi ke gambar.
    - HP tegak: lapangan diputar (net melintang), digambar oleh kode sampai ada gambar versi tegak.
-   Gerak karakter acak dari kode (bukan AI), hanya transform CSS supaya ringan untuk 30+ karakter.
+   Gerak karakter dihitung dari jam server (play.js), jadi sama di iPad dan semua HP; hanya transform CSS supaya ringan
+   untuk 30+ karakter. Mode main: pemain yang sudah bergabung menggerakkan avatarnya dengan analog dan melempar bola.
    Dipakai app (index.html) lewat Lobby.mount(), dan Lobby.demo() untuk pratinjau dengan data dummy.
    ============================================================ */
 var Lobby = (function () {
@@ -30,6 +31,7 @@ var Lobby = (function () {
     send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>', login: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/>',
     back: '<path d="m15 18-6-6 6-6"/>', check: '<path d="M20 6 9 17l-5-5"/>',
     pencil: '<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+    ball: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6c3.4 3.4 3.4 9.4 0 12.8M18.4 5.6c-3.4 3.4-3.4 9.4 0 12.8"/>',
     wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>'
   };
   function ic(n) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + IC[n] + '</svg>'; }
@@ -375,7 +377,9 @@ var Lobby = (function () {
      mount(root, state, handlers) → { update(state), destroy() }
      state: { role:'host'|'player'|'public', meId, session:{name, kicker, whenText, startAt, venue:{name,address,maps}, url},
               theme, people:[{id,name,role:'player'|'host',sprite?,photo?,look?}], chat:[{id,pid,name,role,text,at}], started }
-     handlers: join, leave, add, remove(pid), start, back, login, theme(id), chat(text), photo, share
+     handlers: join, leave, add, remove(pid), start, back, login, theme(id), chat(text), photo, share,
+               playSend(msg) → kirim pesan mode main ke server (app), atau playLocal: true untuk pratinjau tanpa server
+     instance.play(msg): pesan mode main dari server ({t:'net'|'hi'|'p'|'m'|'a'|'b'|'bx'|'h'|'off', ...})
      ============================================================ */
   function mount(root, state, handlers) {
     handlers = handlers || {};
@@ -392,7 +396,11 @@ var Lobby = (function () {
       '<div class="lb-stage"><div class="lb-bg"></div><canvas class="lb-canvas"></canvas><div class="lb-motes"></div><div class="lb-layer"></div>' +
       '<div class="lb-chip tl"><span class="dot"></span><span class="n" data-k="cnt">0</span><span data-k="cntTxt">pemain hadir</span></div>' +
       '<img class="lb-chip bl lb-logomark" src="icon-192.png" alt="Logo Padel Doc" hidden>' +
-      '<div class="lb-chip tr"><button type="button" class="lb-round" data-lb="music" aria-pressed="false" aria-label="Musik lobi" title="Musik lobi">' + ic('music') + '</button></div>' +
+      '<div class="lb-chip tr"><button type="button" class="lb-round" data-lb="play" data-k="playBtn" hidden aria-pressed="false" aria-label="Main bola" title="Main bola">' + ic('ball') + '</button>' +
+      '<button type="button" class="lb-round" data-lb="music" aria-pressed="false" aria-label="Musik lobi" title="Musik lobi">' + ic('music') + '</button></div>' +
+      '<div class="lb-pad" data-k="pad" hidden><div class="lb-joy" data-k="joy" role="application" aria-label="Analog: geser untuk menggerakkan avatarmu (atau tombol panah)"><i></i></div>' +
+      '<p class="lb-padnote" data-k="padNote" hidden></p>' +
+      '<button type="button" class="lb-throw" data-k="throw" aria-label="Lempar bola (spasi)" title="Lempar bola">' + ic('ball') + '</button></div>' +
       '<div class="lb-started" data-k="started" hidden><div><h2>Sesi dimulai</h2><p data-k="startedTxt"></p>' +
       '<button class="lb-btn" type="button" data-lb="back" data-k="backBtn">' + ic('back') + 'Kembali ke Lobi</button></div></div></div>' +
       '</div>' +
@@ -431,7 +439,7 @@ var Lobby = (function () {
       W = w; H = h; LY = layoutFor(S.theme, W, H); LY.theme = S.theme;
       measureChips();
       var SH = LY.SH, SW = SH * 64 / 96;
-      stage.style.setProperty('--sh', SH + 'px'); stage.style.setProperty('--sw', SW + 'px');
+      stage.style.setProperty('--sh', SH + 'px'); stage.style.setProperty('--sw', SW + 'px'); stage.style.setProperty('--bs', Math.max(13, SH * .23).toFixed(1) + 'px');   // bola dibesarkan supaya terlihat dari jauh di layar iPad
       LY.SW = SW;
       if (LY.img) { bg.style.backgroundImage = 'url("' + LY.img + '")'; bg.style.backgroundSize = LY.fit ? 'contain' : 'cover'; cv.hidden = true; }
       else {
@@ -440,7 +448,11 @@ var Lobby = (function () {
         drawPortrait(cx, W, H, LY.proj, LY.palette);
       }
       root.querySelector('.lb-logomark').hidden = !LY.logo;
-      if (force || prev !== LY.mode + LY.theme) Object.keys(ents).forEach(function (id) { var e = ents[id]; if (e.el) { place(e); e.state = 'idle'; e.el.classList.remove('walking'); } });
+      if (force || prev !== LY.mode + LY.theme) Object.keys(ents).forEach(function (id) {
+        var e = ents[id]; if (!e.el) return;
+        e.blend = null; e.state = 'idle'; e.dropY = 0; e.walking = false; e.el.classList.remove('walking');
+        if (PL[id]) snapAuto(e); else place(e);
+      });
       Object.keys(ents).forEach(function (id) { if (ents[id].el) draw(ents[id]); });
     }
     function spotOf(e) {
@@ -468,10 +480,11 @@ var Lobby = (function () {
       }
       return best;
     }
-    function place(e) { var p = spread(e); e.u = p[0]; e.v = p[1]; }
+    function place(e) { var p = spread(e); e.u = e.au = p[0]; e.v = e.av = p[1]; }
+    function snapAuto(e) { var a = LP.autoAt(PL[e.id], clock()), q = LP.toUV(LY.mode, a.x, a.y); e.u = e.au = q[0]; e.v = e.av = q[1]; }
     function target(e) { var p = spread(e); e.tu = p[0]; e.tv = p[1]; }
     function draw(e) {
-      var P = LY.proj(e.u, e.v), walking = e.state === 'walk';
+      var P = LY.proj(e.u, e.v), walking = e.walking;
       var bob = REDUCE ? 0 : walking ? -Math.abs(Math.sin(T * 10 + e.ph)) * 3 : Math.sin(T * 2.6 + e.ph) * 1.2;
       e.sx = P.x; e.sy = P.y + e.dropY + bob; e.ss = P.s;
       e.el.style.transform = 'translate3d(' + (P.x - LY.SW / 2).toFixed(1) + 'px,' + (P.y - LY.SH + e.dropY + bob).toFixed(1) + 'px,0) scale(' + P.s.toFixed(3) + ')';
@@ -495,6 +508,7 @@ var Lobby = (function () {
     function act(e, cls) { if (REDUCE || !e.el) return; e.el.classList.remove(cls); void e.el.offsetWidth; e.el.classList.add(cls); setTimeout(function () { if (e.el) e.el.classList.remove(cls); }, 600); }
     var BUBBLES = ['Gas!', 'Siap main', 'Pemanasan dulu', 'Court berapa?', 'Bola baru?', 'Partner siapa ya?', 'Kaki sudah panas', 'Bandeja!', 'Vibora!'];
     var HOSTSAY = ['Yang belum hadir, ditunggu ya', 'Cek raket dan sepatu', 'Sebentar lagi mulai', 'Air minum di bench'];
+    var HITSAY = ['Aduh!', 'Balas!', 'Eits!', 'Nice!', 'Vamos!', 'Bandeja!', 'Hampir!'];
     function makeEl(e) {
       var d = document.createElement('div');
       d.className = 'lb-sprite' + (e.role === 'host' ? ' host' : '') + (e.id === S.meId ? ' me' : '') + (e.p.sprite ? ' png' : '');
@@ -503,11 +517,13 @@ var Lobby = (function () {
       layer.appendChild(d); e.el = d;
     }
     function enter(p, quiet) {
-      var nA = 0, nB = 0, nH = 0;
-      Object.keys(ents).forEach(function (id) { var x = ents[id]; if (x.role === 'host') nH++; else if (x.side === 'A') nA++; else nB++; });
-      var e = { id: p.id, p: p, role: p.role === 'host' ? 'host' : 'player', side: nA <= nB ? 'A' : 'B', hostIdx: nH, at: ++order,
-        u: .5, v: .5, tu: .5, tv: .5, state: 'idle', timer: rand(.5, 3), dropY: 0, vy: 0, ph: Math.random() * 6, el: null, z: 0 };
-      ents[p.id] = e; place(e); makeEl(e);
+      var nH = 0;
+      Object.keys(ents).forEach(function (id) { if (ents[id].role === 'host') nH++; });
+      var e = { id: p.id, p: p, role: p.role === 'host' ? 'host' : 'player', hostIdx: nH, at: ++order, u: .5, v: .5, au: .5, av: .5, tu: .5, tv: .5,
+        state: 'idle', timer: rand(.5, 3), dropY: 0, vy: 0, ph: Math.random() * 6, el: null, z: 0, walking: false, blend: null };
+      ents[p.id] = e;
+      if (PL[p.id]) snapAuto(e); else place(e);
+      makeEl(e);
       if (quiet || REDUCE) draw(e);
       else { e.state = 'drop'; e.dropY = -(LY.proj(e.u, e.v).y + LY.SH * 1.5); e.vy = 0; draw(e); ding(); }
     }
@@ -515,24 +531,42 @@ var Lobby = (function () {
       var e = ents[id]; delete ents[id];
       if (e && e.el) { var d = e.el; e.el = null; d.classList.add('out'); setTimeout(function () { d.remove(); }, 480); }
     }
-    function step(e, dt) {
+    /* posisi tiap frame: dikendalikan analog (sendiri / pemain lain), peralihan halus kembali ke otomatis, atau otomatis.
+       Otomatis pemain dari jadwal bersama (play.js); host berkeliaran acak di tempat host (di luar lapangan, tidak kena bola). */
+    function step(e, dt, tN) {
       if (!e.el) return;
+      var walking = false, pl = PL[e.id], c = ctrl(e);
+      if (!S.started) {
+        if (pl) { var a = REDUCE ? { x: pl.ax, y: pl.ay } : LP.autoAt(pl, tN), q = LP.toUV(LY.mode, a.x, a.y); e.au = q[0]; e.av = q[1]; walking = !!a.walk; }
+        else if (e.state === 'walk') {
+          var du = (e.tu - e.au) * 20, dv = (e.tv - e.av) * 10, d = Math.hypot(du, dv), sp = 1.7 * dt;
+          if (d <= sp) { e.au = e.tu; e.av = e.tv; e.state = 'idle'; e.timer = rand(1.2, 4); }
+          else { e.au += du / d * sp / 20; e.av += dv / d * sp / 10; walking = true; }
+        }
+      }
+      var u = e.au, v = e.av;
+      if (c) { var q2 = LP.toUV(LY.mode, c.x, c.y); u = q2[0]; v = q2[1]; walking = !!c.moving; }
+      else if (e.blend) {
+        var s = (tN - e.blend.at) / e.blend.dur;
+        if (s >= 1 || s < 0) e.blend = null;
+        else { s = s * s * (3 - 2 * s); u = e.blend.u + (u - e.blend.u) * s; v = e.blend.v + (v - e.blend.v) * s; walking = true; }
+      }
+      if (e.state === 'drop') walking = false;
+      if (walking) { var x0 = LY.proj(e.u, e.v).x, x1 = LY.proj(u, v).x; if (Math.abs(x1 - x0) > .05) e.el.classList.toggle('flip', x1 < x0); }
+      e.u = u; e.v = v;
+      if (walking !== e.walking) { e.walking = walking; e.el.classList.toggle('walking', walking); }
       if (e.state === 'drop') {
         e.vy += 2600 * dt; e.dropY += e.vy * dt;
         if (e.dropY >= 0) { e.dropY = 0; e.state = 'idle'; e.timer = rand(1, 2.5); act(e, 'land'); dust(e); say(e, 'Hadir!'); }
-      } else if (e.state === 'walk') {
-        var du = (e.tu - e.u) * 20, dv = (e.tv - e.v) * 10, d = Math.hypot(du, dv), sp = 1.7 * dt;
-        if (d <= sp) { e.u = e.tu; e.v = e.tv; e.state = 'idle'; e.timer = rand(1.2, 4); e.el.classList.remove('walking'); }
-        else { e.u += du / d * sp / 20; e.v += dv / d * sp / 10; if (Math.abs(du) > .05) e.el.classList.toggle('flip', du < 0); }
-      } else if (!REDUCE && !S.started) {
+      } else if (!REDUCE && !S.started && !walking && !c) {
         e.timer -= dt;
         if (e.timer <= 0) {
           e.timer = rand(1.5, 4.5);
           var r = Math.random();
-          if (r < .6) { target(e); e.state = 'walk'; e.el.classList.add('walking'); }
-          else if (r < .75) act(e, 'swing');
-          else if (r < .85) act(e, 'jump');
-          else say(e, e.role === 'host' ? pick(Math.random, HOSTSAY) : pick(Math.random, BUBBLES));
+          if (!pl && r < .6) { target(e); e.state = 'walk'; }
+          else if (r < (pl ? .3 : .75)) act(e, 'swing');
+          else if (r < (pl ? .45 : .85)) act(e, 'jump');
+          else if (!pl || r < .6) say(e, e.role === 'host' ? pick(Math.random, HOSTSAY) : pick(Math.random, BUBBLES));
         }
       }
       draw(e);
@@ -544,6 +578,7 @@ var Lobby = (function () {
     function measureChips() {
       chipBoxes = [];
       root.querySelectorAll('.lb-stage > .lb-chip').forEach(function (c) { if (c.hidden) return; chipBoxes.push({ l: c.offsetLeft, t: c.offsetTop, r: c.offsetLeft + c.offsetWidth, b: c.offsetTop + c.offsetHeight }); });
+      if (playing) root.querySelectorAll('.lb-pad > .lb-joy, .lb-pad > .lb-throw').forEach(function (c) { chipBoxes.push({ l: c.offsetLeft, t: c.offsetTop, r: c.offsetLeft + c.offsetWidth, b: c.offsetTop + c.offsetHeight }); });
     }
     function boxOf(e, node, isBub) {
       var s = e.ss, bx = e.sx, by = e.sy;            // titik kaki (tengah bawah) di layar & skala
@@ -576,12 +611,248 @@ var Lobby = (function () {
     }
     function loop(t) {
       if (!alive) return;
-      var dt = Math.min(.05, (t - lastT) / 1000); lastT = t; T += dt;
-      if (LY) for (var id in ents) step(ents[id], dt);
+      var dt = Math.min(.05, (t - lastT) / 1000), tN = clock(); lastT = t; T += dt;
+      if (LY) { playTick(dt, tN); for (var id in ents) step(ents[id], dt, tN); stepBalls(tN); }
       declutter();
       if (handlers.frame) handlers.frame(t);
       raf = requestAnimationFrame(loop);
     }
+
+    /* --- mode main: analog & bola ---
+       Gerak otomatis tidak dikirim (dihitung sama di semua layar). Yang dikirim hanya posisi analog maks 4×/detik selama
+       ditekan, lemparan bola, dan pantulan dari avatar. Pantulan diputuskan HP pemilik avatar yang kena; untuk avatar
+       yang pemiliknya tidak sedang membuka lobi, oleh HP pelempar. Urutan dari server menentukan pemenang bila bentrok. */
+    var LP = window.LobbyPlay, PL = {}, plSig = '', REM = {}, PRES = {}, BALLS = {}, NETS = { up: !!handlers.playLocal, off: false }, OFFSET = 0;
+    var MY = { man: null, lastIn: 0, lastSend: 0, sentX: null, sentY: null, face: null, faceAt: 0, lastThrow: 0, n: 0 };
+    var JOY = { x: 0, y: 0, on: false, id: null }, KEYS = {}, playing = false, thrWait = null;
+    var psend = handlers.playSend || (handlers.playLocal ? loopback : null);
+    var OFF_TXT = 'Mode main istirahat sampai 07.00 WIB (batas harian tercapai). Lobi & chat tetap jalan.';
+    function clock() { return Date.now() + OFFSET; }           // jam server
+    function r2(x) { return Math.round(x * 100) / 100; }
+    function loopback(o) {                                     // pratinjau tanpa server: lemparan & pantulan kembali ke layar ini
+      if (o.t === 'b' || o.t === 'h') { var m = Object.assign({}, o, { p: S.meId, at: clock() }); setTimeout(function () { onPlay(m); }, 30); }
+      return true;
+    }
+    /* sisi net & jangkar pemain dari daftar hadir; berubah → pemain berjalan ke tempat barunya */
+    function replan() {
+      var ids = people().filter(function (p) { return p.role !== 'host'; }).map(function (p) { return p.id; });
+      var th = themeDef(S.theme), z = (th.land && th.land.zones) || null, sig = JSON.stringify([ids, z]);
+      if (sig === plSig) return;
+      plSig = sig;
+      var old = PL, tN = clock();
+      PL = LP.plan(ids, z);
+      if (LY) ids.forEach(function (id) {
+        var e = ents[id], a = old[id], b = PL[id];
+        if (e && e.el && a && (a.side !== b.side || a.ax !== b.ax || a.ay !== b.ay)) blendFrom(e, tN, LP.autoAt(b, tN));
+      });
+    }
+    function ctrl(e) { return e.id === S.meId && MY.man ? MY.man : REM[e.id] || null; }
+    function canonOf(e) { return LP.fromUV(LY.mode, e.u, e.v); }
+    function autoTarget(e, tN) { var pl = PL[e.id]; if (pl) return LP.autoAt(pl, tN); var c = LP.fromUV(LY.mode, e.au, e.av); return { x: c[0], y: c[1] }; }
+    function blendFrom(e, tN, to) {
+      if (!LY) return;
+      var c = canonOf(e), d = to ? Math.hypot(to.x - c[0], to.y - c[1]) : 2;
+      e.blend = { u: e.u, v: e.v, at: tN, dur: LP.clamp(d / LP.WALK, .6, 4) * 1000 };
+    }
+    /* avatar yang bisa kena bola: pemain (otomatis/analog) dan host yang sedang memakai analog */
+    function hittable(e) { return !!e.el && e.state !== 'drop' && (e.role !== 'host' || !!ctrl(e)); }
+    function targets(except) {
+      var out = [];
+      for (var id in ents) { var e = ents[id]; if (id !== except && hittable(e)) { var c = canonOf(e); out.push({ id: id, x: c[0], y: c[1] }); } }
+      return out;
+    }
+    function takeControl(tN) {
+      var e = ents[S.meId]; if (!e || !e.el || !LY || S.started) return;
+      var c = canonOf(e), B = LP.bounds(e.role, PL[e.id]);
+      MY.man = { x: LP.clamp(c[0], B[0], B[1]), y: LP.clamp(c[1], B[2], B[3]), moving: false };
+      e.blend = null; MY.lastIn = tN; sendMove(tN);
+    }
+    function sendMove(tN) {
+      if (!MY.man) return;
+      MY.lastSend = tN; MY.sentX = MY.man.x; MY.sentY = MY.man.y;
+      if (psend) psend({ t: 'm', x: r2(MY.man.x), y: r2(MY.man.y) });
+    }
+    function release(send) {
+      if (!MY.man) return;
+      var e = ents[S.meId], tN = clock();
+      MY.man = null; MY.sentX = null;
+      if (e && e.el) blendFrom(e, tN, autoTarget(e, tN));
+      if (send && psend) psend({ t: 'a' });
+    }
+    function remoteMove(pid, x, y, tN) {
+      var e = ents[pid]; if (!e || !e.el || !LY) return;
+      var r = REM[pid];
+      if (!r) { var c = canonOf(e); r = REM[pid] = { x: c[0], y: c[1], moving: false }; e.blend = null; }
+      r.tx = x; r.ty = y; r.last = tN;
+    }
+    function dropRemote(pid, tN) { var e = ents[pid]; delete REM[pid]; if (e && e.el) blendFrom(e, tN, autoTarget(e, tN)); }
+    function playTick(dt, tN) {
+      var jx = JOY.x, jy = JOY.y;
+      if (KEYS.l || KEYS.r || KEYS.u || KEYS.d) { jx = (KEYS.r ? 1 : 0) - (KEYS.l ? 1 : 0); jy = (KEYS.d ? 1 : 0) - (KEYS.u ? 1 : 0); var kl = Math.hypot(jx, jy) || 1; jx /= kl; jy /= kl; }
+      var e = ents[S.meId], mag = Math.hypot(jx, jy);
+      if (playing && e && mag > .12) {
+        if (!MY.man) takeControl(tN);
+        if (MY.man) {
+          var d = LP.dirFromScreen(LY.mode, jx, jy), B = LP.bounds(e.role, PL[e.id]), sp = LP.SPEED * Math.min(1, mag) * dt;
+          MY.man.x = LP.clamp(MY.man.x + d[0] * sp, B[0], B[1]); MY.man.y = LP.clamp(MY.man.y + d[1] * sp, B[2], B[3]);
+          MY.man.moving = true; MY.lastIn = tN; MY.face = d; MY.faceAt = tN;
+        }
+      } else if (MY.man) MY.man.moving = false;
+      if (MY.man) {
+        if (tN - MY.lastIn > LP.IDLE) release(true);         // analog dilepas 8 detik: kembali jalan otomatis
+        else if (tN - MY.lastSend >= LP.SEND_MS && (MY.sentX === null || Math.hypot(MY.man.x - MY.sentX, MY.man.y - MY.sentY) > .04)) sendMove(tN);
+      }
+      // pemain lain yang memakai analog: bergerak halus menuju posisi terakhir yang diterima
+      for (var pid in REM) {
+        var r = REM[pid];
+        if (tN - r.last > 12000) { dropRemote(pid, tN); continue; }
+        var dx = r.tx - r.x, dy = r.ty - r.y, dd = Math.hypot(dx, dy);
+        if (dd > .001) { var st = Math.min(dd, Math.max(dd * Math.min(1, dt * 8), .6 * dt), 7 * dt); r.x += dx / dd * st; r.y += dy / dd * st; }
+        r.moving = dd > .05;
+      }
+    }
+    /* --- bola --- */
+    function myBall(tN) { for (var id in BALLS) if (BALLS[id].o === S.meId && LP.alive(BALLS[id], tN)) return true; return false; }
+    function liveCount(tN) { var n = 0; for (var id in BALLS) if (LP.alive(BALLS[id], tN)) n++; return n; }
+    function throwWhy(tN) {                                    // alasan belum bisa melempar ('' = bisa)
+      if (NETS.off) return OFF_TXT;
+      if (!NETS.up) return 'Mode main sedang menyambung…';
+      if (myBall(tN)) return 'Bolamu masih di lapangan';
+      if (tN - MY.lastThrow < LP.COOLDOWN) return 'Sebentar…';
+      if (liveCount(tN) >= LP.MAX_BALLS) return 'Lapangan penuh bola, tunggu sebentar';
+      return '';
+    }
+    function throwBall() {
+      var tN = clock(), e = ents[S.meId];
+      if (!playing || !e || !e.el || !LY) return;
+      var why = throwWhy(tN); if (why) { if (why !== 'Sebentar…') toast(why); return; }
+      var c = MY.man ? [MY.man.x, MY.man.y] : canonOf(e);
+      var dir = MY.face && tN - MY.faceAt < 2500 ? MY.face : LP.aimAt(c, targets(e.id)), dl = Math.hypot(dir[0], dir[1]) || 1;
+      dir = [dir[0] / dl, dir[1] / dl];
+      var W = LP.WALL, id = 'b' + (LP.hash(S.meId) % 46656).toString(36) + (++MY.n).toString(36) + Math.floor(Math.random() * 1296).toString(36);
+      var m = { t: 'b', id: id, x: r2(LP.clamp(c[0] + dir[0] * .75, W.x0, W.x1)), y: r2(LP.clamp(c[1] + dir[1] * .75, W.y0, W.y1)), vx: r2(dir[0] * LP.BALL_V), vy: r2(dir[1] * LP.BALL_V) };
+      MY.lastThrow = tN; if (MY.man) MY.lastIn = tN;
+      addBall({ id: id, p: S.meId, x: m.x, y: m.y, vx: m.vx, vy: m.vy, at: tN });
+      act(e, 'swing'); tone(523, 0, .1);
+      if (psend) psend(m);
+    }
+    function addBall(m) {
+      var b = BALLS[m.id];
+      if (b) return b;                                         // lemparan sendiri yang dikembalikan server
+      b = BALLS[m.id] = { id: m.id, o: m.p, n: 0, x0: m.x, y0: m.y, vx: m.vx, vy: m.vy, t0: m.at, born: m.at, hitAt: m.at, by: m.p, pend: null, end: false };
+      var d = document.createElement('div'); d.className = 'lb-ball'; d.innerHTML = '<i class="sh"></i><i class="b"></i>';
+      layer.appendChild(d); b.el = d; b.bel = d.lastChild;
+      return b;
+    }
+    function dropBall(id) { var b = BALLS[id]; delete BALLS[id]; if (b && b.el) b.el.remove(); }
+    function applyHit(b, ev, at, pending) {
+      b.x0 = ev.x; b.y0 = ev.y; b.vx = ev.vx; b.vy = ev.vy; b.t0 = at; b.hitAt = at; b.by = ev.by; b.n = ev.n; b.pend = pending ? ev.by : null;
+      var e = ents[ev.by], tN = clock();
+      if (e && e.el) { act(e, 'jump'); if (tN - (e.sayAt || 0) > 1500) { e.sayAt = tN; say(e, pick(Math.random, HITSAY), '', 1100); } }
+      tone(ev.n % 2 ? 784 : 659, 0, .1);
+    }
+    function onHit(m) {
+      var b = BALLS[m.id];
+      if (!b) { if (S.started) return; b = addBall({ id: m.id, p: '', x: m.x, y: m.y, vx: m.vx, vy: m.vy, at: m.at }); b.n = m.n - 1; }
+      if (m.n === b.n && b.pend) { if (b.pend === m.by) b.pend = null; else applyHit(b, m, m.at, false); return; }   // pantulan sendiri dikonfirmasi / layar lain lebih dulu
+      if (m.n > b.n) applyHit(b, m, m.at, false);
+    }
+    function checkHit(b, p, tN) {
+      var meOk = !!handlers.playLocal || !!PRES[S.meId];
+      for (var id in ents) {
+        var e = ents[id];
+        if (!hittable(e) || (id === S.meId ? !meOk : !(b.o === S.meId && !PRES[id]))) continue;
+        if (id === b.by && tN - b.hitAt < 450) continue;
+        var c = canonOf(e);
+        if (!LP.hits(p, { x: c[0], y: c[1] })) continue;
+        var aim = id === S.meId && MY.man && MY.face && tN - MY.faceAt < 1000 ? MY.face : null;
+        var v = LP.returnVel(p, { id: id, x: c[0], y: c[1] }, b.by, targets(id), Math.random, aim);
+        var ev = { t: 'h', id: b.id, n: b.n + 1, x: r2(p.x), y: r2(p.y), vx: r2(v[0]), vy: r2(v[1]), by: id };
+        applyHit(b, ev, tN, true);
+        if (psend) psend(ev);
+        return;
+      }
+    }
+    function stepBalls(tN) {
+      for (var id in BALLS) {
+        var b = BALLS[id];
+        if (S.started || !LP.alive(b, tN)) { dropBall(id); continue; }
+        if (S.meId) checkHit(b, LP.ballAt(b, tN), tN);
+        var p = LP.ballAt(b, tN), q = LP.toUV(LY.mode, p.x, p.y), P = LY.proj(q[0], q[1]);
+        var h = REDUCE ? 0 : Math.abs(Math.sin(Math.PI * (tN - b.t0) / 650)) * LY.SH * .38;
+        b.el.style.transform = 'translate3d(' + P.x.toFixed(1) + 'px,' + P.y.toFixed(1) + 'px,0) scale(' + P.s.toFixed(3) + ')';
+        b.bel.style.transform = 'translateY(' + (-h).toFixed(1) + 'px)';
+        b.el.style.zIndex = 101 + Math.round(q[1] * 1000);
+        var end = b.hitAt + LP.TTL - tN < 700;
+        if (end !== b.end) { b.end = end; b.el.classList.toggle('end', end); }
+      }
+      if (playing) { var w = !!throwWhy(tN); if (w !== thrWait) { thrWait = w; el.throw.classList.toggle('wait', w); } }
+    }
+    function setPresence(ids) { PRES = {}; (ids || []).forEach(function (id) { PRES[id] = 1; }); }
+    /* pesan dari server (lewat app) */
+    function onPlay(m) {
+      if (!m || !S) return;
+      var tN = clock();
+      if (m.t === 'net') {
+        NETS.up = !!m.up; NETS.off = !!m.off; if (typeof m.offset === 'number' && isFinite(m.offset)) OFFSET = m.offset;
+        if (!NETS.up) PRES = {};
+        renderPlay();
+      } else if (m.t === 'hi') { setPresence(m.ids); Object.keys(m.man || {}).forEach(function (pid) { if (pid !== S.meId || !MY.man) remoteMove(pid, m.man[pid].x, m.man[pid].y, tN); }); }
+      else if (m.t === 'p') setPresence(m.ids);
+      else if (m.t === 'm') { if (m.p !== S.meId || !MY.man) remoteMove(m.p, m.x, m.y, tN); }
+      else if (m.t === 'a') { if (REM[m.p]) dropRemote(m.p, tN); }
+      else if (m.t === 'b') { if (!S.started) addBall(m); }
+      else if (m.t === 'bx') dropBall(m.id);
+      else if (m.t === 'h') onHit(m);
+      else if (m.t === 'off') { NETS.off = true; release(false); renderPlay(); }
+    }
+    function canPlay() { return !!psend && !!S.meId && !S.started && people().some(function (p) { return p.id === S.meId; }); }
+    function renderPlay() {
+      var ok = canPlay();
+      if (!ok && playing) setPlaying(false);
+      el.playBtn.hidden = !ok;
+      el.playBtn.classList.toggle('wait', !NETS.up || NETS.off);
+      el.playBtn.title = NETS.off ? OFF_TXT : !NETS.up ? 'Mode main sedang menyambung…' : playing ? 'Selesai main' : 'Main bola';
+      el.padNote.hidden = NETS.up && !NETS.off;
+      el.padNote.textContent = NETS.off ? OFF_TXT : 'Menyambung ulang… gerakanmu belum terlihat di layar lain.';
+    }
+    function setPlaying(on) {
+      if (on === playing) return;
+      playing = on; el.pad.hidden = !on; el.playBtn.setAttribute('aria-pressed', String(on)); stage.classList.toggle('playing', on);
+      JOY.on = false; JOY.x = JOY.y = 0; KEYS = {}; el.joy.firstChild.style.transform = ''; thrWait = null;
+      if (on) {
+        if (lsGet('paddoc_play_hint') !== '1') { lsSet('paddoc_play_hint', '1'); toast('Geser analog untuk jalan, tekan tombol bola untuk melempar. Bola memantul kalau kena avatar lain.'); }
+        takeControl(clock());
+        if (document.activeElement === el.playBtn) el.playBtn.blur();   // spasi = lempar, bukan menekan tombol Main lagi
+      } else release(true);
+      measureChips(); renderPlay();
+    }
+    function joyAt(ev) {
+      var r = el.joy.getBoundingClientRect(), R = r.width * .32, dx = (ev.clientX - r.left - r.width / 2) / R, dy = (ev.clientY - r.top - r.height / 2) / R, d = Math.hypot(dx, dy);
+      if (d > 1) { dx /= d; dy /= d; }
+      JOY.x = dx; JOY.y = dy; el.joy.firstChild.style.transform = 'translate(' + (dx * R).toFixed(1) + 'px,' + (dy * R).toFixed(1) + 'px)';
+    }
+    function joyEnd(ev) {
+      if (!JOY.on || ev.pointerId !== JOY.id) return;
+      JOY.on = false; JOY.x = JOY.y = 0; el.joy.firstChild.style.transform = '';
+      if (MY.man && (MY.sentX === null || Math.hypot(MY.man.x - MY.sentX, MY.man.y - MY.sentY) > .01)) sendMove(clock());
+    }
+    el.joy.addEventListener('pointerdown', function (ev) { ev.preventDefault(); audio(); JOY.on = true; JOY.id = ev.pointerId; try { el.joy.setPointerCapture(ev.pointerId); } catch (x) { /* abaikan */ } joyAt(ev); });
+    el.joy.addEventListener('pointermove', function (ev) { if (JOY.on && ev.pointerId === JOY.id) joyAt(ev); });
+    el.joy.addEventListener('pointerup', joyEnd); el.joy.addEventListener('pointercancel', joyEnd);
+    el.throw.addEventListener('pointerdown', function (ev) { ev.preventDefault(); audio(); throwBall(); });
+    el.throw.addEventListener('click', function (ev) { if (ev.detail === 0) throwBall(); });     // Enter / pembaca layar
+    var KEYMAP = { ArrowLeft: 'l', a: 'l', A: 'l', ArrowRight: 'r', d: 'r', D: 'r', ArrowUp: 'u', w: 'u', W: 'u', ArrowDown: 'd', s: 'd', S: 'd' };
+    function onKey(ev) {
+      var tag = (ev.target && ev.target.tagName) || '';
+      if (!playing || /^(INPUT|TEXTAREA|SELECT)$/.test(tag)) return;
+      var k = KEYMAP[ev.key], down = ev.type === 'keydown';
+      if (k) {
+        ev.preventDefault(); KEYS[k] = down;
+        if (!down && !KEYS.l && !KEYS.r && !KEYS.u && !KEYS.d && MY.man) sendMove(clock());
+      } else if (down && ev.key === ' ' && !ev.repeat && !/^(BUTTON|A)$/.test(tag)) { ev.preventDefault(); throwBall(); }
+    }
+    document.addEventListener('keydown', onKey); document.addEventListener('keyup', onKey);
 
     /* --- panel & tombol --- */
     function syncBoxes() {
@@ -647,6 +918,7 @@ var Lobby = (function () {
       el.started.hidden = !S.started;
       el.startedTxt.textContent = S.role === 'host' ? 'Lobi ditutup untuk semua orang. Salah tekan? Kembali ke lobi selama belum ada match yang dimulai.' : 'Lobi ditutup. Tunggu panggilan court dari host.';
       el.backBtn.hidden = S.role !== 'host';
+      renderPlay();
     }
     function renderChat(quiet) {
       var canChat = S.role !== 'public';
@@ -692,6 +964,7 @@ var Lobby = (function () {
       else if (a === 'music') { var on = musicOn(!music); b.setAttribute('aria-pressed', String(on)); lsSet('paddoc_lb_music', on ? '1' : '0'); }
       else if (a === 'share') { if (handlers.share) handlers.share(); else copyShare(S.session || {}, (S.session && S.session.url) || location.href); }
       else if (a === 'start') confirmStart();
+      else if (a === 'play') { if (NETS.off) toast(OFF_TXT); else if (!NETS.up && !playing) toast('Mode main sedang menyambung, coba lagi sebentar.'); else setPlaying(!playing); }
       else if (a === 'remove') { var p = people().filter(function (x) { return x.id === b.dataset.pid; })[0]; if (p && handlers.remove) handlers.remove(p.id); }
       else if (handlers[a]) handlers[a]();
     });
@@ -718,6 +991,7 @@ var Lobby = (function () {
       var tSig = next.themes ? JSON.stringify(next.themes) : themesSig, themesChanged = tSig !== themesSig;
       if (themesChanged) { themesSig = tSig; setThemes(next.themes); themeOptions(); }
       S = Object.assign({}, S || {}, next);
+      replan();
       if (first || prevTheme !== S.theme || themesChanged) relayout(true);
       var now = {}; people().forEach(function (p) { now[p.id] = p; });
       Object.keys(ents).forEach(function (id) { if (!now[id]) exit(id); });
@@ -734,15 +1008,27 @@ var Lobby = (function () {
     if (!LY) requestAnimationFrame(function () { relayout(true); people().forEach(function (p) { if (!ents[p.id]) enter(p, true); }); renderRoster(); });
     lastT = performance.now(); raf = requestAnimationFrame(loop);
 
-    return {
+    var inst = {
       root: root,
       update: update,
+      play: onPlay,
+      /* posisi lapangan (meter) semua avatar & bola saat ini, untuk uji otomatis */
+      peek: function () {
+        var o = { t: clock(), offset: OFFSET, playing: playing, up: NETS.up, off: NETS.off, ents: {}, balls: {}, sides: {} };
+        if (LY) for (var id in ents) { if (ents[id].el) { o.ents[id] = canonOf(ents[id]); if (PL[id]) o.sides[id] = PL[id].side; } }
+        if (LY) for (var bid in BALLS) { var q = LP.ballAt(BALLS[bid], o.t); o.balls[bid] = { x: q.x, y: q.y, n: BALLS[bid].n, by: BALLS[bid].by, o: BALLS[bid].o }; }
+        return o;
+      },
       say: function (pid, text) { say(ents[pid], text, 'chat', 4500); },
       destroy: function () {
         alive = false; cancelAnimationFrame(raf); clearInterval(cdT); musicOn(false);
+        document.removeEventListener('keydown', onKey); document.removeEventListener('keyup', onKey);
         if (ro) ro.disconnect(); document.removeEventListener('visibilitychange', vis); root.innerHTML = '';
+        if (API.active === inst) API.active = null;
       }
     };
+    API.active = inst;
+    return inst;
   }
 
   /* ============================================================
@@ -796,6 +1082,7 @@ var Lobby = (function () {
       theme: function (id) { cur.theme = id; push(); },
       chat: function (text) { var m = meOf(); chat.push({ id: 'c' + cid++, pid: m.id, name: m.name, role: m.role, text: text, at: Date.now() }); push(); },
       login: function () { toast('Pratinjau: tombol ini membuka halaman masuk.'); },
+      playLocal: true,
       frame: function (t) { frames++; if (t - fpsT > 1000) { fpsEl.textContent = Math.round(frames * 1000 / (t - fpsT)) + ' fps · ' + present.length + ' karakter'; frames = 0; fpsT = t; } }
     };
     inst = mount(root.querySelector('.lb-demo-host'), state(), h);
@@ -811,8 +1098,9 @@ var Lobby = (function () {
     return inst;
   }
 
-  return { mount: mount, demo: demo, THEMES: THEMES, setThemes: setThemes, themeList: themeList, themeDef: themeDef, bilinear: bilinear,
-    shareText: shareText, look: look, refLook: refLook, musicOn: musicOn,
+  var API = { mount: mount, demo: demo, THEMES: THEMES, setThemes: setThemes, themeList: themeList, themeDef: themeDef, bilinear: bilinear,
+    shareText: shareText, look: look, refLook: refLook, musicOn: musicOn, active: null,
     figureSVG: function (p) { return p.look ? chibi(p.look) : silhouette(p.name, null, p.role === 'host'); } };
+  return API;
 })();
 if (typeof module !== 'undefined') module.exports = Lobby;
