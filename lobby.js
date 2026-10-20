@@ -93,7 +93,7 @@ var Lobby = (function () {
   }
   /* kepala kecil untuk daftar & chat: foto profil bila ada */
   function head(p) {
-    if (p && p.photo) return '<span class="lb-av"><img src="' + esc(p.photo) + '" alt="" loading="lazy"></span>';
+    if (p && p.photo) return '<span class="lb-av"><img src="' + esc(p.photo) + '" alt="" loading="lazy"' + (p.id ? ' data-pid="' + esc(p.id) + '"' : '') + '></span>';
     if (p && p.look) return '<span class="lb-av">' + chibi(p.look, HEADVB) + '</span>';
     return '<span class="lb-av">' + silhouette(p ? p.name : '?', HEADVB, p && p.role === 'host') + '</span>';
   }
@@ -809,6 +809,7 @@ var Lobby = (function () {
   }
 
   return { mount: mount, demo: demo, THEMES: THEMES, setThemes: setThemes, themeList: themeList, themeDef: themeDef, bilinear: bilinear,
-    shareText: shareText, look: look, refLook: refLook, musicOn: musicOn };
+    shareText: shareText, look: look, refLook: refLook, musicOn: musicOn,
+    figureSVG: function (p) { return p.look ? chibi(p.look) : silhouette(p.name, null, p.role === 'host'); } };
 })();
 if (typeof module !== 'undefined') module.exports = Lobby;

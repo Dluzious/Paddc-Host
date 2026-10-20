@@ -66,7 +66,9 @@ var Core = (function () {
     var fid = displayPhoto(p);
     return { id: p.id, name: p.name, gender: p.gender, hijab: !!p.hijab, role: p.role, archived: !!p.archived, photoUrl: fid ? A.photoUrl(fid) : '', fid: fid,
       // avatar chibi lobi: versi kecil (sprite) untuk semua; versi besar hanya sampai HP host membuat versi kecilnya
-      chibiUrl: p.spriteId ? A.photoUrl(p.spriteId) : '', chibiFull: p.chibiId && !p.spriteId ? A.photoUrl(p.chibiId) : '' };
+      chibiUrl: p.spriteId ? A.photoUrl(p.spriteId) : '', chibiFull: p.chibiId && !p.spriteId ? A.photoUrl(p.chibiId) : '',
+      // pose selebrasi podium (dibuat sekali saat pertama kali naik podium)
+      celebUrl: p.celebSpriteId ? A.photoUrl(p.celebSpriteId) : '', celebFull: p.celebId && !p.celebSpriteId ? A.photoUrl(p.celebId) : '' };
   }
   function fullPerson(p) {
     var o = publicPerson(p);
@@ -75,6 +77,7 @@ var Core = (function () {
     o.asliUrl = p.photoId ? A.photoUrl(p.photoId) : ''; o.proUrl = p.proId ? A.photoUrl(p.proId) : '';
     o.aiStatus = p.aiStatus || (p.proId ? 'done' : 'none'); o.aiNote = p.aiNote || ''; o.pinDefault = !!p.pinDefault;
     o.chibiStatus = p.chibiStatus || (p.chibiId ? 'done' : 'none'); o.chibiNote = p.chibiNote || ''; o.chibiAt = p.chibiAt || 0; o.chibiBusyAt = p.chibiBusyAt || 0;
+    o.celebStatus = p.celebStatus || (p.celebId ? 'done' : 'none'); o.celebBusyAt = p.celebBusyAt || 0;
     return o;
   }
 
@@ -97,7 +100,7 @@ var Core = (function () {
   }
   function status() {
     var hasAdmin = people().some(function (p) { return p.role === 'admin' && !p.archived; });
-    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.7', migrated: !!A.prop('MIGRATED_AT') };
+    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.8', migrated: !!A.prop('MIGRATED_AT') };
   }
   function createAdmin(r) {
     return A.lock(function () {
@@ -234,17 +237,41 @@ var Core = (function () {
       throw e;
     });
   }
-  /* versi kecil avatar (±320×480, latar transparan) dibuat di HP admin/host, supaya lobi ringan untuk 30 karakter */
+  /* pose selebrasi podium: dari avatar chibi yang sudah ada, dibuat sekali lalu dipakai di sesi-sesi berikutnya */
+  function generateCelebrate(r) {
+    auth(r.token, ['admin', 'host']);
+    var p = person(r.id);
+    if (!p) throw err('NOT_FOUND');
+    if (!p.chibiId && !p.proId && !p.photoId) throw err('INVALID', 'Belum ada foto atau avatar');
+    if (!A.aiEnabled() || !A.generateCelebrate) throw err('AI_OFF', 'OPENAI_API_KEY belum diisi');
+    if (p.celebStatus === 'busy' && now() - (p.celebBusyAt || 0) < 300000) throw err('BUSY', 'Pose selebrasi sedang dibuat');
+    A.lock(function () { var q = person(r.id); q.celebStatus = 'busy'; q.celebBusyAt = now(); A.savePerson(q); A.cachePut('PEOPLE', null); });
+    return Promise.resolve().then(function () { return A.generateCelebrate(p); }).then(function (out) {
+      return A.lock(function () {
+        var q = person(r.id);
+        A.trash(q.celebId); A.trash(q.celebSpriteId);
+        q.celebId = out.id; q.celebSpriteId = ''; q.celebStatus = 'done'; q.celebAt = now();
+        A.savePerson(q); bumpPeople();
+        return fullPerson(q);
+      });
+    }, function (e) {
+      A.lock(function () { var q = person(r.id); q.celebStatus = 'error'; A.savePerson(q); A.cachePut('PEOPLE', null); });
+      throw e;
+    });
+  }
+  /* versi kecil avatar (±320×480, latar transparan) dibuat di HP admin/host, supaya lobi ringan untuk 30 karakter.
+     kind 'celeb' = versi kecil pose selebrasi podium */
   function saveSprite(r) {
     auth(r.token, ['admin', 'host']);
     if (!/^data:image\/(png|webp);base64,/.test(String(r.data || '')) || String(r.data).length > 700000) throw err('INVALID', 'Gambar avatar tidak valid');
+    var celeb = r.kind === 'celeb';
     return A.lock(function () {
-      var q = person(r.id);
-      if (!q || !q.chibiId) throw err('NOT_FOUND', 'Avatar belum dibuat');
-      if (r.chibiId && r.chibiId !== q.chibiId) throw err('STALE', 'Avatar sudah diganti');
-      var id = A.savePhoto(r.data, q.name + '_sprite');
-      A.trash(q.spriteId);
-      q.spriteId = id; A.savePerson(q); bumpPeople();
+      var q = person(r.id), full = q && (celeb ? q.celebId : q.chibiId);
+      if (!full) throw err('NOT_FOUND', 'Avatar belum dibuat');
+      if (r.chibiId && r.chibiId !== full) throw err('STALE', 'Avatar sudah diganti');
+      var id = A.savePhoto(r.data, q.name + (celeb ? '_celeb_sprite' : '_sprite'));
+      if (celeb) { A.trash(q.celebSpriteId); q.celebSpriteId = id; } else { A.trash(q.spriteId); q.spriteId = id; }
+      A.savePerson(q); bumpPeople();
       return publicPerson(q);
     });
   }
@@ -1100,8 +1127,8 @@ var Core = (function () {
         Engine.liveMatches(S).forEach(function (x) { Engine.voidMatch(S, x.id); });
         S.status = 'done'; S.endedAt = now();
         if (A.notify) Object.keys(attendees(S)).forEach(function (pid) {
-          A.notify(pid, { title: 'Beri kudos: ' + S.name, body: 'Sesi selesai. Beri kesan untuk teman main dan host. Hanya penerima yang bisa melihatnya.',
-            tag: 'kudos-' + S.id, url: '/?kudos=' + S.id });
+          A.notify(pid, { title: 'Terima kasih sudah bergabung! 🎾', body: 'Sampai jumpa di pertandingan selanjutnya, VAMOS!!! Ketuk untuk lihat podium ' + S.name + ' lalu beri kudos.',
+            tag: 'kudos-' + S.id, url: '/?done=' + S.id });
         });
         break;
       case 'reopen': S.status = 'live'; fill(S, P); break;
@@ -1149,7 +1176,7 @@ var Core = (function () {
     me: me, changePin: changePin, updateMe: updateMe, listPeople: listPeople, savePerson: savePersonReq, resetPin: resetPin,
     generatePro: generatePro, listSessions: listSessions, openSession: openSession, deleteSession: deleteSession,
     createSession: createSession, act: act, importPerson: importPerson, importSession: importSession, markMigrated: markMigrated,
-    pushSubscribe: pushSubscribe, venueSearch: venueSearch, generateChibi: generateChibi, saveSprite: saveSprite,
+    pushSubscribe: pushSubscribe, venueSearch: venueSearch, generateChibi: generateChibi, saveSprite: saveSprite, generateCelebrate: generateCelebrate,
     saveTheme: saveTheme, deleteTheme: deleteTheme, kudosForm: kudosForm, giveKudos: giveKudos, myKudos: myKudos, kudosAdmin: kudosAdmin,
     payInfo: payInfo, pastSessions: pastSessions, pastSession: pastSession
   };

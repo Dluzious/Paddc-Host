@@ -1,4 +1,4 @@
-# Paddoc Host v2.7
+# Paddoc Host v2.8
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -8,6 +8,7 @@ aplikasi dan API, satu Durable Object (SQLite) untuk semua data (orang, sesi, fo
 - `engine.js` – mesin undian & klasemen (dipakai aplikasi dan server)
 - `core.js` – aturan peran dan semua aksi sesi (dipakai server, dan mode demo di browser)
 - `worker/` – server Cloudflare: `index.js` (API, WebSocket, foto), `ai.js` (foto pro AI), `push.js` (notifikasi push), `logo.js`
+- `lobby.js` + `lobby.css` – ruang tunggu (lobi); `ceremony.js` – podium akhir sesi (canvas, simpan foto/video)
 - `sw.js` – service worker: menerima notifikasi panggilan di HP (tombol Siap / Skip dulu)
 - `config.js` – alamat API (`/api`) dan URL Apps Script lama (hanya untuk pindahan data)
 - `wrangler.jsonc` – konfigurasi Worker
@@ -166,6 +167,23 @@ Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas 
   Silent Killer. Kudos host: Super Host, Organized Host, Vibe Master, Problem Solver, Game Day Hero, Reliable Host.
 - Kudos tersimpan per orang dan terakumulasi antar sesi. **Profil → Kudos untukmu** menampilkan jumlah per kudos dan
   siapa pemberinya; orang lain tidak bisa melihatnya. Admin melihat semua di **Database → Kudos**.
+
+## Podium akhir sesi, klasemen, foto pemain (v2.8)
+
+- **Klasemen utama**: jumlah **menang**, lalu **selisih poin** (poin dapat − poin kebobolan, dijumlah tiap match;
+  contoh 3-2 = +1, 1-4 = −3, 5-0 = +5 → total +3). Sesi baru memakai urutan ini; *Total poin* dan *Rata-rata*
+  tetap bisa dipilih. Sesi lama memakai pilihan saat dibuat.
+- **Foto pemain layar penuh**: ketuk foto pemain di mana saja. Foto yang berada di dalam tombol (mis. kartu pemain di
+  papan iPad untuk ganti pemain) dibuka dengan **tekan lama** supaya tombolnya tetap berfungsi.
+- **Podium** (`ceremony.js`) muncul otomatis saat sesi ditutup di iPad dan HP semua yang membuka app:
+  juara 1–3 di podium (pose selebrasi, foto pro AI di atas kepala, lencana peringkat, trofi), pemain lain sebagai penonton
+  yang bersorak, confetti, lampu sorot, dan klasemen akhir (menang · selisih) di samping (iPad) atau di bawah (HP).
+  **Simpan foto** (PNG) dan **Rekam video** ±8 detik (MP4/WebM; tombol disembunyikan bila browser tidak mendukung),
+  lalu dibagikan/diunduh. Bisa dibuka lagi: dashboard (*Lihat podium*), Menu, dan Riwayat sesi.
+- **Pose selebrasi AI**: saat juara 1–3 pertama kali naik podium, HP admin/host membuat pose girang dari avatar chibi
+  pemain itu (sekali per pemain, dipakai lagi di sesi berikutnya). Selama dibuat, podium memakai avatar biasa yang melompat.
+- **Setelah sesi ditutup**: notifikasi *Terima kasih sudah bergabung! … VAMOS!!!* → podium → kartu terima kasih →
+  halaman kudos.
 
 ## Jam hadir: full, 1 jam, atau 2 jam (v2.7)
 
