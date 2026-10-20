@@ -1,4 +1,4 @@
-# Paddoc Host v2.6
+# Paddoc Host v2.7
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -167,6 +167,20 @@ Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas 
 - Kudos tersimpan per orang dan terakumulasi antar sesi. **Profil → Kudos untukmu** menampilkan jumlah per kudos dan
   siapa pemberinya; orang lain tidak bisa melihatnya. Admin melihat semua di **Database → Kudos**.
 
+## Jam hadir: full, 1 jam, atau 2 jam (v2.7)
+
+- Rencana sesi punya **jam mulai** dan **jam selesai** booking (boleh lewat tengah malam, maks. 12 jam).
+- Saat **Saya Bergabung**, pemain memilih **Full** atau hanya **1 jam / 2 jam** dan menentukan sendiri jamnya
+  (mis. booking 19.00–22.00: 19–20, 20–21, 21–22, 19–21, 20–22). Jam bisa diubah lewat tombol kalender di lobi.
+  Host selalu full; biaya sama untuk semua.
+- Lobi menampilkan jam tiap pemain dan **jumlah pemain per jam** supaya host bisa memperkirakan court.
+- Saat sesi berjalan: pemain yang jamnya belum mulai dijeda (*mulai 20.00*) dan otomatis masuk antrean undian
+  5 menit sebelum jamnya; 10 menit sebelum jamnya habis ia berhenti diundi (match yang sedang dimainkan tetap selesai).
+  Keduanya berjalan sendiri lewat alarm Durable Object dan dikabari lewat notifikasi. Datang lebih awal? **Saya sudah
+  datang**. Mau lanjut setelah jamnya habis? **Main lagi**.
+- Mengubah jadwal di *Ubah rencana* mengembalikan pilihan jam sebagian ke full (pemain diminta memilih lagi).
+- Mulai Sesi butuh minimal 4 pemain yang jamnya sudah mulai.
+
 ## Host sesi dari pemain (v2.6)
 
 Admin/host bisa menunjuk pemain jadi **host sesi** (lobi: *Ubah rencana*; saat main: panel **Pemain**, tombol bendera).
@@ -202,7 +216,8 @@ Server mengirim perubahan ke semua perangkat lewat WebSocket begitu terjadi; cek
 sebagai cadangan (3–4 detik bila WebSocket terputus).
 
 **Notifikasi**: sesi baru, pengingat 12 jam & 3 jam sebelum main, panggilan court, ajakan kudos setelah sesi, ditunjuk
-jadi host sesi/payment collector, bukti bayar masuk/dibatalkan, dan koreksi skor (masuk & hasil review). Tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
+jadi host sesi/payment collector, bukti bayar masuk/dibatalkan, koreksi skor (masuk & hasil review), serta jam
+main dimulai/selesai bagi pemain yang hadir sebagian. Tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
 lawan, dengan tombol **Siap** / **Skip dulu**. Kunci VAPID dibuat otomatis oleh server, tidak perlu disetel.
 
 - Link Paddoc Host di **Android** terbuka langsung di aplikasi yang sudah terpasang (aplikasi yang sedang terbuka

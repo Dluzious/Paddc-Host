@@ -97,7 +97,7 @@ var Core = (function () {
   }
   function status() {
     var hasAdmin = people().some(function (p) { return p.role === 'admin' && !p.archived; });
-    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.6', migrated: !!A.prop('MIGRATED_AT') };
+    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.7', migrated: !!A.prop('MIGRATED_AT') };
   }
   function createAdmin(r) {
     return A.lock(function () {
@@ -366,11 +366,13 @@ var Core = (function () {
     src = src || {}; old = old || {};
     var v = src.venue || old.venue || {}, str = function (x, n) { return String(x == null ? '' : x).trim().slice(0, n); };
     var when = Number(src.when != null ? src.when : old.when) || null;
+    var until = Number(src.until !== undefined ? src.until : old.until) || null;          // jam selesai booking
+    if (until && (!when || until <= when || until - when > 12 * 3600000)) until = null;
     var maps = str(v.maps, 400);
     if (maps && !/^https:\/\//.test(maps)) maps = '';
     var lat = Number(v.lat), lng = Number(v.lng);
     return {
-      when: when, whenText: str(src.whenText != null ? src.whenText : old.whenText, 80),
+      when: when, until: until, whenText: str(src.whenText != null ? src.whenText : old.whenText, 80),
       venue: { name: str(v.name, 80), address: str(v.address, 160), maps: maps, lat: isFinite(lat) ? lat : null, lng: isFinite(lng) ? lng : null },
       theme: /^[a-z0-9_-]{1,24}$/.test(String(src.theme || '')) ? src.theme : (old.theme || 'court')
     };
@@ -379,8 +381,8 @@ var Core = (function () {
     var p = S.plan || {};
     var o = { id: S.id, v: S.v || 0, name: S.name, status: S.status, format: S.format, teamMode: S.teamMode,
       courts: S.courts.filter(function (c) { return c.active; }).length, hosts: S.hosts || [],
-      when: p.when, whenText: p.whenText, venue: p.venue || {}, theme: p.theme || 'court', by: p.by,
-      rsvp: (p.rsvp || []).map(function (x) { return { pid: x.pid, role: x.role, at: x.at }; }), chatN: (p.chat || []).length,
+      when: p.when, until: p.until || null, whenText: p.whenText, venue: p.venue || {}, theme: p.theme || 'court', by: p.by,
+      rsvp: (p.rsvp || []).map(function (x) { var o2 = { pid: x.pid, role: x.role, at: x.at }; if (x.from) { o2.from = x.from; o2.to = x.to; } return o2; }), chatN: (p.chat || []).length,
       cohosts: S.cohosts || [], pay: paySummary(S) };
     if (member) o.chat = (p.chat || []).slice(-100);
     if (S.teamMode === 'fixed') o.teams = (p.teams || []).map(function (t) { return { a: t.a, b: t.b }; });
@@ -405,6 +407,40 @@ var Core = (function () {
     while (left.length >= 2) teams.push({ a: left.pop(), b: left.pop() });
     return teams;
   }
+  /* jam hadir sebagian (1 atau 2 jam dari jam booking) */
+  var JOIN_EARLY = 5 * 60000, END_BUFFER = 10 * 60000;
+  function planSlot(p, d) {
+    if (!d.from || !d.to || !p.when || !p.until) return null;
+    var from = Number(d.from), to = Number(d.to);
+    if (!(from >= p.when && to <= p.until && to - from >= 30 * 60000)) throw err('INVALID', 'Jam hadir harus di dalam jam booking');
+    if (from === p.when && to === p.until) return null;                              // sama dengan full
+    return { from: from, to: to };
+  }
+  /* masuk antrean saat jamnya mulai; berhenti diundi 10 menit sebelum jamnya habis (match yang sedang jalan tetap selesai) */
+  function applyAvail(S, t, initial) {
+    var av = S.avail || {}, changed = false, next = null, notify = A.notify || function () {};
+    Object.keys(av).forEach(function (pid) {
+      var a = av[pid], part = S.parts[pid];
+      if (!part) return;
+      var start = a.from - JOIN_EARLY, end = a.to - END_BUFFER;
+      if (a.st !== 'out' && t >= end) {
+        if (part.active) { Engine.removeParticipant(S, pid); part.timeOff = 'done'; }
+        a.st = 'out'; changed = true;
+        if (!initial) notify(pid, { title: 'Jam mainmu selesai: ' + S.name, body: 'Kamu tidak diundi lagi setelah match ini. Terima kasih sudah main!', tag: 'avail-' + S.id, url: '/' });
+        return;
+      }
+      if (a.st === 'wait' && t >= start) {
+        if (part.timeOff === 'wait') { Engine.addParticipant(S, pid, S.rules.catchUp); delete part.timeOff; }
+        a.st = 'in'; changed = true;
+        notify(pid, { title: 'Waktunya main: ' + S.name, body: 'Jam mainmu dimulai. Kamu sudah masuk antrean undian.', tag: 'avail-' + S.id, url: '/' });
+      } else if (initial && a.st === 'in' && t < start) {
+        part.paused = true; part.timeOff = 'wait'; a.st = 'wait'; changed = true;
+      }
+      var nx = a.st === 'wait' ? start : a.st === 'in' ? end : null;
+      if (nx && (next == null || nx < next)) next = nx;
+    });
+    return { changed: changed, next: next };
+  }
   function startPlan(S, P, d) {
     d = d || {};
     var p = S.plan, alive = {};
@@ -425,9 +461,16 @@ var Core = (function () {
         teams = d.pairRest ? autoTeams(players, P, given) : given;
       } else teams = autoTeams(players, P, p.teams);
     }
+    // jam hadir sebagian: yang belum jamnya dijeda, masuk antrean otomatis saat jamnya mulai
+    var avail = {}, t0 = now();
+    p.rsvp.forEach(function (x) { if (x.from && players.indexOf(x.pid) >= 0) avail[x.pid] = { from: x.from, to: x.to, st: 'in' }; });
+    var ready = players.filter(function (pid) { var a = avail[pid]; return !a || (t0 >= a.from - JOIN_EARLY && t0 < a.to - END_BUFFER); });
+    if (ready.length < 4) throw err('INVALID', 'Butuh minimal 4 pemain yang jam hadirnya sudah mulai (sekarang ' + ready.length + '). Pemain jam berikutnya masuk otomatis');
     var fresh = Engine.newSession({ name: S.name, format: S.format, teamMode: S.teamMode, scoring: S.scoring, rules: S.rules, courts: S.courts, playerIds: players, teams: teams });
     S.parts = fresh.parts; S.teams = fresh.teams; S.matches = []; S.seq = 0; S.status = 'live'; S.date = new Date().toISOString();
     S.calls = {}; S.lastDone = {};
+    S.avail = avail;
+    applyAvail(S, t0, true);
     setHosts(S, (S.hosts || []).concat(hostIds));
     p.startedAt = now(); p.prevActive = A.prop('ACTIVE_SID') || '';
     Engine.fillCourts(S, P);
@@ -438,7 +481,7 @@ var Core = (function () {
     var played = S.matches.some(function (m) { return m.go || (m.tally && m.tally.length) || m.status === 'done'; });
     if (played) throw err('INVALID', 'Sudah ada match yang dimulai. Lobi tidak bisa dibuka lagi');
     S.status = 'plan'; S.parts = {}; S.teams = []; S.matches = []; S.seq = 0; S.calls = {}; S.lastDone = {};
-    delete S.plan.startedAt;
+    delete S.plan.startedAt; delete S.avail;
     if (A.prop('ACTIVE_SID') === S.id) {
       var prev = S.plan.prevActive && loadS(S.plan.prevActive);
       if (prev && prev.status === 'live') A.setProp('ACTIVE_SID', prev.id); else A.delProp('ACTIVE_SID');
@@ -457,10 +500,13 @@ var Core = (function () {
       var who = person(d.pid || actor.id);
       if (!who || who.archived) throw err('NOT_FOUND', 'Orang tidak ditemukan');
       if (!staff && who.id !== actor.id) throw err('FORBIDDEN');
+      var prev = p.rsvp.filter(function (x) { return x.pid === who.id; })[0];
       p.rsvp = p.rsvp.filter(function (x) { return x.pid !== who.id; });
       if (d.on !== false) {
         var role = who.role === 'host' ? 'host' : who.role === 'admin' ? (d.as === 'player' ? 'player' : 'host') : 'player';
-        p.rsvp.push({ pid: who.id, role: role, at: now(), by: actor.id });
+        var slot = role === 'player' ? planSlot(p, d) : null, entry = { pid: who.id, role: role, at: prev ? prev.at : now(), by: actor.id };
+        if (slot) { entry.from = slot.from; entry.to = slot.to; }
+        p.rsvp.push(entry);
       }
       return null;
     }
@@ -469,7 +515,9 @@ var Core = (function () {
     if (type === 'editPlan') {
       var f = planFields(d, p);
       if (f.when !== p.when) p.reminded = {};
-      p.when = f.when; p.whenText = f.whenText; p.venue = f.venue; p.theme = f.theme;
+      var moved = f.when !== p.when || f.until !== p.until;
+      p.when = f.when; p.until = f.until; p.whenText = f.whenText; p.venue = f.venue; p.theme = f.theme;
+      if (moved) p.rsvp.forEach(function (x) { delete x.from; delete x.to; });   // jadwal berubah: jam hadir sebagian kembali ke full
       if (d.name) S.name = String(d.name).trim().slice(0, 60) || S.name;
       return null;
     }
@@ -499,6 +547,13 @@ var Core = (function () {
         });
         if (changed) saveS(S);
       });
+      // sesi berjalan: pemain jam berikutnya masuk antrean / yang jamnya habis berhenti diundi
+      var LS = loadS(A.prop('ACTIVE_SID'));
+      if (LS && LS.status === 'live' && LS.avail) {
+        var av = applyAvail(LS, t);
+        if (av.changed) { var LP = playersMap(); Engine.fillCourts(LS, LP); saveS(LS, LP); }
+        if (av.next && (next == null || av.next < next)) next = av.next;
+      }
       return next;
     });
   }
@@ -690,7 +745,7 @@ var Core = (function () {
         var f = planFields(st.plan);
         if (!f.when) throw err('INVALID', 'Isi tanggal dan jam main');
         S.parts = {}; S.teams = []; S.status = 'plan';
-        S.plan = { when: f.when, whenText: f.whenText, venue: f.venue, theme: f.theme, by: actor.id, created: now(), reminded: {}, chat: [],
+        S.plan = { when: f.when, until: f.until, whenText: f.whenText, venue: f.venue, theme: f.theme, by: actor.id, created: now(), reminded: {}, chat: [],
           teams: S.teamMode === 'fixed' ? (st.teams || []).filter(function (t) { return ids.indexOf(t.a) >= 0 && ids.indexOf(t.b) >= 0; }) : [],
           rsvp: ids.map(function (pid) { return { pid: pid, role: 'player', at: now(), by: actor.id }; }) };
         saveS(S, P);
@@ -931,7 +986,10 @@ var Core = (function () {
         info = applyPlan(S, P, type, d, actor, staff);
       } else if (type === 'backToLobby') { if (!roleStaff(actor)) throw err('FORBIDDEN'); backToLobby(S); }
       else if (PLAN_ACTIONS[type]) throw err('STALE', 'Sesi sudah dimulai');
-      else info = apply(S, P, type, d, actor);
+      else {
+        if (S.status === 'live' && S.avail && applyAvail(S, now()).changed) fill(S, P);
+        info = apply(S, P, type, d, actor);
+      }
       saveS(S, P);
       var out = { sid: S.id, v: S.v, S: publicS(S), info: info || null };
       if (S.plan) out.plan = planView(S, true);
@@ -987,6 +1045,8 @@ var Core = (function () {
       case 'ready':
         if (!S.parts[d.pid]) throw err('NOT_FOUND', 'Pemain tidak ada di sesi ini');
         S.parts[d.pid].paused = false;
+        if (S.parts[d.pid].timeOff === 'wait' && S.avail && S.avail[d.pid]) S.avail[d.pid].st = 'in';   // datang lebih awal
+        delete S.parts[d.pid].timeOff;                                                                   // atau lanjut main setelah jamnya habis
         if (!S.parts[d.pid].active) Engine.addParticipant(S, d.pid, S.rules.catchUp);
         fill(S, P);
         break;

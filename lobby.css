@@ -230,3 +230,9 @@
 .lb-pay .lb-btn { flex: none; }
 .lb-paid { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #2FAF6B; color: #fff; }
 .lb-paid .ic { width: 14px; height: 14px; }
+
+/* jumlah pemain per jam booking */
+.lb-hours { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 2px 4px 10px; font-size: 12px; color: var(--muted); }
+.lb-hours > span { flex: 1 1 100%; font-weight: 700; }
+.lb-hours b { display: inline-flex; gap: 6px; align-items: center; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--fg); font-weight: 700; font-variant-numeric: tabular-nums; }
+.lb-hours i { font-style: normal; color: var(--accent); }
