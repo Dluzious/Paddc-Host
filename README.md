@@ -175,6 +175,8 @@ Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas 
 - Semua yang login (admin, host, pemain) membuka app langsung di **Home**; di **Menu**, *Home* ada paling atas, di
   atas *Profil saya*. Penonton tanpa akun tetap ke dashboard publik. Link khusus (lobi, panggilan court, kudos,
   podium) tetap langsung ke halamannya.
+- Pengecualian: perangkat yang sengaja dipilih admin sebagai papan court (*Menu → Papan court besar (iPad)*) langsung
+  membuka papan court **selama sesi berjalan**, supaya papan tidak hilang dari layar penonton saat app dimuat ulang.
 - Admin/host: tombol **Buat rencana sesi** & **Database pemain**, sesi berikutnya, sesi berjalan, sesi sebelumnya.
 - Pemain: sapaan, sesi berikutnya (Buka lobi / Saya hadir), sesi yang sedang berjalan (ketuk atau **Buka dashboard
   court**), dan 4 sesi terakhir (ketuk → ringkasan & klasemen; *Lihat semua riwayat sesi*). Home berganti sendiri saat
