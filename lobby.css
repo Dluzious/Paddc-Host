@@ -136,7 +136,7 @@
 .lb-boxh[aria-expanded="false"] .chev { transform: rotate(-90deg); }
 .lb-boxb { padding: 0 10px 12px; }
 .lb-roster { display: grid; gap: 2px; max-height: 340px; overflow: auto; }
-.lb-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 4px 6px 4px 4px; border-radius: 10px; }
+.lb-row { display: grid; grid-template-columns: 34px minmax(0, 1fr); grid-auto-flow: column; grid-auto-columns: auto; align-items: center; gap: 10px; padding: 4px 6px 4px 4px; border-radius: 10px; }
 .lb-av { width: 34px; height: 34px; border-radius: 50%; background: var(--bg-2, #0E1D33); overflow: hidden; border: 1.5px solid var(--line-strong, rgba(242,235,221,.24)); display: block; }
 .lb-av svg, .lb-av img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 12%; }
 .lb-row.host .lb-av { border-color: var(--accent, #E8902F); }
@@ -216,3 +216,17 @@
   .lb-sprite.walking .leg-l, .lb-sprite.walking .leg-r, .lb-chip .dot { animation: none; }
   .lb-sprite.swing .arm, .lb-sprite.png.swing .fig, .lb-sprite.jump .fig, .lb-sprite.land .fig, .lb-dust { animation: none; }
 }
+
+/* pembayaran di lobi */
+.lb-pay { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); margin-bottom: 10px; }
+.lb-pay.due { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.lb-pay.ok { border-color: color-mix(in srgb, #2FAF6B 55%, var(--line)); }
+.lb-payic { width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--accent); }
+.lb-pay.ok .lb-payic { background: #2FAF6B; color: #fff; }
+.lb-payic .ic { width: 18px; height: 18px; }
+.lb-paytx { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.lb-paytx b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-paytx small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-pay .lb-btn { flex: none; }
+.lb-paid { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #2FAF6B; color: #fff; }
+.lb-paid .ic { width: 14px; height: 14px; }
