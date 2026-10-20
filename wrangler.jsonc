@@ -8,10 +8,12 @@
   // file aplikasi (index.html, engine.js, core.js, ikon, config.js); yang tidak perlu ikut diatur di .assetsignore
   "assets": { "directory": ".", "binding": "ASSETS" },
   "durable_objects": {
-    "bindings": [{ "name": "PADDOC", "class_name": "PaddocHost" }]
+    // PADDOC: semua data aplikasi. PLAY: mode main lobi (analog & bola), satu per lobi, hanya meneruskan pesan.
+    "bindings": [{ "name": "PADDOC", "class_name": "PaddocHost" }, { "name": "PLAY", "class_name": "PaddocPlay" }]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PaddocHost"] }],
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PaddocHost"] }, { "tag": "v2", "new_sqlite_classes": ["PaddocPlay"] }],
   // APP_PIN (kode pemasangan admin pertama) dan OPENAI_API_KEY diisi sebagai Secret di dashboard Cloudflare.
   // Opsional (Variables): OPENAI_IMAGE_MODEL untuk memaksa model, OPENAI_IMAGE_QUALITY (low/medium/high, bawaan medium).
+  // PLAY_BUDGET (Variables, opsional): batas harian mode main dalam satuan pesan (bawaan 150000 = 7,5% kuota gratis).
   "observability": { "enabled": true }
 }

@@ -1,14 +1,16 @@
-# Paddoc Host v2.8
+# Paddoc Host v2.9
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
-aplikasi dan API, satu Durable Object (SQLite) untuk semua data (orang, sesi, foto, login).
+aplikasi dan API, satu Durable Object (SQLite) untuk semua data (orang, sesi, foto, login), dan Durable Object kecil
+per lobi untuk mode main (analog & bola).
 
 - `index.html` – aplikasi
 - `engine.js` – mesin undian & klasemen (dipakai aplikasi dan server)
 - `core.js` – aturan peran dan semua aksi sesi (dipakai server, dan mode demo di browser)
-- `worker/` – server Cloudflare: `index.js` (API, WebSocket, foto), `ai.js` (foto pro AI), `push.js` (notifikasi push), `logo.js`
-- `lobby.js` + `lobby.css` – ruang tunggu (lobi); `ceremony.js` – podium akhir sesi (canvas, simpan foto/video)
+- `worker/` – server Cloudflare: `index.js` (API, WebSocket, foto, mode main lobi), `ai.js` (foto pro AI), `push.js` (notifikasi push), `logo.js`
+- `lobby.js` + `lobby.css` – ruang tunggu (lobi); `play.js` – hitungan mode main yang sama di semua layar (gerak, bola);
+  `ceremony.js` – podium akhir sesi (canvas, simpan foto/video)
 - `sw.js` – service worker: menerima notifikasi panggilan di HP (tombol Siap / Skip dulu)
 - `config.js` – alamat API (`/api`), nomor WhatsApp admin, dan URL Apps Script lama (hanya untuk pindahan data)
 - `wrangler.jsonc` – konfigurasi Worker
@@ -167,6 +169,35 @@ Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas 
   Silent Killer. Kudos host: Super Host, Organized Host, Vibe Master, Problem Solver, Game Day Hero, Reliable Host.
 - Kudos tersimpan per orang dan terakumulasi antar sesi. **Profil → Kudos untukmu** menampilkan jumlah per kudos dan
   siapa pemberinya; orang lain tidak bisa melihatnya. Admin melihat semua di **Database → Kudos**.
+
+## Main bola di lobi (v2.9)
+
+- Pemain yang sudah **Bergabung** (termasuk host) mendapat tombol **bola** di pojok kanan atas panggung lobi. Ketuk untuk
+  mode main: **analog** di kiri bawah (atau tombol panah / WASD di laptop) dan **tombol lempar** di kanan bawah (atau spasi).
+  Ketuk lagi untuk selesai. Penonton dan yang belum bergabung hanya melihat.
+- **Otomatis atau manual**: tanpa analog avatar berjalan sendiri. Analog dilepas 8 detik → kembali jalan otomatis.
+  Pemain tetap di sisi net-nya; host boleh ke mana saja.
+- **Bola**: maksimal 1 bola per orang (jeda 1,5 detik) dan 6 bola sekaligus per lobi. Kena avatar lain → memantul dan
+  dibalas ke seberang net seperti reli. Avatar yang dikendalikan analog membalas ke arah analognya (hampir tepat);
+  avatar otomatis membalas ke pemukul terakhir dengan meleset sampai ±31°. Dinding memantulkan bola tapi tidak
+  memperpanjang umurnya: bola hilang (berkedip dulu) **3 detik setelah pantulan avatar terakhir**, paling lama 20 detik.
+- **Sama di semua layar**: gerak otomatis dihitung dari jam server + ID pemain (`play.js`), jadi iPad dan semua HP
+  menghitung posisi yang sama tanpa mengirim apa pun; jam HP yang meleset disamakan ke jam server saat tersambung.
+  Lintasan bola memakai rumus tertutup (lurus + pantul dinding) dari lemparan/pantulan terakhir.
+- **Yang dikirim lewat internet**: posisi analog maks 4×/detik dan hanya selama ditekan, lemparan, dan pantulan.
+  Pantulan diputuskan HP pemilik avatar yang kena; untuk avatar yang pemiliknya tidak sedang membuka lobi, oleh HP
+  pelempar. Urutan dari server menentukan bila dua HP bentrok.
+- **Server terpisah**: `/play?lobby=<id>` dilayani Durable Object `PaddocPlay` per lobi yang hanya meneruskan pesan
+  (tidak menyimpan data sesi). Server utama hanya disentuh saat cek akun & laporan pemakaian, jadi skor, chat, dan
+  undian tidak ikut melambat. HP yang mengirim lebih dari ±6 pesan/detik diputus.
+- **Batas harian**: mode main semua lobi bersama-sama dibatasi **7.500 request/hari = 7,5% kuota gratis** Durable
+  Objects (100.000/hari). Hitungannya mengikuti Cloudflare: 20 pesan WebSocket masuk = 1 request, sambungan baru = 1.
+  Bila tercapai, mode main berhenti sampai **07.00 WIB** (reset kuota 00.00 UTC); lobi, chat, dan skor tetap jalan.
+  Batas bisa diubah lewat Variable `PLAY_BUDGET` (satuan pesan, bawaan `150000`).
+- Perkiraan pemakaian: 1 orang menggerakkan analog terus ±720 request/jam; satu lemparan di lobi 8 / 16 / 24 orang rata-rata
+  memantul 3,5 / 10 / 23 kali (±0,2 / 0,5 / 1,2 request). Gerak otomatis dan menonton: 0. Membuka lobi: ±2 request.
+- Saluran mode main hanya tersambung selama lobi terbuka di layar (ditutup saat app di latar belakang) dan otomatis
+  mati saat **Mulai Sesi**. Pratinjau `?lobby=demo` bisa dicoba tanpa server.
 
 ## Podium akhir sesi, klasemen, foto pemain (v2.8)
 

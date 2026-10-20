@@ -97,7 +97,7 @@ var Core = (function () {
   }
   function status() {
     var hasAdmin = people().some(function (p) { return p.role === 'admin' && !p.archived; });
-    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.8', migrated: !!A.prop('MIGRATED_AT') };
+    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.9', migrated: !!A.prop('MIGRATED_AT') };
   }
   function createAdmin(r) {
     return A.lock(function () {
@@ -1159,8 +1159,17 @@ var Core = (function () {
     return f(req || {});
   }
 
-  // pollAs & reminders hanya dipanggil server (siaran WebSocket & alarm), tidak lewat API
+  /* mode main di lobi: siapa pemilik token & apakah ia sudah bergabung di lobi yang masih terbuka (dipanggil server mode main) */
+  function playCheck(token, sid) {
+    var p = null;
+    try { p = auth(token); } catch (e) { return { pid: null, ok: false }; }
+    var S = loadS(String(sid || ''));
+    var ok = !!(S && S.status === 'plan' && S.plan && (S.plan.rsvp || []).some(function (x) { return x.pid === p.id; }));
+    return { pid: p.id, ok: ok };
+  }
+
+  // pollAs, reminders & playCheck hanya dipanggil server (siaran WebSocket, alarm, mode main), tidak lewat API
   return { init: init, call: call, DEFAULT_PIN: DEFAULT_PIN, apply: apply, rowsFor: rowsFor,
-    pollAs: function (member) { return poll({}, !!member); }, reminders: reminders };
+    pollAs: function (member) { return poll({}, !!member); }, reminders: reminders, playCheck: playCheck };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;
