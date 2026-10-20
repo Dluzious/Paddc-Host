@@ -93,7 +93,7 @@ var Lobby = (function () {
   }
   /* kepala kecil untuk daftar & chat: foto profil bila ada */
   function head(p) {
-    if (p && p.photo) return '<span class="lb-av"><img src="' + esc(p.photo) + '" alt="" loading="lazy"></span>';
+    if (p && p.photo) return '<span class="lb-av"><img src="' + esc(p.photo) + '" alt="" loading="lazy"' + (p.id ? ' data-pid="' + esc(p.id) + '"' : '') + '></span>';
     if (p && p.look) return '<span class="lb-av">' + chibi(p.look, HEADVB) + '</span>';
     return '<span class="lb-av">' + silhouette(p ? p.name : '?', HEADVB, p && p.role === 'host') + '</span>';
   }
@@ -406,7 +406,7 @@ var Lobby = (function () {
       '<form class="lb-send" data-k="send"><input data-k="input" maxlength="200" autocomplete="off" placeholder="Tulis pesan untuk semua yang hadir" aria-label="Pesan chat"><button class="lb-btn" type="submit" aria-label="Kirim">' + ic('send') + '</button></form>' +
       '<ul class="lb-msgs" data-k="msgs" aria-live="polite"></ul><p class="lb-empty" data-k="chatNote" hidden></p></div></div></section>' +
       '<section class="lb-box"><button class="lb-boxh" type="button" data-lb="box" data-box="roster" aria-expanded="true">Hadir <span class="cnt" data-k="hN">0</span><span class="chev">' + ic('chev') + '</span></button>' +
-      '<div class="lb-boxb" data-k="rosterBody"><div class="lb-roster" data-k="roster"></div></div></section>' +
+      '<div class="lb-boxb" data-k="rosterBody"><div class="lb-hours" data-k="hours" hidden></div><div class="lb-roster" data-k="roster"></div></div></section>' +
       '</aside></div></div>';
     var el = {}; root.querySelectorAll('[data-k]').forEach(function (n) { el[n.dataset.k] = n; });
     var stage = root.querySelector('.lb-stage'), bg = root.querySelector('.lb-bg'), cv = root.querySelector('.lb-canvas'), layer = root.querySelector('.lb-layer');
@@ -608,9 +608,11 @@ var Lobby = (function () {
     }
     function renderRoster() {
       var list = people().slice().sort(function (a, b) { return (a.role === 'host' ? 0 : 1) - (b.role === 'host' ? 0 : 1) || ((ents[b.id] || {}).at || 0) - ((ents[a.id] || {}).at || 0); });
+      el.hours.hidden = !(S.hours && S.hours.length > 1);
+      if (!el.hours.hidden) el.hours.innerHTML = '<span>Pemain per jam</span>' + S.hours.map(function (h) { return '<b>' + esc(h.label) + ' <i>' + h.n + '</i></b>'; }).join('');
       el.roster.innerHTML = list.length ? list.map(function (p) {
         var paid = S.paid && S.paid[p.id], co = (S.cohosts || []).indexOf(p.id) >= 0;
-        return '<div class="lb-row' + (p.role === 'host' ? ' host' : '') + '">' + head(p) + '<span class="lb-nm">' + esc(p.name) + '<small>' + (p.role === 'host' ? 'Host · wasit' : (p.id === S.meId ? 'Kamu' : 'Pemain') + (co ? ' · host sesi' : '')) + '</small></span>' +
+        return '<div class="lb-row' + (p.role === 'host' ? ' host' : '') + '">' + head(p) + '<span class="lb-nm">' + esc(p.name) + '<small>' + (p.role === 'host' ? 'Host · wasit' : (p.id === S.meId ? 'Kamu' : 'Pemain') + (co ? ' · host sesi' : '') + (p.slot ? ' · ' + p.slot : '')) + '</small></span>' +
           (paid ? '<span class="lb-paid" title="Sudah bayar" aria-label="Sudah bayar">' + ic('check') + '</span>' : '') +
           (S.role === 'host' && !S.started ? '<button class="lb-x" type="button" data-lb="remove" data-pid="' + esc(p.id) + '" aria-label="Tandai ' + esc(p.name) + ' tidak hadir" title="Tandai tidak hadir">' + ic('x') + '</button>' : '<span></span>') + '</div>';
       }).join('') : '<p class="lb-empty">Belum ada yang hadir. Bagikan link lobi ke grup.</p>';
@@ -630,13 +632,17 @@ var Lobby = (function () {
       var small = function (act, icon, label) { return '<button class="lb-btn sm" type="button" data-lb="' + act + '" aria-label="' + label + '" title="' + label + '">' + ic(icon) + '<span class="lbl">' + label + '</span></button>'; };
       if (S.role === 'host') h = small('share', 'share', 'Bagikan lobi') + small('add', 'plus', 'Tambah yang hadir') +
         (S.meId ? (me ? small('leave', 'x', 'Saya batal hadir') : small('join', 'check', 'Saya hadir')) : '') +
+        (me && S.canSlot && handlers.slot ? small('slot', 'cal', 'Ubah jam hadir') : '') +
         (handlers.edit ? small('edit', 'pencil', 'Ubah rencana') : '') +
         '<button class="lb-btn primary grow" type="button" data-lb="start"' + (pl < 4 || S.started ? ' disabled' : '') + '>' + ic('play') + 'Mulai Sesi</button>';
       else if (S.role === 'player') h = (me ? '<button class="lb-btn danger grow" type="button" data-lb="leave">Batal Bergabung</button>' : '<button class="lb-btn join grow" type="button" data-lb="join">' + ic('check') + 'Saya Bergabung</button>') +
-        small('share', 'share', 'Bagikan lobi');
+        (me && S.canSlot && handlers.slot ? small('slot', 'cal', 'Ubah jam hadir') : '') + small('share', 'share', 'Bagikan lobi');
       else h = '<button class="lb-btn grow" type="button" data-lb="login">' + ic('login') + 'Masuk</button>' + small('share', 'share', 'Bagikan lobi');
       el.controls.innerHTML = h;
       el.pubnote.hidden = S.role !== 'public';
+      if (!el.pubnote.hidden) el.pubnote.innerHTML = 'Kamu sedang menonton lobi. <b>Belum terdaftar?</b> ' + (S.waUrl
+        ? '<a class="lb-walink" href="' + esc(S.waUrl) + '" target="_blank" rel="noopener">Chat admin di WhatsApp</a> untuk dibuatkan akun'
+        : 'Hubungi host atau admin untuk dibuatkan akun') + ', lalu masuk untuk bergabung.';
       el.themeWrap.hidden = S.role !== 'host';
       el.started.hidden = !S.started;
       el.startedTxt.textContent = S.role === 'host' ? 'Lobi ditutup untuk semua orang. Salah tekan? Kembali ke lobi selama belum ada match yang dimulai.' : 'Lobi ditutup. Tunggu panggilan court dari host.';
@@ -806,6 +812,7 @@ var Lobby = (function () {
   }
 
   return { mount: mount, demo: demo, THEMES: THEMES, setThemes: setThemes, themeList: themeList, themeDef: themeDef, bilinear: bilinear,
-    shareText: shareText, look: look, refLook: refLook, musicOn: musicOn };
+    shareText: shareText, look: look, refLook: refLook, musicOn: musicOn,
+    figureSVG: function (p) { return p.look ? chibi(p.look) : silhouette(p.name, null, p.role === 'host'); } };
 })();
 if (typeof module !== 'undefined') module.exports = Lobby;

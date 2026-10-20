@@ -22,7 +22,7 @@ var Engine = (function () {
       format: o.format || 'americano',          // americano | mexicano
       teamMode: o.teamMode || 'random',         // random | fixed
       scoring: o.scoring || { type: 'points', mode: 'total', n: 21 },
-      rules: Object.assign({ maxStreak: 2, catchUp: true, sortBy: 'points', drawMode: 'rolling', deuce: 'golden' }, o.rules || {}),
+      rules: Object.assign({ maxStreak: 2, catchUp: true, sortBy: 'wins', drawMode: 'rolling', deuce: 'golden' }, o.rules || {}),
       courts: (o.courts || []).map(function (c, i) {
         return {
           id: c.id || uid('c_'), name: c.name || ('Court ' + (i + 1)), gender: c.gender || 'mix', active: c.active !== false,
@@ -186,7 +186,8 @@ var Engine = (function () {
     return function (a, b) {
       if ((a.played > 0) !== (b.played > 0)) return a.played > 0 ? -1 : 1;
       var k;
-      if (sortBy === 'wins') k = (b.w - a.w) || (b.d - a.d) || (b.diff - a.diff) || (b.pf - a.pf);
+      // utama: jumlah menang; sama → selisih poin (poin dapat − poin kebobolan, dijumlah tiap match)
+      if (sortBy === 'wins') k = (b.w - a.w) || (b.diff - a.diff) || (b.pf - a.pf);
       else if (sortBy === 'avg') k = (b.avg - a.avg) || (b.diff - a.diff) || (b.w - a.w);
       else k = (b.pf - a.pf) || (b.diff - a.diff) || (b.w - a.w);
       if (k) return k;
@@ -198,7 +199,7 @@ var Engine = (function () {
   function standings(S, players, opt) {
     opt = opt || {};
     var st = stats(S);
-    var sortBy = opt.sortBy || S.rules.sortBy || 'points';
+    var sortBy = opt.sortBy || S.rules.sortBy || 'wins';
     var nameOf = function (id) {
       if (opt.unit === 'team') {
         var t = S.teams.filter(function (x) { return x.id === id; })[0];

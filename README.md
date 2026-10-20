@@ -1,4 +1,4 @@
-# Paddoc Host v2.6
+# Paddoc Host v2.8
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -8,8 +8,9 @@ aplikasi dan API, satu Durable Object (SQLite) untuk semua data (orang, sesi, fo
 - `engine.js` – mesin undian & klasemen (dipakai aplikasi dan server)
 - `core.js` – aturan peran dan semua aksi sesi (dipakai server, dan mode demo di browser)
 - `worker/` – server Cloudflare: `index.js` (API, WebSocket, foto), `ai.js` (foto pro AI), `push.js` (notifikasi push), `logo.js`
+- `lobby.js` + `lobby.css` – ruang tunggu (lobi); `ceremony.js` – podium akhir sesi (canvas, simpan foto/video)
 - `sw.js` – service worker: menerima notifikasi panggilan di HP (tombol Siap / Skip dulu)
-- `config.js` – alamat API (`/api`) dan URL Apps Script lama (hanya untuk pindahan data)
+- `config.js` – alamat API (`/api`), nomor WhatsApp admin, dan URL Apps Script lama (hanya untuk pindahan data)
 - `wrangler.jsonc` – konfigurasi Worker
 
 ## Pasang / perbarui di Cloudflare
@@ -167,6 +168,37 @@ Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas 
 - Kudos tersimpan per orang dan terakumulasi antar sesi. **Profil → Kudos untukmu** menampilkan jumlah per kudos dan
   siapa pemberinya; orang lain tidak bisa melihatnya. Admin melihat semua di **Database → Kudos**.
 
+## Podium akhir sesi, klasemen, foto pemain (v2.8)
+
+- **Klasemen utama**: jumlah **menang**, lalu **selisih poin** (poin dapat − poin kebobolan, dijumlah tiap match;
+  contoh 3-2 = +1, 1-4 = −3, 5-0 = +5 → total +3). Sesi baru memakai urutan ini; *Total poin* dan *Rata-rata*
+  tetap bisa dipilih. Sesi lama memakai pilihan saat dibuat.
+- **Foto pemain layar penuh**: ketuk foto pemain di mana saja. Foto yang berada di dalam tombol (mis. kartu pemain di
+  papan iPad untuk ganti pemain) dibuka dengan **tekan lama** supaya tombolnya tetap berfungsi.
+- **Podium** (`ceremony.js`) muncul otomatis saat sesi ditutup di iPad dan HP semua yang membuka app:
+  juara 1–3 di podium (avatar chibi melompat girang, foto pro AI di atas kepala, lencana peringkat, trofi), pemain lain sebagai penonton
+  yang bersorak, confetti, lampu sorot, dan klasemen akhir (menang · selisih) di samping (iPad) atau di bawah (HP).
+  **Simpan foto** (PNG) dan **Rekam video** ±8 detik (MP4/WebM; tombol disembunyikan bila browser tidak mendukung),
+  lalu dibagikan/diunduh. Bisa dibuka lagi: dashboard (*Lihat podium*), Menu, dan Riwayat sesi.
+- Selebrasi murni **animasi** dari avatar chibi yang sudah ada: tidak ada pembuatan gambar AI tambahan, jadi membuka
+  podium tidak pernah memanggil OpenAI.
+- **Setelah sesi ditutup**: notifikasi *Terima kasih sudah bergabung! … VAMOS!!!* → podium → kartu terima kasih →
+  halaman kudos.
+
+## Jam hadir: full, 1 jam, atau 2 jam (v2.7)
+
+- Rencana sesi punya **jam mulai** dan **jam selesai** booking (boleh lewat tengah malam, maks. 12 jam).
+- Saat **Saya Bergabung**, pemain memilih **Full** atau hanya **1 jam / 2 jam** dan menentukan sendiri jamnya
+  (mis. booking 19.00–22.00: 19–20, 20–21, 21–22, 19–21, 20–22). Jam bisa diubah lewat tombol kalender di lobi.
+  Host selalu full; biaya sama untuk semua.
+- Lobi menampilkan jam tiap pemain dan **jumlah pemain per jam** supaya host bisa memperkirakan court.
+- Saat sesi berjalan: pemain yang jamnya belum mulai dijeda (*mulai 20.00*) dan otomatis masuk antrean undian
+  5 menit sebelum jamnya; 10 menit sebelum jamnya habis ia berhenti diundi (match yang sedang dimainkan tetap selesai).
+  Keduanya berjalan sendiri lewat alarm Durable Object dan dikabari lewat notifikasi. Datang lebih awal? **Saya sudah
+  datang**. Mau lanjut setelah jamnya habis? **Main lagi**.
+- Mengubah jadwal di *Ubah rencana* mengembalikan pilihan jam sebagian ke full (pemain diminta memilih lagi).
+- Mulai Sesi butuh minimal 4 pemain yang jamnya sudah mulai.
+
 ## Host sesi dari pemain (v2.6)
 
 Admin/host bisa menunjuk pemain jadi **host sesi** (lobi: *Ubah rencana*; saat main: panel **Pemain**, tombol bendera).
@@ -202,7 +234,8 @@ Server mengirim perubahan ke semua perangkat lewat WebSocket begitu terjadi; cek
 sebagai cadangan (3–4 detik bila WebSocket terputus).
 
 **Notifikasi**: sesi baru, pengingat 12 jam & 3 jam sebelum main, panggilan court, ajakan kudos setelah sesi, ditunjuk
-jadi host sesi/payment collector, bukti bayar masuk/dibatalkan, dan koreksi skor (masuk & hasil review). Tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
+jadi host sesi/payment collector, bukti bayar masuk/dibatalkan, koreksi skor (masuk & hasil review), serta jam
+main dimulai/selesai bagi pemain yang hadir sebagian. Tombol **Panggil** di court mengirim notifikasi push ke HP keempat pemain berisi court, partner, dan
 lawan, dengan tombol **Siap** / **Skip dulu**. Kunci VAPID dibuat otomatis oleh server, tidak perlu disetel.
 
 - Link Paddoc Host di **Android** terbuka langsung di aplikasi yang sudah terpasang (aplikasi yang sedang terbuka
@@ -211,6 +244,10 @@ lawan, dengan tombol **Siap** / **Skip dulu**. Kunci VAPID dibuat otomatis oleh 
 - HP dan tablet **wajib memasang aplikasi ke layar utama** dulu (petunjuk iPhone/iPad dan Android; bila link terbuka di
   dalam WhatsApp/Instagram ada petunjuk membuka di Chrome/Safari). Link lobi yang dibuka di HP baru menampilkan
   ringkasan sesinya di layar pasang. Setelah terpasang: izinkan notifikasi (boleh nanti), lalu login. Laptop tidak wajib.
+- **Belum punya akun?** Halaman masuk, layar pasang, dan lobi (bagi yang belum login) punya tombol **Chat admin di
+  WhatsApp** (`wa.me`) dengan pesan pembuatan akun yang sudah terisi: nama lengkap, nama panggilan, putra/putri,
+  berhijab, sesi yang ingin diikuti (bila dari link lobi), dan pengingat mengirim 1 foto wajah. Nomor admin diatur di
+  `config.js` (`PADDOC_ADMIN_WA`, sekarang `085121300042`; awalan `0` otomatis menjadi `62`).
 - iPhone/iPad: notifikasi hanya bisa bila app dipasang lewat *Bagikan → Tambah ke Layar Utama* (iOS 16.4+) dan izin
   diberikan dari dalam app.
 - Notifikasi push berbunyi satu kali (suara bawaan HP; Android juga bergetar panjang). Alarm berulang hanya berjalan

@@ -3,6 +3,9 @@
 // window.PADDOC_API = 'https://paddoc-host.NAMA-AKUN.workers.dev/api';
 window.PADDOC_API = '/api';
 
+// WhatsApp admin untuk yang belum terdaftar (tombol "Chat admin di WhatsApp" dengan pesan pembuatan akun).
+window.PADDOC_ADMIN_WA = '085121300042';
+
 // URL web app Apps Script lama, hanya dipakai sekali untuk memindahkan data dari Google Sheet.
 // Setelah data pindah, baris ini boleh dihapus.
 window.PADDOC_OLD_API = 'https://script.google.com/macros/s/AKfycbwSJxrWzgeHwgk42xhDUXfbVPN4uGUGLSGsjsIQ0fsGnRLOryRMmfTJFdgmT127kXq6/exec';
