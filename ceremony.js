@@ -49,7 +49,7 @@ var Ceremony = (function () {
     if (ring) { c.lineWidth = Math.max(2, r * 0.14); c.strokeStyle = ring; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke(); }
   }
   function initials(n) { var w = String(n || '?').trim().split(/\s+/); return ((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase(); }
-  /* karakter: sprite PNG/WebP (avatar chibi / pose selebrasi) atau SVG karakter bawaan */
+  /* karakter: sprite PNG/WebP (avatar chibi) atau SVG karakter bawaan */
   function figure(c, p, cx, footY, h, alpha) {
     var im = p._im;
     if (!ok(im)) return 0;

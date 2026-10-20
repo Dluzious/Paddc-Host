@@ -640,6 +640,9 @@ var Lobby = (function () {
       else h = '<button class="lb-btn grow" type="button" data-lb="login">' + ic('login') + 'Masuk</button>' + small('share', 'share', 'Bagikan lobi');
       el.controls.innerHTML = h;
       el.pubnote.hidden = S.role !== 'public';
+      if (!el.pubnote.hidden) el.pubnote.innerHTML = 'Kamu sedang menonton lobi. <b>Belum terdaftar?</b> ' + (S.waUrl
+        ? '<a class="lb-walink" href="' + esc(S.waUrl) + '" target="_blank" rel="noopener">Chat admin di WhatsApp</a> untuk dibuatkan akun'
+        : 'Hubungi host atau admin untuk dibuatkan akun') + ', lalu masuk untuk bergabung.';
       el.themeWrap.hidden = S.role !== 'host';
       el.started.hidden = !S.started;
       el.startedTxt.textContent = S.role === 'host' ? 'Lobi ditutup untuk semua orang. Salah tekan? Kembali ke lobi selama belum ada match yang dimulai.' : 'Lobi ditutup. Tunggu panggilan court dari host.';

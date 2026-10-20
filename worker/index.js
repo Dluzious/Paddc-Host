@@ -12,7 +12,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import Core from '../core.js';
-import { generateAI, generateChibi, generateCelebrate } from './ai.js';
+import { generateAI, generateChibi } from './ai.js';
 import { newVapidKeys, sendPush } from './push.js';
 
 const MAX_BODY = 8 * 1024 * 1024;
@@ -308,8 +308,7 @@ export class PaddocHost extends DurableObject {
       kudosFor: (target) => sql.exec('SELECT sid, giver, k, at FROM kudos WHERE target = ? ORDER BY at DESC', target).toArray(),
       kudosAll: () => sql.exec('SELECT sid, giver, target, k, at FROM kudos ORDER BY at DESC').toArray(),
       generateAI: (p, kind) => generateAI(env, A, clone(p), kind),
-      generateChibi: (p, kind) => generateChibi(env, A, clone(p), kind),
-      generateCelebrate: (p) => generateCelebrate(env, A, clone(p))
+      generateChibi: (p, kind) => generateChibi(env, A, clone(p), kind)
     };
     return A;
   }

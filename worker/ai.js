@@ -214,7 +214,7 @@ export async function generateAI(env, A, p, kind) {
 /* ---------------- avatar chibi untuk ruang tunggu ----------------
    Dibuat SEKALI dari foto pro (atau foto asli), seluruh badan, latar transparan. Disimpan permanen;
    versi kecil untuk lobi dibuat oleh HP admin/host (Core.saveSprite), jadi membuka lobi tidak memanggil OpenAI. */
-function buildChibiPrompt(p, kind, withLogo, transparent, pose) {
+function buildChibiPrompt(p, kind, withLogo, transparent) {
   const who = p.gender === 'P' ? 'a woman' : 'a man';
   const hijab = p.gender === 'P' && p.hijab;
   const host = kind === 'host';
@@ -230,25 +230,11 @@ function buildChibiPrompt(p, kind, withLogo, transparent, pose) {
   return [
     'Create a cute chibi-style full-body game avatar of the person in the reference photo: big head, small body (about 2.5 heads tall).',
     'The person is ' + who + '. Keep the face, skin tone, hairstyle and glasses (if any) recognizable as the same person. Do not change age or gender.',
-    pose || 'Pose: standing, facing the viewer turned slightly to one side, cheerful expression, whole body visible from head to shoes, centered with a small margin.',
+    'Pose: standing, facing the viewer turned slightly to one side, cheerful expression, whole body visible from head to shoes, centered with a small margin.',
     outfit, modesty, logo,
     transparent ? 'Background: fully transparent (no floor, no shadow, no scenery).' : 'Background: plain flat pure white, nothing else (no floor, no shadow, no scenery).',
     'Style: clean 2D game character illustration, soft cel shading, crisp dark outline, vivid colors. No text other than the badge, no watermark.'
   ].join(' ');
-}
-/* pose selebrasi podium: karakter chibi yang sama, melompat kegirangan. Rujukan utama = avatar chibi yang sudah ada */
-const CELEB_POSE = 'Pose: celebrating a tournament win on a podium: jumping with joy, both arms raised high in victory, one fist holding a shiny small golden trophy cup, ' +
-  'the other hand holding the padel racket up, huge open-mouth happy smile, eyes closed with joy, whole body visible from head to shoes, centered with a small margin. No confetti, no sparkles.';
-export async function generateCelebrate(env, A, p) {
-  const chibi = A.photoRow(p.chibiId);
-  const src = chibi || A.photoRow(p.proId) || A.photoRow(p.photoId);
-  if (!src) throw new Error('INVALID: Belum ada foto atau avatar');
-  const ref = { bytes: Buffer.from(src.b64, 'base64'), mime: src.mime, name: chibi ? 'avatar.webp' : 'foto.jpg' };
-  const logo = { bytes: Buffer.from(LOGO_B64, 'base64'), mime: 'image/jpeg', name: 'paddoc-logo.jpg' };
-  const same = chibi ? 'Image 1 is the existing chibi avatar of this player: redraw exactly the SAME character (same face, hairstyle, skin tone, glasses, hijab if any, outfit colors and badge) in a new pose. ' : '';
-  const out = await callOpenAI(env, A, [ref, logo], (withLogo, transparent) => same + buildChibiPrompt(p, 'player', withLogo, transparent, CELEB_POSE), { format: 'webp', transparent: true });
-  const id = A.savePhoto('data:image/webp;base64,' + out.b64, p.name + '_celeb');
-  return { id, note: 'Model: ' + out.model };
 }
 export async function generateChibi(env, A, p, kind) {
   const src = A.photoRow(p.proId) || A.photoRow(p.photoId);

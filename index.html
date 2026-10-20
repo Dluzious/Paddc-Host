@@ -550,6 +550,10 @@ body.drawer .scrim { opacity: 1; pointer-events: auto; }
 .proof-img { display: block; width: 100%; max-height: 72vh; object-fit: contain; border-radius: 12px; background: #000; }
 .cotag { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); vertical-align: middle; }
 .icon-btn.cobtn.on { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+/* WhatsApp admin untuk yang belum terdaftar */
+.wa-box { display: grid; gap: 8px; }
+.btn.wa { background: #25D366; border-color: #25D366; color: #06240f; font-weight: 800; text-decoration: none; }
+.btn.wa:hover { background: #1fbe5a; }
 /* podium akhir sesi */
 .cer { position: fixed; inset: 0; z-index: 300; display: flex; flex-direction: column; background: #081426; color: #fff; animation: lbfade 0.25s ease-out; }
 .cer-stage { position: relative; flex: 1; min-height: 0; }
@@ -1133,6 +1137,7 @@ var ICONS = (function () {
   return {
     plus: p('M12 5v14M5 12h14'),
     star: p('M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5-4.8-4.6 6.6-.9z'),
+    chat: p('M7.9 20A9 9 0 1 0 4 16.1L2 22Z') + p('M9 10.5c.5 1.6 2 3.1 3.6 3.6l1.2-1.1 1.9.9-.3 1.4c-2.9.3-6.6-3.3-6.3-6.3l1.4-.3.9 1.9z'),
     wallet: p('M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1') + p('M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4'),
     copy: '<rect x="9" y="9" width="13" height="13" rx="2"/>' + p('M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1'),
     alertMsg: p('M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z') + p('M12 7v4M12 14h.01'),
@@ -1301,6 +1306,14 @@ function MemoryAdapter(store, persist) {
     return m.replace(/^Error:\s*/, '').replace(/^[A-Z_]+:\s*/, '');
   }
   function errCode(e) { var m = (e && (e.message || String(e))) || ''; var x = m.replace(/^Error:\s*/, '').match(/^([A-Z_]+)\b/); return x ? x[1] : ''; }
+  /* WhatsApp admin: yang belum terdaftar langsung chat dengan pesan pembuatan akun yang sudah terisi */
+  var ADMIN_WA = (function () { var n = String(window.PADDOC_ADMIN_WA || '085121300042').replace(/\D/g, ''); return n.charAt(0) === '0' ? '62' + n.slice(1) : n; })();
+  function adminWaUrl(sess) {
+    var t = 'Halo Admin Paddoc 👋\nSaya ingin dibuatkan akun Paddoc Host.\n\nNama lengkap: \nNama panggilan: \nPutra / Putri: \nBerhijab (khusus putri, ya/tidak): ' +
+      (sess ? '\n\nSaya mau ikut sesi: ' + sess.name + (sess.whenText ? ' (' + sess.whenText + ')' : '') : '') +
+      '\n\nSaya kirim juga 1 foto wajah yang jelas untuk foto profil. Terima kasih!';
+    return 'https://wa.me/' + ADMIN_WA + '?text=' + encodeURIComponent(t);
+  }
   function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
   /* login: di versi asli disimpan permanen di HP; di demo per tab supaya bisa mencoba beberapa peran sekaligus */
@@ -1668,7 +1681,8 @@ function MemoryAdapter(store, persist) {
     return '<div class="plan-card"><span class="lbl-sm">Kamu diundang ke ruang tunggu</span><h3>' + esc(pl.name) + '</h3><div class="pc-meta">' + esc(pl.whenText || '') +
       (v.name || v.address ? '<br>' + esc([v.name, v.address].filter(Boolean).join(' · ')) : '') + (pl.pay && pl.pay.amount ? '<br>Biaya <b>' + rupiah(pl.pay.amount) + '</b> / orang' : '') + '</div>' +
       '<div class="pc-faces">' + pl.rsvp.slice(0, 8).map(function (x) { return av(x.pid); }).join('') + '<span class="muted">' + pl.rsvp.length + ' hadir</span></div>' +
-      '<p class="muted" style="font-size:13px;margin:0">Setelah aplikasi terpasang, sesi ini muncul di beranda. Ketuk <b>Buka lobi</b> lalu <b>Saya Bergabung</b>.</p></div>';
+      '<p class="muted" style="font-size:13px;margin:0">Setelah aplikasi terpasang, sesi ini muncul di beranda. Ketuk <b>Buka lobi</b> lalu <b>Saya Bergabung</b>.</p>' +
+      '<p class="muted" style="font-size:13px;margin:0"><b>Belum punya akun?</b> <a href="' + esc(adminWaUrl(pl)) + '" target="_blank" rel="noopener">Chat admin di WhatsApp</a> untuk dibuatkan.</p></div>';
   }
   function viewInstall() {
     var done = lsGet('paddoc_installed');
@@ -2308,7 +2322,8 @@ function MemoryAdapter(store, persist) {
       '<div class="field"><label for="li-user">Username</label><input id="li-user" class="input" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="mis. andi"></div>' +
       '<div class="field"><label for="li-pin">PIN</label><input id="li-pin" class="input pin" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••••"></div>' +
       '<button class="btn primary lg block" type="submit">' + icon('login') + 'Masuk</button>' +
-      '<p class="muted" style="margin:0;font-size:13px"><b>Belum terdaftar?</b> Hubungi host atau admin untuk dibuatkan akun.</p>' +
+      '<div class="wa-box"><p class="muted" style="margin:0;font-size:13px"><b>Belum terdaftar?</b> Chat admin, pesan pembuatan akun sudah disiapkan, tinggal isi data.</p>' +
+      '<a class="btn wa block" href="' + esc(adminWaUrl()) + '" target="_blank" rel="noopener">' + icon('chat') + 'Chat admin di WhatsApp</a></div>' +
       '<button class="btn ghost block" type="button" data-act="dash">Lihat dashboard tanpa masuk</button>' +
       (!LIVE_MODE ? '<div class="demo-note">' + icon('info') + '<div>Demo: masuk sebagai <b>admin</b>, <b>rudi</b> (host), atau <b>andi</b> (pemain). Semua PIN <b>123456</b>.</div></div>' : '') +
       '<span class="muted" style="font-size:12px">v' + APP_VERSION + '</span></form>';
@@ -2398,7 +2413,7 @@ function MemoryAdapter(store, persist) {
     (pl.chat || []).forEach(function (c) { if (!dir[c.pid]) dir[c.pid] = lobbyPerson(c.pid, c.role); });
     return {
       role: lobbyRole(), meId: me() ? me().id : null, theme: pl.theme || 'court', themes: LIVE.themes, started: false, directory: dir, pairing: pl.teamMode === 'fixed',
-      cohosts: pl.cohosts || [], paid: (pl.pay && pl.pay.paid) || {},
+      cohosts: pl.cohosts || [], paid: (pl.pay && pl.pay.paid) || {}, waUrl: me() ? '' : adminWaUrl(pl),
       payView: me() ? payLine(pl.pay, pl.rsvp.filter(function (x) { return x.role === 'player'; }).map(function (x) { return x.pid; }), me().id, isStaff()) : null,
       session: { name: pl.name, whenText: pl.whenText, startAt: pl.when, venue: pl.venue || {}, url: lobbyUrl(pl.id), price: pl.pay && pl.pay.amount ? rupiah(pl.pay.amount) : '',
         kicker: 'Ruang tunggu · ' + (pl.format === 'mexicano' ? 'Mexicano' : 'Americano') + ' · ' + pl.courts + ' court' + (pl.teamMode === 'fixed' ? ' · pasangan tetap' : '') },
@@ -3516,11 +3531,11 @@ function MemoryAdapter(store, persist) {
       '<div class="row"><button class="btn ghost" data-act="kudosSkip">Lewati</button><button class="btn primary" data-act="kudosOpen">' + icon('star') + 'Beri kudos</button></div></section>';
   }
   /* ---------- podium akhir sesi (ceremony.js) → ucapan terima kasih → kudos ---------- */
-  var CER = null, endShown = {}, celebJobs = {};
-  /* karakter: pose selebrasi (podium) atau avatar chibi; tanpa avatar → karakter bawaan / siluet */
-  function cerPerson(id, celeb) {
+  var CER = null, endShown = {};
+  /* karakter: avatar chibi (dianimasikan melompat di podium); tanpa avatar → karakter bawaan / siluet */
+  function cerPerson(id) {
     var p = P(id), f = DB.full[id] || {}, ph = photoSrc(p);
-    var o = { id: id, name: p.name, photo: ph ? ph.src : '', sprite: (celeb && (p.celebUrl || p.celebFull)) || p.chibiUrl || p.chibiFull || '' };
+    var o = { id: id, name: p.name, photo: ph ? ph.src : '', sprite: p.chibiUrl || p.chibiFull || '' };
     if (!o.sprite) o.svg = Lobby.figureSVG(p.role === 'host' ? { look: Lobby.refLook(hashId(id)), name: p.name } : ph ? { look: Lobby.look(hashId(id), p.gender === 'P', !!(p.hijab || f.hijab)), name: p.name } : { name: p.name, role: p.role });
     return o;
   }
@@ -3530,14 +3545,14 @@ function MemoryAdapter(store, persist) {
     var ids = function (r) { return fixed ? [r.team.a, r.team.b] : [r.id]; };
     var dif = function (r) { return (r.diff > 0 ? '+' : '') + r.diff; };
     var line = function (r) { return S0.rules.sortBy === 'points' ? r.pf + ' ' + unit + ' · ' + r.w + ' menang' : r.w + ' menang · selisih ' + dif(r); };
-    var podium = rows.slice(0, 3).map(function (r) { return { rank: r.rank, people: ids(r).map(function (id) { return cerPerson(id, true); }), line: line(r) }; });
+    var podium = rows.slice(0, 3).map(function (r) { return { rank: r.rank, people: ids(r).map(cerPerson), line: line(r) }; });
     var onPod = {};
     podium.forEach(function (s) { s.people.forEach(function (p) { onPod[p.id] = 1; }); });
     var crowd = Object.keys(S0.parts).concat(S0.hosts || []).filter(function (id, i, a) { return a.indexOf(id) === i && !onPod[id]; }).slice(0, 24);
     var v = (S0.plan && S0.plan.venue) || {}, th = Lobby.themeDef((S0.plan && S0.plan.theme) || 'court');
     var tall = window.innerWidth / window.innerHeight < 1.15;
     return { title: S0.name, sub: fmtDate(S0.endedAt || S0.date) + (v.name ? ' · ' + v.name : ''), bg: (tall && th.port ? th.port.img : th.land ? th.land.img : '') || '',
-      podium: podium, crowd: crowd.map(function (id) { return cerPerson(id, false); }),
+      podium: podium, crowd: crowd.map(cerPerson),
       table: rows.map(function (r) {
         return { rank: r.rank, name: ids(r).map(function (id) { return P(id).name; }).join(' & '), w: r.w, diff: r.diff, me: !!(u && ids(r).indexOf(u.id) >= 0),
           photos: ids(r).map(function (id) { var s = photoSrc(P(id)); return s ? s.src : ''; }).filter(Boolean) };
@@ -3551,29 +3566,12 @@ function MemoryAdapter(store, persist) {
     if (isStaff() && S && S0.id === S.id && S.status === 'done') extra.push({ label: 'Lanjutkan sesi', onClick: function () { act('reopen').catch(function () {}); } });
     CER = Ceremony.open(ceremonyData(S0), { nextLabel: o.after ? 'Lanjut' : 'Tutup', onNext: o.after, extra: extra });
     CER.sid = S0.id; CER.S = S0;
-    ensureCeleb(S0);
   }
-  /* data orang berubah (mis. pose selebrasi selesai dibuat): podium yang terbuka ikut diperbarui */
+  /* data orang berubah (mis. avatar baru): podium yang terbuka ikut diperbarui */
   function refreshCeremony() {
     if (!CER || !CER.isOpen()) return;
     var S0 = LIVE.S && LIVE.sid === CER.sid ? LIVE.S : CER.S;
     if (S0.status === 'done') CER.update(ceremonyData(S0));
-  }
-  /* pose selebrasi AI untuk juara 1–3 yang belum punya (sekali per pemain; dipakai lagi di sesi berikutnya) */
-  function ensureCeleb(S0) {
-    if (!isStaff() || !DB.ai || !LIVE_MODE) return;
-    ceremonyData(S0).podium.forEach(function (s) {
-      s.people.forEach(function (x) {
-        var p = DB.full[x.id] || P(x.id);
-        if (celebJobs[x.id] || p.celebUrl || p.role !== 'user' || (p.celebStatus === 'busy' && Date.now() - (p.celebBusyAt || 0) < 300000)) return;
-        if (!p.chibiUrl && !p.chibiFull && !p.photoUrl) return;
-        celebJobs[x.id] = 1;
-        (p.celebFull ? Promise.resolve(p) : api('generateCelebrate', { id: x.id })).then(function (fp) {
-          if (!fp.celebFull) return null;
-          return makeSprite(fp.celebFull).then(function (data) { return api('saveSprite', { id: x.id, data: data, chibiId: photoIdFromUrl(fp.celebFull), kind: 'celeb' }); });
-        }).then(function () { LIVE.pv = -1; return pollNow(); }).catch(function (e) { if (errCode(e) !== 'BUSY') console.warn('pose selebrasi', e); });
-      });
-    });
   }
   function openThanks(S0) {
     var due = kudosDue(S0);
