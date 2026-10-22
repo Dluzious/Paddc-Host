@@ -1,0 +1,45 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap">
+<style>html,body{margin:0;background:transparent}canvas{display:block}</style>
+</head><body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// Caption reel (PNG transparan 1080x1920, teks di pita atas yang aman dari UI Instagram) dan kartu slot footage.
+const W = 1080, H = 1920, c = document.getElementById('c'), x = c.getContext('2d');
+function wrap(text, maxW) {
+  const words = text.split(' '), lines = []; let cur = '';
+  words.forEach(w => { const t = cur ? cur + ' ' + w : w; if (x.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; });
+  if (cur) lines.push(cur); return lines;
+}
+// gaya: 'hot' = pita oranye teks putih, 'light' = pita krem teks navy
+function caption(text, style, y) {
+  x.clearRect(0, 0, W, H);
+  x.font = '800 66px "Plus Jakarta Sans"'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  const lines = wrap(text, 880), lh = 92, top = y == null ? 250 : y;
+  lines.forEach((l, i) => {
+    const tw = x.measureText(l).width + 64, cy = top + i * lh + lh / 2, tilt = (i % 2 ? 1 : -1) * 0.012;
+    x.save(); x.translate(W / 2, cy); x.rotate(tilt);
+    x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 18; x.shadowOffsetY = 6;
+    x.beginPath(); x.roundRect(-tw / 2, -lh / 2 + 4, tw, lh - 8, 22);
+    x.fillStyle = style === 'light' ? '#f3e9d7' : '#e3892b'; x.fill();
+    x.shadowColor = 'transparent';
+    x.fillStyle = style === 'light' ? '#10294f' : '#ffffff'; x.fillText(l, 0, 4);
+    x.restore();
+  });
+}
+function slot(title, desc, secs) {
+  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1b3f73'); g.addColorStop(1, '#0a1a33');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.setLineDash([28, 18]); x.lineWidth = 8; x.strokeStyle = 'rgba(243,233,215,.55)';
+  x.beginPath(); x.roundRect(70, 520, W - 140, 880, 48); x.stroke(); x.setLineDash([]);
+  x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+  x.fillStyle = '#e3892b'; x.font = '900 120px "Big Shoulders Display"'; x.fillText('FOOTAGE ASLI', W / 2, 760);
+  x.fillStyle = '#f3e9d7'; x.font = '700 54px "Plus Jakarta Sans"';
+  wrap(title, 820).forEach((l, i) => x.fillText(l, W / 2, 900 + i * 72));
+  x.fillStyle = 'rgba(243,233,215,.7)'; x.font = '600 42px "Plus Jakarta Sans"';
+  wrap(desc, 820).forEach((l, i) => x.fillText(l, W / 2, 1120 + i * 58));
+  x.fillStyle = '#e3892b'; x.font = '800 48px "Plus Jakarta Sans"'; x.fillText(secs, W / 2, 1320);
+}
+window.caption = caption; window.slot = slot;
+window.ready = () => Promise.all(['800 66px "Plus Jakarta Sans"', '700 54px "Plus Jakarta Sans"', '600 42px "Plus Jakarta Sans"', '900 120px "Big Shoulders Display"'].map(f => document.fonts.load(f)));
+</script></body></html>

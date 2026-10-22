@@ -1,0 +1,14 @@
+# hasil render & data pemain: dibuat ulang lewat fetch_data.py dan skrip render, tidak disimpan di repo
+poll.json
+photos/
+footage/
+seg/
+*.mp4
+*.mp4.frames/
+*.png
+!bumper/logo_cut.png
+bumper/cap/
+bumper/start/
+bumper/end/
+bumper/sc_*/
+__pycache__/

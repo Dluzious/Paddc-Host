@@ -1,0 +1,96 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Plus+Jakarta+Sans:wght@700;800&display=swap">
+<style>html,body{margin:0;background:#0a1a33}canvas{display:block}</style>
+</head><body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// Bumper logo Paddoc Host: satu animasi kontinu L(t), t dalam detik.
+// t < 0 = penutup video (masuk dari kilatan putih), t >= 0 = pembuka (zoom keluar ke kilatan putih).
+// Video berakhir di L(-1/30) dan mulai di L(0), jadi saat Reels berulang gerakannya menyambung.
+const W = 1080, H = 1920, c = document.getElementById('c'), x = c.getContext('2d');
+const LOGO = new Image(); LOGO.src = 'logo_cut.png';
+const CREW = ['Dani', 'Sisil', 'Max', 'Nina', 'Aziz', 'Farid', 'Dianty', 'Toha', 'Euis'];
+const FILES = window.CREW_FILES || {};
+const crew = CREW.map(n => { const im = new Image(); im.src = FILES[n]; return im; });
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lin = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const easeOut = u => 1 - Math.pow(1 - u, 3), easeIn = u => u * u * u;
+const back = u => { const k = 1.9; return 1 + (k + 1) * Math.pow(u - 1, 3) + k * Math.pow(u - 1, 2); };
+function rnd(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+const COLORS = ['#e3892b', '#4f9a63', '#f3e9d7', '#ffffff', '#f2c14e', '#5aa3e6'];
+
+function draw(t) {
+  // latar navy + sinar berputar (kontinu)
+  const g = x.createRadialGradient(W / 2, 780, 60, W / 2, 780, 1300);
+  g.addColorStop(0, '#1f4c8c'); g.addColorStop(.45, '#12305e'); g.addColorStop(1, '#081429');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.save(); x.translate(W / 2, 780); x.rotate(t * 0.35);
+  for (let i = 0; i < 16; i++) {
+    x.rotate(Math.PI * 2 / 16);
+    x.beginPath(); x.moveTo(0, 0); x.lineTo(-90, -1600); x.lineTo(90, -1600); x.closePath();
+    x.fillStyle = i % 2 ? 'rgba(255,255,255,.045)' : 'rgba(227,137,43,.05)'; x.fill();
+  }
+  x.restore();
+  // gelang cahaya yang memancar dari logo tiap 1 detik (periodik, kontinu)
+  for (let k = 0; k < 3; k++) {
+    const ph = ((t + k / 3) % 1 + 1) % 1, r = 330 + ph * 700;
+    x.beginPath(); x.arc(W / 2, 780, r, 0, Math.PI * 2);
+    x.strokeStyle = `rgba(243,233,215,${(1 - ph) * .22})`; x.lineWidth = 6 * (1 - ph) + 1; x.stroke();
+  }
+  // confetti jatuh (posisi dari t, membungkus di bawah layar)
+  for (let i = 0; i < 70; i++) {
+    const sp = 260 + rnd(i) * 420, px = rnd(i + 99) * W + Math.sin(t * 2 + i) * 30;
+    const py = ((rnd(i + 7) * (H + 200) + t * sp) % (H + 200) + (H + 200)) % (H + 200) - 100;
+    x.save(); x.translate(px, py); x.rotate(t * (2 + rnd(i + 3) * 4) + i);
+    x.fillStyle = COLORS[i % COLORS.length]; x.globalAlpha = .85;
+    x.fillRect(-9, -5, 18, 10); x.restore();
+  }
+  x.globalAlpha = 1;
+  // muncul: pop di -1.75..-1.25; pembuka: zoom ke kamera 0.55..1.2
+  const pop = t < -1.75 ? 0 : t < -1.25 ? back(lin(t, -1.75, -1.25)) : 1;
+  const zoom = 1 + 9 * easeIn(lin(t, 0.55, 1.2));
+  const fade = 1 - lin(t, 0.8, 1.15);
+  const breathe = 1 + 0.022 * Math.sin(2 * Math.PI * t);
+  // kru chibi bersorak di bawah
+  crew.forEach((im, i) => {
+    if (!im.complete || !im.naturalWidth) return;
+    const n = crew.length, cx = 70 + i * (W - 140) / (n - 1);
+    const rise = easeOut(lin(t, -1.6 + i * 0.04, -1.2 + i * 0.04));
+    const hop = Math.abs(Math.sin(Math.PI * (t * 1.6 + i * 0.37))) * 46;
+    const big = i === 4 ? 1.12 : 1, h = (i % 2 ? 360 : 400) * big, w = h * im.naturalWidth / im.naturalHeight;
+    const y = H - 40 - h + (1 - rise) * 520 - hop + lin(t, 0.55, 1.1) * 600;
+    x.save(); x.globalAlpha = fade;
+    x.drawImage(im, cx - w / 2, y, w, h); x.restore();
+  });
+  // logo
+  if (LOGO.complete && pop > 0) {
+    const s = pop * breathe * zoom, lw = 640 * s, lh = lw * LOGO.naturalHeight / LOGO.naturalWidth;
+    const wob = t < -1.1 ? Math.sin(t * 22) * 0.06 * (1 - lin(t, -1.75, -1.1)) : 0;
+    x.save(); x.globalAlpha = fade; x.translate(W / 2, 780); x.rotate(wob);
+    x.shadowColor = 'rgba(0,0,0,.45)'; x.shadowBlur = 50; x.shadowOffsetY = 24;
+    x.drawImage(LOGO, -lw / 2, -lh / 2, lw, lh); x.restore();
+  }
+  // nama aplikasi
+  const wm = easeOut(lin(t, -1.35, -1.0));
+  if (wm > 0) {
+    x.save(); x.globalAlpha = wm * fade * (1 - lin(t, 0.55, 0.8));
+    x.font = '900 128px "Big Shoulders Display"'; x.textAlign = 'center'; x.fillStyle = '#f3e9d7';
+    x.shadowColor = 'rgba(0,0,0,.5)'; x.shadowBlur = 24;
+    x.fillText('PADDOC HOST', W / 2, 1290 + (1 - wm) * 60);
+    x.restore();
+  }
+  // ajakan penutup (hanya sebelum t = 0)
+  const cta = easeOut(lin(t, -1.05, -0.8)) * (1 - lin(t, -0.45, -0.15));
+  if (cta > 0) {
+    x.save(); x.globalAlpha = cta; x.font = '800 54px "Plus Jakarta Sans"'; x.textAlign = 'center';
+    const txt = 'Sampai ketemu di lobi! 👋', tw = x.measureText(txt).width + 80, ty = 1392 + (1 - cta) * 40;
+    x.fillStyle = '#e3892b'; x.beginPath(); x.roundRect(W / 2 - tw / 2, ty - 62, tw, 92, 46); x.fill();
+    x.fillStyle = '#fff'; x.fillText(txt, W / 2, ty); x.restore();
+  }
+  // kilatan putih: masuk dari klip sebelumnya / keluar ke klip berikutnya
+  const white = Math.max(1 - lin(t, -2.0, -1.72), lin(t, 0.95, 1.2));
+  if (white > 0) { x.fillStyle = `rgba(255,255,255,${white})`; x.fillRect(0, 0, W, H); }
+}
+window.draw = draw;
+window.ready = () => Promise.all([LOGO, ...crew].map(im => im.complete ? 1 : new Promise(r => { im.onload = im.onerror = r; }))).then(() => document.fonts.ready);
+</script></body></html>

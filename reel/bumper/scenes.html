@@ -1,0 +1,141 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+</head><body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// Adegan buatan untuk reel: panggilan di HP (teks persis notifikasi "Giliran kamu main" dari core.js)
+// dan grid foto pro AI -> avatar chibi. Semua digambar dari t (detik), jadi bisa dirender per frame.
+const W = 1080, H = 1920, c = document.getElementById('c'), x = c.getContext('2d');
+const P = window.PEOPLE || {};             // nama -> { photo, chibi } (file lokal)
+const IM = {};
+function img(src) { if (!IM[src]) { IM[src] = new Image(); IM[src].src = src; } return IM[src]; }
+const ICON = img('../../icon-192.png');
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lin = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const easeOut = u => 1 - Math.pow(1 - u, 3), easeInOut = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+const back = u => { const k = 1.7; return 1 + (k + 1) * Math.pow(u - 1, 3) + k * Math.pow(u - 1, 2); };
+function cover(im, dx, dy, dw, dh, fy) {
+  if (!im.complete || !im.naturalWidth) return;
+  const s = Math.max(dw / im.naturalWidth, dh / im.naturalHeight), sw = dw / s, sh = dh / s;
+  x.drawImage(im, (im.naturalWidth - sw) / 2, (im.naturalHeight - sh) * (fy == null ? .5 : fy), sw, sh, dx, dy, dw, dh);
+}
+function contain(im, dx, dy, dw, dh) {
+  if (!im.complete || !im.naturalWidth) return;
+  const s = Math.min(dw / im.naturalWidth, dh / im.naturalHeight), w = im.naturalWidth * s, h = im.naturalHeight * s;
+  x.drawImage(im, dx + (dw - w) / 2, dy + dh - h, w, h);
+}
+function wrap(text, maxW) {
+  const words = text.split(' '), lines = []; let cur = '';
+  words.forEach(w => { const t = cur ? cur + ' ' + w : w; if (x.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; });
+  if (cur) lines.push(cur); return lines;
+}
+
+/* ---------------- panggilan: 4 HP pemain Court 1 ---------------- */
+const CALL = [
+  { name: 'Nina', partner: 'Toha', opp: ['Sisil', 'Aria'] },
+  { name: 'Toha', partner: 'Nina', opp: ['Sisil', 'Aria'] },
+  { name: 'Sisil', partner: 'Aria', opp: ['Nina', 'Toha'] },
+  { name: 'Aria', partner: 'Sisil', opp: ['Nina', 'Toha'] },
+];
+function phone(p, t, k, tapAt) {
+  // HP 1080x1920 dalam koordinat lokal; pemanggil sudah mengatur transform
+  const R = 110;
+  x.save();
+  x.beginPath(); x.roundRect(0, 0, W, H, R); x.fillStyle = '#0b0b0f'; x.fill();
+  x.beginPath(); x.roundRect(26, 26, W - 52, H - 52, R - 22); x.clip();
+  // wallpaper: foto pro AI pemilik HP, digelapkan
+  x.filter = 'blur(6px) brightness(.55)'; cover(img(P[p.name].photo), 6, 6, W - 12, H - 12, .3); x.filter = 'none';
+  x.fillStyle = 'rgba(8,16,36,.25)'; x.fillRect(0, 0, W, H);
+  // jam layar kunci
+  x.fillStyle = '#fff'; x.textAlign = 'center';
+  x.font = '600 46px "Plus Jakarta Sans"'; x.fillText('Selasa, 20 Oktober', W / 2, 250);
+  x.font = '800 230px "Plus Jakarta Sans"'; x.fillText('21.47', W / 2, 470);
+  // notifikasi masuk + getar (pola getar app: 800ms nyala, 200ms jeda)
+  const tin = t - k * 0.07, show = easeOut(lin(tin, 0.15, 0.5));
+  if (show > 0) {
+    const vib = tin > 0.3 && (tin - 0.3) % 1.0 < 0.8 ? Math.sin(tin * 95) * 14 : 0;
+    const tapped = tapAt != null && t >= tapAt;
+    const cx = 60 + vib, cy = 560 + (1 - show) * -420, cw = W - 120;
+    x.globalAlpha = show;
+    x.font = '800 50px "Plus Jakarta Sans"'; const tl = wrap('Giliran kamu main: Court 1', cw - 90);
+    x.font = '500 44px "Plus Jakarta Sans"'; const bl = wrap('Partner ' + p.partner + ' · lawan ' + p.opp[0] + ' & ' + p.opp[1] + '. Buka untuk Siap atau Skip.', cw - 90);
+    const chh = 170 + tl.length * 62 + bl.length * 56 + 150;
+    x.beginPath(); x.roundRect(cx, cy, cw, chh, 54); x.fillStyle = 'rgba(245,245,250,.93)'; x.fill();
+    if (ICON.complete) { x.save(); x.beginPath(); x.roundRect(cx + 44, cy + 44, 74, 74, 18); x.clip(); x.drawImage(ICON, cx + 44, cy + 44, 74, 74); x.restore(); }
+    x.textAlign = 'left'; x.fillStyle = '#555'; x.font = '600 38px "Plus Jakarta Sans"'; x.fillText('PADDOC HOST · sekarang', cx + 140, cy + 94);
+    x.fillStyle = '#111'; x.font = '800 50px "Plus Jakarta Sans"';
+    tl.forEach((l, i) => x.fillText(l, cx + 44, cy + 200 + i * 62));
+    x.fillStyle = '#333'; x.font = '500 44px "Plus Jakarta Sans"';
+    bl.forEach((l, i) => x.fillText(l, cx + 44, cy + 200 + tl.length * 62 + i * 56));
+    // tombol aksi notifikasi
+    const by = cy + chh - 128, bw = (cw - 88 - 24) / 2;
+    [['Siap', '#1f8f4e'], ['Skip dulu', '#666']].forEach(([lab, col], i) => {
+      const bx = cx + 44 + i * (bw + 24), hot = tapped && i === 0;
+      x.beginPath(); x.roundRect(bx, by, bw, 92, 46); x.fillStyle = hot ? '#1f8f4e' : 'rgba(0,0,0,.07)'; x.fill();
+      x.fillStyle = hot ? '#fff' : col; x.font = '800 44px "Plus Jakarta Sans"'; x.textAlign = 'center'; x.fillText((hot ? '✓ ' : '') + lab, bx + bw / 2, by + 62);
+      if (i === 0 && tapAt != null) {                 // jari mengetuk "Siap"
+        const u = lin(t, tapAt - 0.05, tapAt + 0.45);
+        if (u > 0 && u < 1) { x.beginPath(); x.arc(bx + bw / 2, by + 46, 40 + u * 70, 0, Math.PI * 2); x.fillStyle = `rgba(255,255,255,${.55 * (1 - u)})`; x.fill(); x.lineWidth = 6; x.strokeStyle = `rgba(31,143,78,${1 - u})`; x.stroke(); }
+      }
+    });
+    x.globalAlpha = 1;
+    if (tapped) {                                      // konfirmasi di bawah kartu
+      const u = easeOut(lin(t, tapAt + 0.15, tapAt + 0.5));
+      x.globalAlpha = u; x.beginPath(); x.roundRect(W / 2 - 330, cy + chh + 60 + (1 - u) * 40, 660, 110, 55); x.fillStyle = '#e3892b'; x.fill();
+      x.fillStyle = '#fff'; x.font = '800 50px "Plus Jakarta Sans"'; x.textAlign = 'center'; x.fillText('Siap! Menuju Court 1 🎾', W / 2, cy + chh + 133 + (1 - u) * 40); x.globalAlpha = 1;
+    }
+  }
+  x.restore();
+  // bingkai HP
+  x.beginPath(); x.roundRect(4, 4, W - 8, H - 8, R); x.lineWidth = 8; x.strokeStyle = '#2a2a33'; x.stroke();
+}
+function sceneCall(t) {
+  // 0..1.9 s: empat HP bunyi bersamaan; 1.9..2.5 s: zoom ke HP Nina; 2.7 s: ketuk Siap
+  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#12305e'); g.addColorStop(1, '#081429');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  const z = easeInOut(lin(t, 1.9, 2.5));
+  const cells = [[0, 0], [1, 0], [0, 1], [1, 1]], s0 = 0.43, gx = 46, gy = 70, pw = W * s0, ph = H * s0;
+  const order = z > 0 ? [1, 2, 3, 0] : [0, 1, 2, 3];
+  order.forEach(i => {
+    const [cx, cy] = cells[i];
+    let s = s0, ox = gx + cx * (pw + (W - 2 * gx - 2 * pw)), oy = 120 + cy * (ph + 60);
+    const wob = Math.sin(t * 3 + i) * 0.012;
+    if (i === 0) { s = s0 + (1 - s0) * z; ox = ox * (1 - z); oy = oy * (1 - z); }
+    x.save(); x.translate(ox + W * s / 2, oy + H * s / 2); x.rotate(i === 0 ? wob * (1 - z) : wob); x.scale(s, s); x.translate(-W / 2, -H / 2);
+    if (i !== 0) x.globalAlpha = 1 - z;
+    phone(CALL[i], t, i, i === 0 ? 2.75 : null);
+    x.restore();
+  });
+}
+
+/* ---------------- foto pro AI -> chibi ---------------- */
+const GRID = ['Dani', 'Sisil', 'Max', 'Aria', 'Pandji SpA', 'Faritsi', 'Wuluh', 'cindera', 'Omdok', 'Nandya', 'Toha', 'Dianty',
+  'Farid', 'Adya', 'Herry', 'Nina', 'Reza Erlangga', 'Lulu', 'Yeni Nila', 'Euis'];
+function sceneGrid(t) {
+  // 0..0.9 s: foto pro AI muncul berurutan; 1.3..2.6 s: kartu berbalik jadi chibi (gelombang diagonal)
+  x.fillStyle = '#0d2246'; x.fillRect(0, 0, W, H);
+  const cols = 4, rows = 5, cw = W / cols, ch = H / rows;
+  GRID.forEach((n, i) => {
+    const cx = i % cols, cy = Math.floor(i / cols), d = (cx + cy) / (cols + rows - 2);
+    const pop = back(lin(t, d * 0.6, d * 0.6 + 0.3));
+    const fl = lin(t, 1.3 + d * 0.9, 1.3 + d * 0.9 + 0.35), sx = Math.abs(Math.cos(fl * Math.PI)), chibi = fl > .5;
+    if (pop <= 0) return;
+    x.save(); x.translate(cx * cw + cw / 2, cy * ch + ch / 2); x.scale(pop * sx * 0.94, pop * 0.94);
+    x.beginPath(); x.roundRect(-cw / 2, -ch / 2, cw, ch, 22); x.clip();
+    if (chibi) {
+      const g = x.createLinearGradient(0, -ch / 2, 0, ch / 2); g.addColorStop(0, '#2b5fa8'); g.addColorStop(1, '#16376a');
+      x.fillStyle = g; x.fillRect(-cw / 2, -ch / 2, cw, ch);
+      contain(img(P[n].chibi), -cw / 2 + 8, -ch / 2 + 10, cw - 16, ch - 18);
+    } else cover(img(P[n].photo), -cw / 2, -ch / 2, cw, ch, .2);
+    x.restore();
+  });
+}
+const SCENES = { call: sceneCall, grid: sceneGrid };
+window.draw = (name, t) => SCENES[name](t);
+window.ready = () => {
+  const all = Object.values(P).flatMap(v => [img(v.photo), img(v.chibi)]).concat([ICON]);
+  return Promise.all(all.map(im => im.complete ? 1 : new Promise(r => { im.onload = im.onerror = r; })))
+    .then(() => Promise.all(['800 50px "Plus Jakarta Sans"', '600 40px "Plus Jakarta Sans"', '500 44px "Plus Jakarta Sans"', '900 100px "Big Shoulders Display"'].map(f => document.fonts.load(f))));
+};
+</script></body></html>

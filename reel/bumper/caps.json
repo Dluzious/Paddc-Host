@@ -1,0 +1,107 @@
+[
+ {
+  "id": "c_hook",
+  "kind": "cap",
+  "text": "Main padel? Itu baru 50% serunya.",
+  "style": "hot"
+ },
+ {
+  "id": "c_beach",
+  "kind": "cap",
+  "text": "50% lagi ada di sini 👇",
+  "style": "light"
+ },
+ {
+  "id": "c_join",
+  "kind": "cap",
+  "text": "Tekan Gabung, avatarmu langsung nongol di lobi",
+  "style": "hot"
+ },
+ {
+  "id": "c_chat",
+  "kind": "cap",
+  "text": "Ngobrol dulu sambil nunggu 💬",
+  "style": "light"
+ },
+ {
+  "id": "c_ball",
+  "kind": "cap",
+  "text": "Bosen nunggu? Main bola bareng di lobi 🎾",
+  "style": "hot"
+ },
+ {
+  "id": "c_shuffle",
+  "kind": "cap",
+  "text": "Pasangan main diacak live 🔀",
+  "style": "light"
+ },
+ {
+  "id": "c_panggil",
+  "kind": "cap",
+  "text": "Host tinggal tekan Panggil…",
+  "style": "hot"
+ },
+ {
+  "id": "c_call",
+  "kind": "cap",
+  "text": "…HP tiap pemain langsung bunyi 📳",
+  "style": "light"
+ },
+ {
+  "id": "c_pro",
+  "kind": "cap",
+  "text": "Tiap member punya foto pro AI…",
+  "style": "hot"
+ },
+ {
+  "id": "c_chibi",
+  "kind": "cap",
+  "text": "…plus versi chibi-nya 😆",
+  "style": "light"
+ },
+ {
+  "id": "c_play",
+  "kind": "cap",
+  "text": "Oh iya, mainnya juga seru 😂",
+  "style": "hot"
+ },
+ {
+  "id": "c_podium",
+  "kind": "cap",
+  "text": "Akhir sesi: juara naik podium 🏆",
+  "style": "hot"
+ },
+ {
+  "id": "c_bareng",
+  "kind": "cap",
+  "text": "Main bareng, ketawa bareng 🤝",
+  "style": "light"
+ },
+ {
+  "id": "c_kudos",
+  "kind": "cap",
+  "text": "Habis main, saling kasih kudos 🏅",
+  "style": "hot"
+ },
+ {
+  "id": "s_f1",
+  "kind": "slot",
+  "title": "Momen seru di venue: ketawa, tos, nunggu giliran",
+  "desc": "Hook pembuka, diganti footage kamu",
+  "secs": "2,4 detik"
+ },
+ {
+  "id": "s_f2",
+  "kind": "slot",
+  "title": "Rally, teriakan, reaksi kocak di court",
+  "desc": "Diganti footage kamu",
+  "secs": "9,4 detik"
+ },
+ {
+  "id": "s_f3",
+  "kind": "slot",
+  "title": "Foto bareng, tos, ketawa setelah sesi",
+  "desc": "Diganti footage kamu",
+  "secs": "10 detik"
+ }
+]
