@@ -12,3 +12,4 @@ bumper/start/
 bumper/end/
 bumper/sc_*/
 __pycache__/
+cap/board_call.json

@@ -5,20 +5,24 @@
 </head><body><canvas id="c" width="1080" height="1920"></canvas>
 <script>
 // Caption reel (PNG transparan 1080x1920, teks di pita atas yang aman dari UI Instagram) dan kartu slot footage.
-const W = 1080, H = 1920, c = document.getElementById('c'), x = c.getContext('2d');
+let W = 1080, H = 1920;
+const c = document.getElementById('c'), x = c.getContext('2d');
+// kanvas landscape (1920x1080) untuk caption yang ditimpa ke papan iPad sebelum diputar 90°
+function size(w, h) { W = c.width = w; H = c.height = h; document.body.style.width = w + 'px'; }
 function wrap(text, maxW) {
   const words = text.split(' '), lines = []; let cur = '';
   words.forEach(w => { const t = cur ? cur + ' ' + w : w; if (x.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; });
   if (cur) lines.push(cur); return lines;
 }
 // gaya: 'hot' = pita oranye teks putih, 'light' = pita krem teks navy
-function caption(text, style, y) {
+// x0: rata kiri mulai x0 (satu baris), tanpa x0: di tengah dan dibungkus per maxW px (bawaan 880)
+function caption(text, style, y, x0, maxW) {
   x.clearRect(0, 0, W, H);
   x.font = '800 66px "Plus Jakarta Sans"'; x.textAlign = 'center'; x.textBaseline = 'middle';
-  const lines = wrap(text, 880), lh = 92, top = y == null ? 250 : y;
+  const lines = x0 == null ? wrap(text, maxW || 880) : [text], lh = 92, top = y == null ? 250 : y;
   lines.forEach((l, i) => {
     const tw = x.measureText(l).width + 64, cy = top + i * lh + lh / 2, tilt = (i % 2 ? 1 : -1) * 0.012;
-    x.save(); x.translate(W / 2, cy); x.rotate(tilt);
+    x.save(); x.translate(x0 == null ? W / 2 : x0 + tw / 2, cy); x.rotate(tilt);
     x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 18; x.shadowOffsetY = 6;
     x.beginPath(); x.roundRect(-tw / 2, -lh / 2 + 4, tw, lh - 8, 22);
     x.fillStyle = style === 'light' ? '#f3e9d7' : '#e3892b'; x.fill();
@@ -40,6 +44,6 @@ function slot(title, desc, secs) {
   wrap(desc, 820).forEach((l, i) => x.fillText(l, W / 2, 1120 + i * 58));
   x.fillStyle = '#e3892b'; x.font = '800 48px "Plus Jakarta Sans"'; x.fillText(secs, W / 2, 1320);
 }
-window.caption = caption; window.slot = slot;
+window.caption = caption; window.slot = slot; window.size = size;
 window.ready = () => Promise.all(['800 66px "Plus Jakarta Sans"', '700 54px "Plus Jakarta Sans"', '600 42px "Plus Jakarta Sans"', '900 120px "Big Shoulders Display"'].map(f => document.fonts.load(f)));
 </script></body></html>

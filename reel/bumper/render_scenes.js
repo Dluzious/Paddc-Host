@@ -12,6 +12,8 @@ const JOBS = { call: 4.2, grid: 3.6 };
   const b = await chromium.launch();
   const pg = await b.newPage({ viewport: { width: 1080, height: 1920 } });
   await pg.addInitScript(p => { window.PEOPLE = p; }, people);
+  const bc = path.resolve(__dirname, '../cap/board_call.json');   // susunan Court 1 dari papan iPad, bila ada
+  if (fs.existsSync(bc)) await pg.addInitScript(v => { window.CALL_SET = v; }, JSON.parse(fs.readFileSync(bc)));
   await pg.goto('file://' + __dirname + '/scenes.html');
   await pg.evaluate(() => window.ready());
   for (const name of (process.argv[2] ? process.argv[2].split(',') : Object.keys(JOBS))) {

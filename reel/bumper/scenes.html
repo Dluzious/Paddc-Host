@@ -32,12 +32,10 @@ function wrap(text, maxW) {
 }
 
 /* ---------------- panggilan: 4 HP pemain Court 1 ---------------- */
-const CALL = [
-  { name: 'Nina', partner: 'Toha', opp: ['Sisil', 'Aria'] },
-  { name: 'Toha', partner: 'Nina', opp: ['Sisil', 'Aria'] },
-  { name: 'Sisil', partner: 'Aria', opp: ['Nina', 'Toha'] },
-  { name: 'Aria', partner: 'Sisil', opp: ['Nina', 'Toha'] },
-];
+// susunan Court 1 dari papan iPad (r_board.js -> board_call.json): [[A1, A2], [B1, B2]]
+const SET = window.CALL_SET || [['Nina', 'Toha'], ['Sisil', 'Aria']];
+const CALL = [[0, 0], [0, 1], [1, 0], [1, 1]].map(([s, i]) => ({ name: SET[s][i], partner: SET[s][1 - i], opp: SET[1 - s] }));
+const TOP = 390;             // konten mulai di bawah pita caption (y 235-369)
 function phone(p, t, k, tapAt) {
   // HP 1080x1920 dalam koordinat lokal; pemanggil sudah mengatur transform
   const R = 110;
@@ -49,14 +47,14 @@ function phone(p, t, k, tapAt) {
   x.fillStyle = 'rgba(8,16,36,.25)'; x.fillRect(0, 0, W, H);
   // jam layar kunci
   x.fillStyle = '#fff'; x.textAlign = 'center';
-  x.font = '600 46px "Plus Jakarta Sans"'; x.fillText('Selasa, 20 Oktober', W / 2, 250);
-  x.font = '800 230px "Plus Jakarta Sans"'; x.fillText('21.47', W / 2, 470);
+  x.font = '600 46px "Plus Jakarta Sans"'; x.fillText('Selasa, 20 Oktober', W / 2, 400);
+  x.font = '800 230px "Plus Jakarta Sans"'; x.fillText('21.47', W / 2, 620);
   // notifikasi masuk + getar (pola getar app: 800ms nyala, 200ms jeda)
   const tin = t - k * 0.07, show = easeOut(lin(tin, 0.15, 0.5));
   if (show > 0) {
     const vib = tin > 0.3 && (tin - 0.3) % 1.0 < 0.8 ? Math.sin(tin * 95) * 14 : 0;
     const tapped = tapAt != null && t >= tapAt;
-    const cx = 60 + vib, cy = 560 + (1 - show) * -420, cw = W - 120;
+    const cx = 60 + vib, cy = 710 + (1 - show) * -420, cw = W - 120;
     x.globalAlpha = show;
     x.font = '800 50px "Plus Jakarta Sans"'; const tl = wrap('Giliran kamu main: Court 1', cw - 90);
     x.font = '500 44px "Plus Jakarta Sans"'; const bl = wrap('Partner ' + p.partner + ' · lawan ' + p.opp[0] + ' & ' + p.opp[1] + '. Buka untuk Siap atau Skip.', cw - 90);
@@ -95,11 +93,11 @@ function sceneCall(t) {
   const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#12305e'); g.addColorStop(1, '#081429');
   x.fillStyle = g; x.fillRect(0, 0, W, H);
   const z = easeInOut(lin(t, 1.9, 2.5));
-  const cells = [[0, 0], [1, 0], [0, 1], [1, 1]], s0 = 0.43, gx = 46, gy = 70, pw = W * s0, ph = H * s0;
+  const cells = [[0, 0], [1, 0], [0, 1], [1, 1]], s0 = 0.38, gx = 100, pw = W * s0, ph = H * s0;
   const order = z > 0 ? [1, 2, 3, 0] : [0, 1, 2, 3];
   order.forEach(i => {
     const [cx, cy] = cells[i];
-    let s = s0, ox = gx + cx * (pw + (W - 2 * gx - 2 * pw)), oy = 120 + cy * (ph + 60);
+    let s = s0, ox = gx + cx * (pw + (W - 2 * gx - 2 * pw)), oy = TOP + cy * (ph + 40);
     const wob = Math.sin(t * 3 + i) * 0.012;
     if (i === 0) { s = s0 + (1 - s0) * z; ox = ox * (1 - z); oy = oy * (1 - z); }
     x.save(); x.translate(ox + W * s / 2, oy + H * s / 2); x.rotate(i === 0 ? wob * (1 - z) : wob); x.scale(s, s); x.translate(-W / 2, -H / 2);
@@ -115,13 +113,13 @@ const GRID = ['Dani', 'Sisil', 'Max', 'Aria', 'Pandji SpA', 'Faritsi', 'Wuluh', 
 function sceneGrid(t) {
   // 0..0.9 s: foto pro AI muncul berurutan; 1.3..2.6 s: kartu berbalik jadi chibi (gelombang diagonal)
   x.fillStyle = '#0d2246'; x.fillRect(0, 0, W, H);
-  const cols = 4, rows = 5, cw = W / cols, ch = H / rows;
+  const cols = 4, rows = 5, cw = W / cols, ch = (H - TOP) / rows;
   GRID.forEach((n, i) => {
     const cx = i % cols, cy = Math.floor(i / cols), d = (cx + cy) / (cols + rows - 2);
     const pop = back(lin(t, d * 0.6, d * 0.6 + 0.3));
     const fl = lin(t, 1.3 + d * 0.9, 1.3 + d * 0.9 + 0.35), sx = Math.abs(Math.cos(fl * Math.PI)), chibi = fl > .5;
     if (pop <= 0) return;
-    x.save(); x.translate(cx * cw + cw / 2, cy * ch + ch / 2); x.scale(pop * sx * 0.94, pop * 0.94);
+    x.save(); x.translate(cx * cw + cw / 2, TOP + cy * ch + ch / 2); x.scale(pop * sx * 0.94, pop * 0.94);
     x.beginPath(); x.roundRect(-cw / 2, -ch / 2, cw, ch, 22); x.clip();
     if (chibi) {
       const g = x.createLinearGradient(0, -ch / 2, 0, ch / 2); g.addColorStop(0, '#2b5fa8'); g.addColorStop(1, '#16376a');

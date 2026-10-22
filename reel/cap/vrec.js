@@ -2,8 +2,10 @@
 // pada resolusi penuh (1080x1920). Hasilnya mulus 30fps berapa pun lambatnya screenshot.
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
 const FPS = 30, DT = 1000 / FPS;
-module.exports = function vrec(page, outMp4) {
+// opts.clip: rekam hanya area ini (koordinat CSS), mis. untuk close-up pada DPR tinggi
+module.exports = function vrec(page, outMp4, opts) {
   const dir = outMp4 + '.frames'; fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir);
+  const clip = opts && opts.clip;
   let n = 0;
   const tickCss = () => page.evaluate(dt => {
     document.getAnimations().forEach(a => {
@@ -15,11 +17,15 @@ module.exports = function vrec(page, outMp4) {
     async frames(ms) {
       for (let k = 0, m = Math.round(ms / DT); k < m; k++) {
         await page.clock.runFor(DT); await tickCss();
-        await page.screenshot({ path: path.join(dir, String(n++).padStart(5, '0') + '.png') });
+        await page.screenshot({ path: path.join(dir, String(n++).padStart(5, '0') + '.png'), clip });
       }
     },
+    async skip(ms) {                                           // maju waktu tanpa merekam
+      for (let k = 0, m = Math.round(ms / DT); k < m; k++) { await page.clock.runFor(DT); await tickCss(); }
+    },
     done() {
-      execFileSync('ffmpeg', ['-v', 'error', '-y', '-framerate', String(FPS), '-i', path.join(dir, '%05d.png'), '-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', outMp4]);
+      execFileSync('ffmpeg', ['-v', 'error', '-y', '-framerate', String(FPS), '-i', path.join(dir, '%05d.png'),
+        '-vf', 'crop=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', outMp4]);
       fs.rmSync(dir, { recursive: true, force: true }); console.log(outMp4, n, 'frames', (n / FPS).toFixed(1) + 's');
     }
   };

@@ -44,13 +44,14 @@
  {
   "id": "c_call",
   "kind": "cap",
-  "text": "…HP tiap pemain langsung bunyi 📳",
-  "style": "light"
+  "text": "…HP semua pemain bunyi 📳",
+  "style": "light",
+  "maxW": 960
  },
  {
   "id": "c_pro",
   "kind": "cap",
-  "text": "Tiap member punya foto pro AI…",
+  "text": "Foto pro AI tiap member…",
   "style": "hot"
  },
  {
@@ -103,5 +104,23 @@
   "title": "Foto bareng, tos, ketawa setelah sesi",
   "desc": "Diganti footage kamu",
   "secs": "10 detik"
+ },
+ {
+  "id": "c_shuffle_l",
+  "kind": "cap",
+  "text": "Pasangan main diacak live 🔀",
+  "style": "light",
+  "land": true,
+  "y": 962,
+  "x0": 620
+ },
+ {
+  "id": "c_panggil_l",
+  "kind": "cap",
+  "text": "Host tinggal tekan Panggil…",
+  "style": "hot",
+  "land": true,
+  "y": 962,
+  "x0": 620
  }
 ]

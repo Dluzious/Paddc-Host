@@ -41,41 +41,45 @@ FULL = zoom(1)   # sumber 464x832 tidak persis 9:16, jadi tetap dicrop
 # (id, detik, sumber, mulai_di_sumber, opsi)
 TIMELINE = [
     ('logo_in', 1.2, os.path.join(BUM, 'bumper_start.mp4'), 0, {}),
-    ('hook_a', .9, up('e6a55773'), 18.7, {'vf': FULL, 'sharp': True, 'white_in': .25, 'caps': [cap('c_hook', .1, .9)]}),
-    ('hook_b', 1.5, up('IMG_7037'), 1.0, {'vf': FULL, 'caps': [cap('c_hook', 0, 1.5)], 'cap_static': True}),
-    ('beach', 2.4, os.path.join(CAP, 'raw_lobby_beach.mp4'), 1.2, {
+    # hook: pemain berjilbab merentang menjangkau bola (diperlambat 0,8x), lalu iPad di venue
+    ('hook_a', 1.5, up('e6a55773'), 101.3, {'vf': zoom(.6, .78, .55), 'sharp': True, 'speed': .8, 'white_in': .25,
+                                            'caps': [cap('c_hook', .1, 1.5)]}),
+    ('hook_b', 1.4, up('IMG_7037'), 1.0, {'vf': FULL, 'caps': [cap('c_hook', 0, 1.4)], 'cap_static': True}),
+    ('beach', 2.4, os.path.join(CAP, 'raw_lobby_beach.mp4'), 0.8, {   # berhenti sebelum tombol mode main muncul (±3,27 dtk)
         'vf': "crop=945:1660:x='80+(1760-80)*t/2.4':y=386", 'caps': [cap('c_beach', .05, 2.4)]}),
     ('join', 3.6, os.path.join(CAP, 'raw_lobby_port.mp4'), 0.6, {'speed': 1.4, 'caps': [cap('c_join', .05, 3.6)]}),
-    ('chat', 2.6, os.path.join(CAP, 'raw_lobby_port.mp4'), 6.3, {'caps': [cap('c_chat', .05, 2.6)]}),
-    ('ball_a', 2.2, os.path.join(CAP, 'raw_lobby_ball.mp4'), 0.7, {'caps': [cap('c_ball', .05, 2.2)]}),
-    ('ball_b', 1.8, os.path.join(CAP, 'raw_lobby_ball.mp4'), 5.0, {'caps': [cap('c_ball', 0, 1.8, )], 'cap_static': True}),
-    ('shuffle', 3.6, os.path.join(CAP, 'raw_shuffle.mp4'), 0.4, {'caps': [cap('c_shuffle', .05, 3.6)]}),
-    ('panggil', 2.0, os.path.join(CAP, 'raw_shuffle.mp4'), 4.2, {'caps': [cap('c_panggil', .05, 2.0)]}),
+    ('chat', 3.1, os.path.join(CAP, 'raw_lobby_port.mp4'), 6.3, {'caps': [cap('c_chat', .05, 3.1)]}),
+    ('ball_a', 1.5, os.path.join(CAP, 'raw_lobby_ball.mp4'), 0.7, {'caps': [cap('c_ball', .05, 1.5)]}),
+    ('ball_b', 1.0, os.path.join(CAP, 'raw_lobby_ball.mp4'), 5.0, {'caps': [cap('c_ball', 0, 1.0)], 'cap_static': True}),
+    # papan court iPad (landscape) diputar 90 derajat: acak Court 1 & 2, lalu Panggil
+    ('ipad', 6.1, os.path.join(CAP, 'raw_board.mp4'), 0.3, {'land': True, 'caps_land': True,
+                                                           'caps': [cap('c_shuffle_l', .05, 4.1), cap('c_panggil_l', 4.1, 6.1)]}),
     ('call', 4.2, os.path.join(BUM, 'scene_call.mp4'), 0, {'caps': [cap('c_call', .05, 4.2)]}),
     ('grid', 3.6, os.path.join(BUM, 'scene_grid.mp4'), 0, {'caps': [cap('c_pro', .05, 1.3), cap('c_chibi', 1.3, 3.6)]}),
     ('play_1', 1.2, up('e6a55773'), 19.6, {'vf': FULL, 'sharp': True, 'caps': [cap('c_play', .05, 1.2)]}),
     ('play_2', 1.2, up('91f7610b'), 0.4, {'vf': FULL, 'sharp': True, 'caps': [cap('c_play', 0, 1.2)], 'cap_static': True}),
     ('play_3', 1.4, up('bb13c206'), 24.0, {'vf': zoom(.8, .5, .5), 'sharp': True, 'speed': 1.25,
                                             'caps': [cap('c_play', 0, 1.4)], 'cap_static': True}),
-    ('play_4', 1.9, up('e6a55773'), 101.0, {'vf': zoom(.6, .78, .55), 'sharp': True}),
+    ('play_4', 1.9, up('bb13c206'), 100.5, {'vf': zoom(.8, .5, .55), 'sharp': True}),
     ('play_5', 1.2, up('73141b37'), 29.9, {'vf': zoom(.7, .3, .58), 'sharp': True}),
     ('play_6', 1.3, up('91f7610b'), 88.0, {'vf': FULL, 'sharp': True}),
     ('play_7', 1.2, up('e6a55773'), 27.9, {'vf': FULL, 'sharp': True}),
-    ('podium', 9.0, os.path.join(CAP, 'podium_live.mp4'), 0.55, {'caps': [cap('c_podium', .05, 2.2)]}),
+    ('podium', 5.5, os.path.join(CAP, 'podium_live.mp4'), 0.55, {'caps': [cap('c_podium', .05, 2.2)]}),
+    ('podium_close', 3.5, os.path.join(CAP, 'raw_podium_close.mp4'), 0, {}),
     ('kudos', 5.0, os.path.join(CAP, 'raw_kudos.mp4'), 0.05, {'caps': [cap('c_kudos', .05, 5.0)]}),
 ] + [
     # rekap kilat: 10 potongan 0,5 dtk, caption muncul sekali lalu menempel; ujungnya kilatan putih ke logo
     ('rekap_%d' % (k + 1), .5, src, ss, dict(o, caps=[cap('c_bareng', .05 if k == 0 else 0, .5)], cap_static=k > 0))
     for k, (src, ss, o) in enumerate([
-        (up('e6a55773'), 101.7, {'vf': zoom(.6, .78, .55), 'sharp': True}),
+        (up('e6a55773'), 19.0, {'vf': FULL, 'sharp': True}),
         (os.path.join(BUM, 'scene_grid.mp4'), 2.2, {}),
         (up('IMG_7037'), 2.0, {'vf': FULL}),
         (os.path.join(CAP, 'podium_live.mp4'), 4.0, {}),
         (os.path.join(CAP, 'raw_lobby_beach.mp4'), 3.0, {'vf': 'crop=945:1660:x=900:y=386'}),
         (os.path.join(BUM, 'scene_call.mp4'), 2.9, {}),
-        (os.path.join(CAP, 'raw_shuffle.mp4'), 1.0, {}),
+        (os.path.join(CAP, 'raw_podium_close.mp4'), 1.0, {}),
         (os.path.join(CAP, 'raw_lobby_ball.mp4'), 6.0, {}),
-        (up('e6a55773'), 19.0, {'vf': FULL, 'sharp': True}),
+        (os.path.join(CAP, 'raw_board.mp4'), 1.1, {'land': True}),
         (os.path.join(CAP, 'podium_live.mp4'), 7.0, {'white_out': .2}),
     ])
 ] + [
@@ -103,7 +107,10 @@ def render(i, seg):
     chain = ['setpts=(PTS-STARTPTS)/%s' % speed, 'fps=%d' % FPS]
     if o.get('vf'):
         chain.append(o['vf'])
-    chain += ['scale=%d:%d:flags=lanczos' % (OUT_W, OUT_H), 'setsar=1', 'format=yuv420p']
+    land = o.get('land')                     # sumber landscape (papan iPad): diputar 90 derajat searah jarum jam
+    chain += ['scale=%d:%d:flags=lanczos' % ((OUT_H, OUT_W) if land else (OUT_W, OUT_H)), 'setsar=1', 'format=yuv420p']
+    if land and not o.get('caps_land'):      # caption tegak: putar dulu, baru caption ditimpa
+        chain.append('transpose=1')
     if o.get('sharp'):                       # footage 576p/464p diperbesar ke 1080p: pertajam sedikit
         chain.append('unsharp=5:5:0.7:5:5:0')
     if o.get('white_in'):
@@ -122,7 +129,8 @@ def render(i, seg):
             y = "'24*(1-min(1,max(0,(t-%.3f)/0.15)))'" % t0
         graph.append("[%s][c%d]overlay=0:%s:enable='between(t,%.3f,%.3f)':format=auto[v%d]" % (last, k, y, t0, t1, k + 1))
         last = 'v%d' % (k + 1)
-    graph.append('[%s]trim=end_frame=%d,setpts=PTS-STARTPTS[o]' % (last, n))
+    rot = 'transpose=1,' if land and o.get('caps_land') else ''   # caption landscape ikut diputar
+    graph.append('[%s]%strim=end_frame=%d,setpts=PTS-STARTPTS[o]' % (last, rot, n))
     args += ['-filter_complex', ';'.join(graph), '-map', '[o]', '-frames:v', str(n), '-r', str(FPS),
              '-c:v', 'libx264', '-preset', 'slow', '-crf', '15', '-pix_fmt', 'yuv420p', out]
     subprocess.run(args, check=True)

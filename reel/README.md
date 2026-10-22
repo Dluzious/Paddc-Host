@@ -20,16 +20,20 @@ python3 fetch_data.py                 # nama, foto pro AI, avatar chibi dari das
 
 cd bumper
 node render.js                        # logo pembuka/penutup (bumper_start.mp4, bumper_end.mp4)
-node render_scenes.js                 # panggilan di 4 HP + grid foto pro AI -> chibi
-node render_captions.js caps.json     # caption & kartu slot (cap/*.png)
+node render_captions.js caps.json     # caption tegak & landscape (cap/*.png)
 
 cd ../cap                             # adegan aplikasi asli: lobi & dashboard pakai mode demo lokal
 node r_lobby_port.js                  # (data di browser, tidak menulis ke server), podium dari app live
 node r_lobby_ball.js
 node r_lobby_beach.js
-node r_shuffle.js
+node r_board.js                       # papan court iPad (landscape): acak + Panggil; tulis board_call.json
 node r_kudos.js
 node r_podium.js                      # simpan hasilnya sebagai podium_live.mp4
+node r_podium_close.js                # close-up juara 1 (kanvas podium dibuat lebih tajam khusus saat merekam)
+# r_shuffle.js = versi lama adegan acak di HP (tidak dipakai di TIMELINE sekarang)
+
+cd ../bumper
+node render_scenes.js                 # 4 HP berbunyi (nama dari board_call.json) + grid foto pro AI -> chibi
 
 cd ..
 REEL_FOOTAGE=/path/ke/footage python3 assemble.py paddoc_reel_final.mp4
@@ -45,5 +49,7 @@ total harus tepat 1800 frame (dicek otomatis).
   frame), jadi hasilnya mulus 30 fps dan tajam di 1080×1920 walau screenshot lambat.
 - `cap/harness.js` memasang lobi (`lobby.js`) dengan pemain asli; `cap/demoapp.js` membuka aplikasi dalam
   mode demo (`file://`) lalu mengganti nama/foto pemain dummy dengan data asli.
+- Segmen bertanda `land` di `TIMELINE` (papan iPad) direkam landscape 1920×1080 lalu diputar 90° searah jarum
+  jam; caption landscape (`*_l` di `caps.json`) ditimpa sebelum diputar.
 - `bumper/bumper.html` menggambar animasi logo sebagai fungsi waktu L(t): penutup = L(−2..0), pembuka =
   L(0..1,2), sehingga frame terakhir video menyambung ke frame pertama.
