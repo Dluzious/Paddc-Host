@@ -1,0 +1,58 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+</head><body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// Logo sinematik Paddoc Host: satu animasi kontinu L(t) (detik), tanpa teks tambahan.
+// t < 0 = penutup (dari gelap, logo muncul + sapuan cahaya), t >= 0 = pembuka (logo diam lalu redup ke gelap).
+// Video berakhir di L(-1/30) dan mulai di L(0), jadi saat Reels berulang gerakannya menyambung.
+const W = 1080, H = 1920, c = document.getElementById('c'), x = c.getContext('2d');
+const LOGO = new Image(); LOGO.src = 'logo_cut.png';
+const OFF = document.createElement('canvas');
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lin = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const smooth = u => u * u * (3 - 2 * u);
+function rnd(i) { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+const CX = W / 2, CY = 860;
+
+function draw(t) {
+  // ruang gelap dengan cahaya hangat samar di belakang logo
+  x.fillStyle = '#030509'; x.fillRect(0, 0, W, H);
+  const reveal = smooth(lin(t, -2.6, -0.9));                  // logo muncul di penutup
+  const out = 1 - smooth(lin(t, 1.3, 2.4));                   // logo meredup di pembuka
+  const vis = t < 0 ? reveal : out;
+  const glow = x.createRadialGradient(CX, CY, 40, CX, CY, 900);
+  glow.addColorStop(0, `rgba(227,137,43,${0.22 * vis})`); glow.addColorStop(.45, `rgba(40,70,120,${0.18 * vis})`); glow.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = glow; x.fillRect(0, 0, W, H);
+  // debu/kabut melayang pelan (kontinu terhadap t)
+  for (let i = 0; i < 90; i++) {
+    const px = (rnd(i) * W + t * (8 + rnd(i + 5) * 14) + Math.sin(t * .6 + i) * 18 + W) % W;
+    const py = (rnd(i + 11) * H - t * (6 + rnd(i + 3) * 10) + H * 4) % H;
+    const r = 1 + rnd(i + 7) * 3.2, a = (.08 + rnd(i + 9) * .22) * (0.35 + 0.65 * vis);
+    x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fillStyle = `rgba(255,226,180,${a})`; x.fill();
+  }
+  if (LOGO.complete && vis > 0) {
+    const s = 0.97 + 0.03 * smooth(lin(t, -2.6, 0)) + 0.012 * lin(t, 0, 2.4);   // mendekat sangat pelan
+    const lw = 600 * s, lh = lw * LOGO.naturalHeight / LOGO.naturalWidth;
+    x.save(); x.globalAlpha = vis; x.translate(CX, CY);
+    x.shadowColor = 'rgba(0,0,0,.6)'; x.shadowBlur = 60; x.shadowOffsetY = 20;
+    x.drawImage(LOGO, -lw / 2, -lh / 2, lw, lh); x.restore();
+    // sapuan cahaya diagonal melintasi logo (hanya di penutup), dibatasi bentuk logo lewat kanvas bantu
+    const sw = lin(t, -1.5, -0.5);
+    if (sw > 0 && sw < 1) {
+      const o = OFF.getContext('2d'); OFF.width = Math.ceil(lw); OFF.height = Math.ceil(lh);
+      o.drawImage(LOGO, 0, 0, lw, lh); o.globalCompositeOperation = 'source-in';
+      const gx = -lw * 0.6 + sw * lw * 2.2, g = o.createLinearGradient(gx - 160, gx * 0.35 - 60, gx + 160, gx * 0.35 + 60);
+      g.addColorStop(0, 'rgba(255,240,215,0)'); g.addColorStop(.5, `rgba(255,240,215,${0.55 * Math.sin(sw * Math.PI)})`); g.addColorStop(1, 'rgba(255,240,215,0)');
+      o.fillStyle = g; o.fillRect(0, 0, lw, lh);
+      x.save(); x.globalCompositeOperation = 'lighter'; x.globalAlpha = vis; x.drawImage(OFF, CX - lw / 2, CY - lh / 2); x.restore();
+    }
+  }
+  // vignette
+  const v = x.createRadialGradient(CX, H / 2, H * .25, CX, H / 2, H * .75);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.7)');
+  x.fillStyle = v; x.fillRect(0, 0, W, H);
+}
+window.draw = draw;
+window.ready = () => LOGO.complete ? Promise.resolve() : new Promise(r => { LOGO.onload = LOGO.onerror = r; });
+</script></body></html>

@@ -13,3 +13,6 @@ bumper/end/
 bumper/sc_*/
 __pycache__/
 cap/board_call.json
+hf/
+bumper/cine_start/
+bumper/cine_end/
