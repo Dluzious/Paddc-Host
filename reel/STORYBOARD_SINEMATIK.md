@@ -55,3 +55,17 @@ Kredit terpakai sampai sini: 54,75 (plafon yang disetujui 600). Still chibi dibu
    `cap/r_podium_close.js`, adegan morph foto→chibi (tambahkan ke `bumper/scenes.html`).
 4. Komposit foto meja (perspektif ke koordinat di atas) dan rakit dengan skrip baru `assemble_cine.py`
    (dissolve `xfade`, push-in pelan, grade + grain); verifikasi 1800 frame, sambungan loop, tanpa teks.
+
+## Status: sudah dirakit (23 Okt 2026)
+`assemble_cine.py` merakit versi final (1800 frame, 17 segmen, dissolve 0,5–0,8 dtk). Penutup memakai klip indoor
+`d4a27492-f412-484a-8c43-9f6a1bc1d594` (bukan `305030ef` yang ternyata outdoor), lampu padam dibuat lewat `eq`.
+Shot 9–11 memakai footage asli IMG_7038 (laptop di venue) dan IMG_7039 (monitor, podium, tawa teman-teman).
+
+Urutan build:
+1. `python3 fetch_data.py`; footage ke `reel/footage/` (atau `REEL_FOOTAGE=`), IMG_7038/7039 boleh di `reel/drive/`,
+   klip HF ke `reel/hf/`.
+2. `cd bumper && node render_cine.js`
+3. `cd ../cap && node r_lobby_beach.js` lalu ekstrak frame: `ffmpeg -i raw_lobby_beach.mp4 -q:v 3 ../desk/lobby_frames/%04d.jpg`
+4. `cd ../desk && DESK_DIR=/folder/foto-meja node render_desk.js` (foto meja tidak disimpan di repo)
+5. `cd .. && python3 assemble_cine.py paddoc_reel_cine.mp4`, lalu encode ulang untuk Instagram:
+   `ffmpeg -i paddoc_reel_cine.mp4 -c:v libx264 -crf 19 -maxrate 6M -bufsize 12M -c:a aac -movflags +faststart out.mp4`

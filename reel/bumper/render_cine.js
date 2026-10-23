@@ -6,7 +6,7 @@ const fs = require('fs'), path = require('path'), { execFileSync } = require('ch
   const pg = await b.newPage({ viewport: { width: 1080, height: 1920 } });
   await pg.goto('file://' + __dirname + '/bumper_cine.html');
   await pg.evaluate(() => window.ready());
-  for (const [name, a, z] of [['end', -90, 0], ['start', 0, 75]]) {
+  for (const [name, a, z] of [['end', -90, 0], ['start', 0, 90]]) {
     const dir = path.join(__dirname, 'cine_' + name); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir);
     for (let f = a, n = 0; f < z; f++, n++) {
       await pg.evaluate(t => draw(t), f / 30);

@@ -16,3 +16,9 @@ cap/board_call.json
 hf/
 bumper/cine_start/
 bumper/cine_end/
+desk/*.jpg
+desk/lobby_frames/
+desk/f_*/
+footage/
+drive/
+seg_cine/

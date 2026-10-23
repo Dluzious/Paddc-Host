@@ -1,0 +1,138 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+</head><body><canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// Adegan sinematik tanpa teks dari foto meja kerja asli + aplikasi asli, digambar sebagai fungsi waktu t (detik).
+// Privasi: seluruh layar monitor utama DITIMPA (sidebar berisi judul sesi pribadi), monitor kiri atas DIBLUR.
+const W = 1080, H = 1920, c = document.getElementById('c'), x = c.getContext('2d');
+const A = window.ASSETS || {};
+const IM = {};
+function img(src) { if (!IM[src]) { IM[src] = new Image(); IM[src].src = src; } return IM[src]; }
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lin = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+const ease = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+const PW = 1450, PH = 2576;                                   // ukuran foto meja
+
+// koordinat layar monitor utama di foto (sedikit dilebarkan supaya tepi layar tertutup rapat)
+const Q_FRONT = [[-4, 957], [1428, 945], [1428, 1787], [-4, 1795]];
+const Q_WIDE = [[506, 1081], [1370, 1071], [1350, 1591], [508, 1551]];
+const BLUR_WIDE = [0, 955, 445, 380];                         // monitor kiri atas: tab browser
+
+// kode asli lobby.js sebagai tekstur editor (tidak dimaksudkan untuk dibaca)
+const CODE = (A.code || '').split('\n');
+const KW = /\b(function|var|let|const|return|if|else|for|while|new|true|false|null|this)\b/g;
+const ED = document.createElement('canvas'); ED.width = 1600; ED.height = 930;
+function editor(scroll) {
+  const e = ED.getContext('2d');
+  e.fillStyle = '#0d1117'; e.fillRect(0, 0, 1600, 930);
+  e.fillStyle = '#161b22'; e.fillRect(0, 0, 250, 930); e.fillRect(0, 0, 1600, 44);
+  for (let i = 0; i < 14; i++) { e.fillStyle = i === 3 ? '#2d3a4f' : '#1f2630'; e.fillRect(18, 70 + i * 40, 150 + (i * 37) % 70, 14); }
+  e.font = '22px "DejaVu Sans Mono", monospace';
+  const lh = 31, first = Math.floor(scroll / lh), off = scroll % lh;
+  for (let k = 0; k < 30; k++) {
+    const line = CODE[(first + k) % CODE.length] || '', y = 80 + k * lh - off;
+    e.fillStyle = '#4b5563'; e.fillText(String(first + k + 380).padStart(4), 262, y);
+    let xx = 330, rest = line;
+    // pewarnaan sederhana: string, komentar, kata kunci
+    const parts = rest.split(/('(?:[^'\\]|\\.)*')/);
+    parts.forEach(p => {
+      if (!p) return;
+      if (p[0] === "'") { e.fillStyle = '#a5d6ff'; e.fillText(p, xx, y); xx += e.measureText(p).width; return; }
+      const sub = p.split(/(\b(?:function|var|let|const|return|if|else|for|while|new|true|false|null|this)\b)/);
+      sub.forEach(s => { if (!s) return; e.fillStyle = KW.test(s) ? '#ff7b72' : /^\s*(\/\/|\*|\/\*)/.test(s) ? '#8b949e' : '#e6edf3'; KW.lastIndex = 0; e.fillText(s, xx, y); xx += e.measureText(s).width; });
+    });
+  }
+  // kursor berkedip di baris yang sedang diketik
+  if (Math.floor(scroll / 18) % 2 === 0) { e.fillStyle = '#e3892b'; e.fillRect(330 + 9 * 13, 80 + 12 * lh - off - 22, 3, 26); }
+  return ED;
+}
+
+// gambar sumber persegi panjang ke segi empat q (affine dari 3 sudut), dipotong sesuai q
+function toQuad(src, sw, sh, q, alpha) {
+  const [p0, p1, , p3] = q;
+  x.save(); x.beginPath(); q.forEach((p, i) => i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1])); x.closePath(); x.clip();
+  x.globalAlpha = alpha == null ? 1 : alpha;
+  x.transform((p1[0] - p0[0]) / sw, (p1[1] - p0[1]) / sw, (p3[0] - p0[0]) / sh, (p3[1] - p0[1]) / sh, p0[0], p0[1]);
+  x.drawImage(src, 0, 0, sw, sh); x.restore();
+}
+// kamera: zoom z ke titik fokus (fx, fy) dalam koordinat foto; z=1 = foto penuh
+function camera(z, fx, fy) {
+  const s = (W / PW) * z, cx = clamp(fx, PW / (2 * z), PW - PW / (2 * z)), cy = clamp(fy, PH / (2 * z), PH - PH / (2 * z));
+  x.setTransform(s, 0, 0, s, W / 2 - cx * s, H / 2 - cy * s);
+}
+function vignette(k) {
+  x.setTransform(1, 0, 0, 1, 0, 0);
+  const v = x.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, H * .78);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, `rgba(0,0,0,${k})`); x.fillStyle = v; x.fillRect(0, 0, W, H);
+}
+
+// foto lebar dengan monitor kiri atas yang sudah diblur (dibuat sekali)
+let WIDE = null;
+function wideRedacted() {
+  if (WIDE) return WIDE;
+  const im = img(A.wide); WIDE = document.createElement('canvas'); WIDE.width = PW; WIDE.height = PH;
+  const w = WIDE.getContext('2d'); w.drawImage(im, 0, 0);
+  const [bx, by, bw, bh] = BLUR_WIDE;
+  w.save(); w.beginPath(); w.rect(bx, by, bw, bh); w.clip(); w.filter = 'blur(22px)'; w.drawImage(im, 0, 0); w.restore();
+  return WIDE;
+}
+
+/* 1) meja lebar: kamera mendekat pelan ke monitor yang menampilkan editor kode */
+function deskWide(t) {
+  x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
+  const z = 1 + 0.22 * ease(lin(t, 0, 4.4));
+  camera(z, 930, 1330);
+  x.drawImage(wideRedacted(), 0, 0);
+  toQuad(editor(t * 46), 1600, 930, Q_WIDE);
+  // cahaya layar sedikit berdenyut
+  x.save(); x.globalCompositeOperation = 'lighter'; x.globalAlpha = 0.05 + 0.02 * Math.sin(t * 2.3);
+  const g = x.createRadialGradient(930, 1330, 50, 930, 1330, 700); g.addColorStop(0, '#9fc3ff'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0, 700, PW, 1500); x.restore();
+  vignette(.55);
+}
+
+/* 2) meja dari depan: editor berganti jadi lobi Paddoc Host, kamera masuk ke dalam layar */
+function deskFront(t, lobby) {
+  x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#000'; x.fillRect(0, 0, W, H);
+  const k = ease(lin(t, 1.1, 4.6)), z = 1 + 2.45 * k;
+  camera(z, 712 + (700 - 712) * k, 1370 + (1385 - 1370) * k);
+  x.drawImage(img(A.front), 0, 0);
+  toQuad(editor(200 + t * 46), 1600, 930, Q_FRONT);
+  if (lobby && lobby.complete) {                      // lobi muncul seperti halaman yang selesai dimuat
+    const a = ease(lin(t, 0.45, 1.05));
+    // halaman 3840x2400 (16:10) diisi ke layar ±1480x845 (sisi kiri layar terpotong di foto)
+    toQuad(lobby, lobby.naturalWidth, lobby.naturalHeight, Q_FRONT, a);
+  }
+  vignette(.5 * (1 - k) + .2);
+}
+
+/* 3) foto pro AI Lulu perlahan menjadi chibi (berakhir tepat di frame awal klip chibi Higgsfield) */
+function morph(t) {
+  x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#0a1426'; x.fillRect(0, 0, W, H);
+  const ph = img(A.photo), ch = img(A.chibiStill), u = ease(lin(t, 1.3, 3.0));
+  const cover = (im, s, a) => {
+    const k = Math.max(W / im.naturalWidth, H / im.naturalHeight) * s, w = im.naturalWidth * k, h = im.naturalHeight * k;
+    x.globalAlpha = a; x.drawImage(im, (W - w) / 2, (H - h) / 2, w, h); x.globalAlpha = 1;
+  };
+  x.filter = `blur(${(u * 8).toFixed(1)}px)`; cover(ph, 1.04 + 0.05 * lin(t, 0, 3.0), 1 - u); x.filter = 'none';
+  cover(ch, 1 + 0.06 * (1 - u), u);
+  // sapuan cahaya saat berubah
+  const sw = lin(t, 1.2, 2.6);
+  if (sw > 0 && sw < 1) {
+    x.save(); x.globalCompositeOperation = 'lighter';
+    const gx = -300 + sw * (W + 600), g = x.createLinearGradient(gx - 220, 0, gx + 220, 0);
+    g.addColorStop(0, 'rgba(255,240,215,0)'); g.addColorStop(.5, `rgba(255,240,215,${0.32 * Math.sin(sw * Math.PI)})`); g.addColorStop(1, 'rgba(255,240,215,0)');
+    x.fillStyle = g; x.fillRect(0, 0, W, H); x.restore();
+  }
+  vignette(.45 * (1 - u));
+}
+
+window.draw = (name, t, frame) => {
+  if (name === 'desk_wide') deskWide(t);
+  else if (name === 'desk_front') deskFront(t, frame ? img(frame) : null);
+  else if (name === 'morph') morph(t);
+};
+window.load = src => { const im = img(src); return im.complete ? Promise.resolve() : new Promise(r => { im.onload = im.onerror = r; }); };
+window.ready = () => Promise.all([A.wide, A.front, A.photo, A.chibiStill].map(window.load)).then(() => document.fonts.ready);
+</script></body></html>
