@@ -1017,6 +1017,37 @@ button.cm-p:hover { background: rgba(8,18,34,0.55); }
 .pc-choose .btn { width: 100%; white-space: nowrap; }
 .pc-choose .btn .cval { margin-left: 4px; }
 .pc-rules { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+/* kartu power: oranye = untuk diri sendiri, hijau = mengatur lawan, navy & krem = langka, putih = pertahanan */
+.pk { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; white-space: nowrap; border: 1.5px solid transparent; line-height: 1.3; font-family: var(--f-body); }
+.pk.self { background: #D9822B; color: #fff; }
+.pk.ctrl { background: #1F4A2E; color: #F2EBDD; border-color: #4E8A5E; }
+.pk.rare { background: #1E4A7A; color: #F2EBDD; border-color: #C9A646; }
+.pk.def { background: #F7F3EA; color: #1E4A7A; border-color: #1E4A7A; }
+.pk.zonk { background: #8A99AD; color: #fff; }
+.pk small { font-size: 0.92em; font-weight: 700; text-transform: none; letter-spacing: 0; opacity: 0.9; }
+.pk.off { opacity: 0.6; text-decoration: line-through; }
+button.pk { cursor: pointer; font-size: 12.5px; padding: 7px 12px; }
+.pk.new { animation: pkPop 0.8s cubic-bezier(.2,.9,.3,1.4) both; }
+@keyframes pkPop { 0% { transform: scale(0.3) rotateY(90deg); opacity: 0; } 60% { transform: scale(1.18); opacity: 1; } 100% { transform: none; } }
+.pcuse { position: absolute; z-index: 4; display: flex; flex-direction: column; gap: 5px; max-width: 48%; pointer-events: none; }
+.pcuse.a { left: 10px; top: 10px; align-items: flex-start; }
+.pcuse.b { right: 10px; bottom: 10px; align-items: flex-end; }
+.pcuse .pk { font-size: 14px; padding: 5px 11px; box-shadow: 0 6px 16px -6px rgba(0,0,0,0.6); }
+.hcnt { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 6px; background: #1E4A7A; color: #F2EBDD; white-space: nowrap; }
+.pc-hand { display: grid; gap: 8px; margin-top: 8px; }
+.pc-hand-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pc-resp { display: grid; gap: 6px; padding: 10px; border-radius: 12px; background: color-mix(in srgb, var(--warn) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--warn) 50%, transparent); }
+.cm-cards { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 12px 8px; }
+.pkinfo { display: grid; gap: 10px; }
+.pkinfo > .pk { font-size: 16px; padding: 8px 14px; justify-self: start; }
+.pcm-list { display: grid; gap: 10px; margin-top: 10px; }
+.pcm-team { display: grid; gap: 4px; padding: 12px; border-radius: 14px; border: 1px solid var(--line); background: color-mix(in srgb, var(--fg) 4%, var(--surface)); }
+.pcm-team header { display: flex; gap: 10px; align-items: center; }
+.pcm-team header > span { display: grid; min-width: 0; }
+.pcm-team header small { color: var(--muted); font-size: 12px; }
+.pcm-team .pc-hand { margin-top: 4px; }
+.pc-sbn { display: grid; gap: 6px; justify-items: center; margin-bottom: 6px; }
+.pc-sbn small { font-size: 12px; }
 .lvtag { font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: color-mix(in srgb, var(--gold) 22%, transparent); color: var(--gold); vertical-align: middle; }
 .bchip[disabled], span.bchip { cursor: default; }
 /* foto pemain: ketuk (atau tekan lama di dalam tombol) untuk lihat besar */
@@ -1309,7 +1340,7 @@ function MemoryAdapter(store, persist) {
   'use strict';
 
   var LOGO = 'data:image/webp;base64,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';
-  var APP_VERSION = '2.10';
+  var APP_VERSION = '2.11';
   var API_URL = window.PADDOC_API && /^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)[:/]|\/[^/])/.test(window.PADDOC_API) ? window.PADDOC_API : '';
   var LIVE_MODE = !!API_URL && !(location.protocol === 'file:' && API_URL.charAt(0) === '/'); // tersambung ke server Cloudflare
   var OLD_API = window.PADDOC_OLD_API && /^https:\/\/script\.google\.com\//.test(window.PADDOC_OLD_API) ? window.PADDOC_OLD_API : '';
@@ -1588,6 +1619,8 @@ function MemoryAdapter(store, persist) {
     if (ta && (!tm || tm.status !== 'live')) { ta.remove(); stopAlarm(); }
     checkMyTurn();
     refreshPay();
+    pkSync();
+    if (PKH.redraw) PKH.redraw();
     if (UI.view === 'lobby') renderLobby();
     else if (['dash', 'board', 'scoreboard'].indexOf(UI.view) >= 0) render();
     else if (UI.view === 'home' && homeSig() !== UI.homeSig) render();    // Home: hanya saat sesi berganti / mulai / selesai, bukan tiap skor
@@ -2101,7 +2134,8 @@ function MemoryAdapter(store, persist) {
     if (p && freeCourts().indexOf(c.id) >= 0) {
       return '<div class="pc-wait"><small>' + icon('zap') + 'Penantang memilih court</small><b>' + teamName(Engine.teamById(S, p.ch)) + '</b><span>menantang ' + teamName(Engine.teamById(S, p.op)) + '</span></div>';
     }
-    return '<div>Court kosong. Menunggu tim yang bisa diundi (penantang tidak melawan lawan barusan).</div>';
+    if (Engine.liveMatches(S).length) return '<div class="pc-wait"><small>Ronde ' + ((S.pc && S.pc.round) || 1) + '</small><b>Menunggu court lain selesai</b><span>Ronde berikutnya diundi bersamaan</span></div>';
+    return '<div>Court kosong. Belum ada tim yang siap diundi.</div>';
   }
   function pcEmptyFoot(c, cls) {
     var p = pcChoosing(), h = '';
@@ -2111,22 +2145,187 @@ function MemoryAdapter(store, persist) {
   }
   /* antrean Power Cup: tantangan menunggu court, antrean penantang (urut waktu kalah), kolam tunggu diundi */
   function pcAllBtn(cls) { return pcChoosing() && canRun() ? '<button class="' + cls + '" data-act="pcCourtAll">' + icon('shuffle') + 'Acak court</button>' : ''; }
+  /* ---------- kartu power ---------- */
+  var PK_INFO = {
+    free15: ['Sebelum match', 'Tiap game timmu mulai dari 15-0.'],
+    free30: ['Sebelum match', 'Tiap game timmu mulai dari 30-0.'],
+    golden: ['Sebelum match', 'Setiap 40-40, game langsung untuk timmu tanpa dimainkan.'],
+    double: ['Sebelum match', 'Menang: poin court dikali 2. Kalah: dikurangi seperti biasa.'],
+    pick: ['Saat undian lawan', 'Pilih sendiri lawanmu dari tim yang belum mendapat court.'],
+    nosmash: ['Sebelum servis sebuah game · 2 game', 'Lawan dilarang smash dan semua pukulan overhead (termasuk bandeja & víbora).'],
+    noglass: ['Sebelum servis sebuah game · 2 game', 'Lawan tidak boleh memukul bola yang sudah memantul dari kaca belakang.'],
+    swh: ['Sebelum servis sebuah game · 2 game', 'Satu pemain lawan pilihanmu wajib memakai tangan non-dominan.'],
+    steal: ['Saat game berjalan', 'Skor lawan di game ini jadi skor timmu, skor lawan kembali 0.'],
+    swap: ['Sebelum match', 'Menang dan total poinmu masih di bawah lawan: total poin kalian ditukar.'],
+    block: ['Menjawab kartu lawan', 'Membatalkan satu kartu yang dipakai lawan ke timmu.'],
+    reverse: ['Menjawab kartu lawan', 'Membalik No Smash, No Glass, Switch Hand, atau Ambil Semua Poin ke lawan.'],
+    zonk: ['—', 'Tidak ada efek, langsung dibuang.']
+  };
+  function pkDef(k) { return Engine.PC_CARDS[k] || { name: k, cat: 'zonk' }; }
+  var pkSeen = {};
+  function pkChip(c, opt) {
+    opt = opt || {};
+    var d = pkDef(c.k), extra = '';
+    if (c.st === 'blocked') extra = 'diblok'; else if (c.st === 'reversed') extra = 'dibalik';
+    else if (c.of) extra = '→ ' + pkDef(c.ofk).name;
+    else if (d.dur && c.g) extra = 'game ' + c.g + '–' + (c.g + 1);
+    if (c.pid && c.st !== 'blocked') extra = (extra ? extra + ' · ' : '') + P(c.pid).name;
+    var key = c.id + (c.st || ''), isNew = opt.anim && !pkSeen[key];
+    if (opt.anim) pkSeen[key] = 1;
+    var tag = opt.btn ? 'button type="button" data-act="' + opt.btn + '" data-card="' + c.id + '"' + (opt.data || '') : 'span';
+    return '<' + tag + ' class="pk ' + d.cat + (c.st === 'blocked' ? ' off' : '') + (isNew ? ' new' : '') + '" title="' + esc(d.name + ': ' + (PK_INFO[c.k] || ['', ''])[1]) + '">' +
+      esc(d.name) + (extra ? ' <small>' + esc(extra) + '</small>' : '') + '</' + tag.split(' ')[0] + '>';
+  }
+  /* kartu di tangan: diambil dari server (pcHand) hanya saat versi tangan tim terkait berubah */
+  var PKH = { sig: '', data: null, busy: false, redraw: null };
+  function pkSync() {
+    if (!S || !isPCS(S) || S.status !== 'live' || !me() || PKH.busy) return;
+    var t = Engine.teamOf(S, me().id), all = canRun(), hv = (S.pc && S.pc.cd && S.pc.cd.hv) || {};
+    if (!t && !all) return;
+    var sig = S.id + '|' + (all ? JSON.stringify(hv) : t.id + ':' + (hv[t.id] || 0));
+    if (sig === PKH.sig) return;
+    PKH.busy = true;
+    api('pcHand', { sid: S.id }).then(function (r) {
+      PKH.busy = false; PKH.sig = sig; PKH.data = r;
+      if (['dash', 'board'].indexOf(UI.view) >= 0) render();
+      if (PKH.redraw) PKH.redraw();
+      pkSync();
+    }).catch(function () { PKH.busy = false; });
+  }
+  function handOf(tid) { return PKH.data && S && PKH.data.sid === S.id ? (PKH.data.hands[tid] || null) : null; }
+  /* tempat tim bisa memakai kartu: match di court, atau tantangan yang belum dapat court */
+  function pcCtxFor(tid) {
+    var t = Engine.teamById(S, tid);
+    if (!t) return null;
+    var m = Engine.liveMatches(S).filter(function (x) { return x.tA === tid || x.tB === tid; })[0];
+    if (m) return { t: t, m: m, ref: m.id, list: m.cards || [], ch: m.pc && m.pc.ch, opp: m.tA === tid ? m.tB : m.tA };
+    var p = pcPend().filter(function (x) { return x.ch === tid || x.op === tid; })[0];
+    if (p) return { t: t, p: p, ref: p.id, list: p.cards || [], ch: p.ch, opp: p.ch === tid ? p.op : p.ch };
+    return { t: t, list: [] };
+  }
+  /* kartu lawan yang masih bisa dijawab tim ini (sebelum poin berikutnya / sebelum tantangan dapat court) */
+  function pcOpenResp(ctx) {
+    if (!ctx || !ctx.ref || ctx.list.some(function (c) { return c.by === ctx.t.id; })) return [];
+    return ctx.list.filter(function (c) { return !c.of && c.st === 'on' && c.tg === ctx.t.id && (ctx.p || Engine.tallyPts(ctx.m) === c.n0); });
+  }
+  /* panel kartu tim: kartu di tangan (ketuk untuk memakai), jawab kartu lawan, penantang tanpa kartu */
+  function pcCardsPanel(ctx, staffTeam) {
+    if (!ctx) return '';
+    var tid = ctx.t.id, hand = handOf(tid), cnt = Engine.pcHandCount(S, tid), dt = staffTeam ? ' data-team="' + tid + '"' : '';
+    var h = '<div class="pc-hand">' + (staffTeam ? '' : '<span class="lbl-sm">Kartu power timmu (' + cnt + '/2)</span>');
+    var resp = pcOpenResp(ctx), def = (hand || []).filter(function (c) { return c.k === 'block' || c.k === 'reverse'; });
+    if (resp.length && def.length) {
+      h += '<div class="pc-resp"><b>Lawan memakai ' + resp.map(function (c) { return esc(pkDef(c.k).name); }).join(', ') + ' ke ' + (staffTeam ? 'tim ini' : 'timmu') + '</b><div class="pc-hand-row">' +
+        resp.map(function (c) {
+          return def.filter(function (d) { return d.k === 'block' || pkDef(c.k).rev; }).map(function (d) {
+            return '<button class="btn sm' + (d.k === 'block' ? ' primary' : '') + '" data-act="pkResp" data-card="' + d.id + '" data-of="' + c.id + '" data-ref="' + ctx.ref + '"' + dt + '>' + (d.k === 'block' ? 'Block ' : 'Reverse ') + esc(pkDef(c.k).name) + '</button>';
+          }).join('');
+        }).join('') + '</div><small class="muted">Jawab sebelum poin berikutnya. Block atau Reverse dihitung sebagai 1 kartu ' + (staffTeam ? 'tim ini' : 'timmu') + ' di match ini.</small></div>';
+    }
+    var used = ctx.list.filter(function (c) { return c.by === tid; });
+    if (used.length) h += '<small class="muted">Dipakai di match ini: ' + used.map(function (c) { return pkChip(c); }).join(' ') + '</small>';
+    h += '<div class="pc-hand-row">' + (hand && hand.length ? hand.map(function (c) { return pkChip(c, { btn: 'pkOpen', data: dt }); }).join('')
+      : '<small class="muted">' + (cnt ? 'Memuat kartu…' : 'Belum ada kartu. Tim yang kalah mengambil 1 kartu (maks 2 di tangan).') + '</small>') + '</div>';
+    var m = ctx.m;
+    if (m && ctx.ch === tid && !m.go && !Engine.tallyPts(m) && !used.length && !(m.pass && m.pass[tid]) && (hand || []).some(function (c) { return pkDef(c.k).when === 'pre'; })) {
+      h += '<button class="btn sm" data-act="pkPass" data-ref="' + m.id + '"' + dt + '>' + icon('check') + 'Umumkan: tanpa kartu</button>' +
+        '<small class="muted">Penantang mengumumkan kartu (atau tanpa kartu) lebih dulu, lalu lawan.</small>';
+    } else if (m && ctx.ch !== tid && !m.go && !Engine.tallyPts(m) && !ctx.list.some(function (c) { return c.by === ctx.ch; }) && !(m.pass && m.pass[ctx.ch]) && Engine.pcHandCount(S, ctx.ch)) {
+      h += '<small class="muted">Menunggu penantang mengumumkan kartu.</small>';
+    }
+    return h + '</div>';
+  }
+  /* kartu dipakai di court (papan iPad): kiri atas untuk tim kiri, kanan bawah untuk tim kanan */
+  function pcUseHTML(m) {
+    var cs = m.cards || [];
+    var side = function (tid) { return cs.filter(function (c) { return c.by === tid; }).map(function (c) { return pkChip(c, { anim: true }); }).join(''); };
+    var a = side(m.tA), b = side(m.tB);
+    return (a ? '<div class="pcuse a">' + a + '</div>' : '') + (b ? '<div class="pcuse b">' + b + '</div>' : '');
+  }
+  function pcHandTag(m) {
+    if (!m || !m.tA) return '';
+    return '<span class="hcnt" title="Kartu di tangan (kiri · kanan)">Kartu ' + Engine.pcHandCount(S, m.tA) + ' · ' + Engine.pcHandCount(S, m.tB) + '</span>';
+  }
+  /* catatan efek kartu untuk wasit (papan skor) */
+  function pcSbNote(m) {
+    var cs = (m.cards || []).filter(function (c) { return !c.of; });
+    if (!cs.length) return '';
+    var nm = function (tid) { return teamName(Engine.teamById(S, tid)); };
+    return '<div class="pc-sbn">' + cs.map(function (c) {
+      var who = c.st === 'reversed' ? nm(c.tg) + ' (dibalik)' : nm(c.by);
+      var eff = c.st === 'blocked' ? 'diblok, tidak berlaku' : c.k === 'free15' ? 'tiap game mulai 15-0 (otomatis)' : c.k === 'free30' ? 'tiap game mulai 30-0 (otomatis)'
+        : c.k === 'golden' ? '40-40 langsung game (otomatis)' : c.k === 'steal' ? 'skor game diambil (otomatis)' : c.k === 'double' ? 'poin court ×2 bila menang'
+        : c.k === 'swap' ? 'tukar total poin bila menang' : c.k === 'swh' ? (c.pid ? P(c.pid).name + ' tangan non-dominan' : 'tangan non-dominan') + ', game ' + c.g + '–' + (c.g + 1)
+        : c.k === 'nosmash' || c.k === 'noglass' ? 'pelanggaran = poin untuk pemegang, game ' + c.g + '–' + (c.g + 1) : PK_INFO[c.k] ? PK_INFO[c.k][1] : '';
+      return '<span>' + pkChip(c) + ' <small>' + esc(who) + ': ' + esc(eff) + '</small></span>';
+    }).join('') + '</div>';
+  }
+  function openCardInfo(cardId, team) {
+    var tid = team || (me() && Engine.teamOf(S, me().id) || {}).id, hand = handOf(tid) || [], c = hand.filter(function (x) { return x.id === cardId; })[0];
+    if (!c) { toast('Kartu tidak ditemukan. Data diperbarui', 'err'); return; }
+    var d = pkDef(c.k), info = PK_INFO[c.k] || ['', ''], ctx = pcCtxFor(tid), body = '<div class="pkinfo">' + pkChip(c) + '<p style="margin:0">' + esc(info[1]) + '</p><small class="muted">Waktu pakai: ' + esc(info[0]) + '</small>';
+    var foot = '<button class="btn" data-act="close">Tutup</button>', send = null;
+    if (d.when === 'resp') body += '<small class="muted">Dipakai untuk menjawab kartu yang dipakai lawan ke ' + (team ? 'tim ini' : 'timmu') + '.</small>';
+    else if (!ctx || !ctx.ref) body += '<small class="muted">Bisa dipakai saat ' + (team ? 'tim ini' : 'timmu') + ' mendapat lawan (undian ronde) atau sudah di court.</small>';
+    else if (c.k === 'pick') {
+      var others = pcPend().filter(function (p) { return p !== ctx.p; });
+      if (!ctx.p) body += '<small class="muted">Pilih Lawan hanya bisa dipakai sebelum ' + (team ? 'tim ini' : 'timmu') + ' mendapat court.</small>';
+      else if (!others.length) body += '<small class="muted">Tidak ada tim lain yang belum mendapat court.</small>';
+      else body += '<span class="lbl-sm">Pilih lawan</span><div class="list">' + others.map(function (p) {
+        return [p.ch, p.op].map(function (x) { var t = Engine.teamById(S, x); return '<button class="li" data-pkt="' + x + '">' + teamFace(t) + '<span><b>' + teamName(t) + '</b><small>Poin ' + signed(Engine.pcPoints(S)[x] || 0) + '</small></span>' + icon('chevR') + '</button>'; }).join('');
+      }).join('') + '</div>';
+    } else if (c.k === 'swh') {
+      var ot = Engine.teamById(S, ctx.opp);
+      body += '<span class="lbl-sm">Pilih pemain lawan</span><div class="list">' + [ot.a, ot.b].map(function (pid) { return '<button class="li" data-pkp="' + pid + '">' + av(pid) + '<span><b>' + esc(P(pid).name) + '</b></span>' + icon('chevR') + '</button>'; }).join('') + '</div>';
+    } else {
+      send = {};
+      foot += '<button class="btn primary" id="pk-go">' + icon('check') + 'Pakai sekarang</button>';
+    }
+    var w = openModal({ title: 'Kartu ' + d.name, icon: 'star', body: body + '</div>', foot: foot });
+    var go = function (extra) {
+      closeModal(w);
+      act('pcCard', Object.assign({ card: c.id, ref: ctx.ref, team: team || undefined }, extra || {}), { quiet: true })
+        .then(function () { toast(d.name + ' dipakai!'); }).catch(function () {});
+    };
+    if (send) $('#pk-go', w).addEventListener('click', function () { go(); });
+    $$('[data-pkt]', w).forEach(function (b) { b.addEventListener('click', function () { go({ target: b.dataset.pkt }); }); });
+    $$('[data-pkp]', w).forEach(function (b) { b.addEventListener('click', function () { go({ vs: b.dataset.pkp }); }); });
+  }
+  /* host: kelola kartu semua tim (atau dua tim di satu court) atas nama tim yang tidak membuka HP */
+  function openCardManager(mid) {
+    var w = openModal({ title: 'Kartu power', icon: 'star', wide: true, body: '' });
+    function draw() {
+      if (!w.isConnected) { PKH.redraw = null; return; }
+      var m = mid && Engine.findMatch(S, mid);
+      var tids = m && m.status === 'live' ? [m.tA, m.tB] : S.teams.filter(function (t) { return Engine.teamActive(S, t); }).map(function (t) { return t.id; });
+      var st = S.pc && S.pc.cd ? 'Tumpukan ' + S.pc.cd.n + ' · buang ' + S.pc.cd.d : '';
+      setModal(w, '<p class="muted" style="margin:0">Untuk tim yang tidak membuka HP. ' + esc(st) + '</p>' + (PKH.data && PKH.data.all ? '' : '<p class="muted">Memuat kartu…</p>') +
+        '<div class="pcm-list">' + tids.map(function (tid) {
+          var ctx = pcCtxFor(tid), t = ctx.t, where = ctx.m ? courtName(ctx.m.court) + (ctx.ch === tid ? ' · penantang' : '') : ctx.p ? 'menunggu court' : 'tidak sedang main';
+          return '<section class="pcm-team"><header>' + teamFace(t) + '<span><b>' + teamName(t) + '</b><small>' + esc(where) + ' · ' + Engine.pcHandCount(S, tid) + ' kartu</small></span></header>' +
+            pcCardsPanel(ctx, true) + '</section>';
+        }).join('') + '</div>');
+    }
+    PKH.redraw = draw;
+    draw();
+  }
   function pcQueueHTML() {
-    var L = Engine.pcLists(S), lv = (S.pc && S.pc.lv) || {};
+    var L = Engine.pcLists(S), lv = (S.pc && S.pc.lv) || {}, cho = pcChoosing();
     var chip = function (tid, extra, cls) {
       var t = Engine.teamById(S, tid);
       if (!t) return '';
-      var pz = S.parts[t.a].paused || S.parts[t.b].paused;
+      var pz = S.parts[t.a].paused || S.parts[t.b].paused, n = Engine.pcHandCount(S, tid);
       return '<span class="tchip' + (cls ? ' ' + cls : '') + (pz ? ' paused' : '') + '">' + teamFace(t) + '<span>' + teamName(t) + '</span>' +
+        (n ? '<span class="hcnt" title="Kartu di tangan">' + n + ' kartu</span>' : '') +
         (pz ? '<span class="cnt">belum siap</span>' : extra ? '<span class="cnt">' + extra + '</span>' : '') + '</span>';
     };
     var grp = function (lbl, inner) { return inner ? '<div class="pcq-g"><small>' + lbl + '</small><div class="pcq-row">' + inner + '</div></div>' : ''; };
     var lone = Engine.unpairedPlayers(S);
-    var h = grp('Menunggu court', L.pend.map(function (p) { return chip(p.ch, '', 'ch') + '<span class="pcvs">VS</span>' + chip(p.op); }).join('')) +
-      grp('Antrean penantang', L.q.map(function (id, i) { return chip(id, '#' + (i + 1), 'ch'); }).join('')) +
-      grp('Menunggu diundi', L.pool.map(function (id) { return chip(id); }).join('')) +
+    var h = grp('Ronde ' + L.round + ' · urutan pilih court', L.pend.map(function (p, i) { return '<span class="pcvs">' + (i + 1) + '.</span>' + chip(p.ch, cho === p ? 'memilih' : 'penantang', 'ch') + '<span class="pcvs">VS</span>' + chip(p.op); }).join('')) +
+      grp('Selesai, menunggu court lain', L.done.map(function (id) { return chip(id); }).join('')) +
+      grp('Istirahat ronde ini', L.out.map(function (id) { return chip(id); }).join('')) +
       grp('Belum berpasangan', lone.map(function (id) { return '<span class="bchip">' + av(id) + '<span>' + esc(P(id).name) + (lv[id] ? ' <span class="lvtag">ATAS</span>' : '') + '</span></span>'; }).join(''));
-    return h ? '<div class="pcq">' + h + '</div>' : '<span class="muted">' + (S.status === 'live' ? 'Semua tim sedang bermain.' : 'Sesi selesai.') + '</span>';
+    return h ? '<div class="pcq">' + h + '</div>' : '<span class="muted">' + (S.status === 'live' ? 'Semua tim sedang bermain di ronde ' + L.round + '.' : 'Sesi selesai.') + '</span>';
   }
   /* status pemain di Power Cup (di luar match yang sedang dimainkan) */
   function pcMyStatus(u, tools) {
@@ -2135,23 +2334,20 @@ function MemoryAdapter(store, persist) {
     if (!t || !Engine.teamActive(S, t)) {
       return '<section class="mystatus wait">' + av(u.id) + '<div class="ms-txt"><span class="lbl-sm">Power Cup</span><b>Belum punya pasangan</b><small>Power Cup dimainkan berpasangan tetap. Minta host memasangkan kamu.</small></div>' + acts + tools + '</section>';
     }
-    var L = Engine.pcLists(S), mate = t.a === u.id ? t.b : t.a, pi = -1;
-    L.pend.forEach(function (p, i) { if (pi < 0 && (p.ch === t.id || p.op === t.id)) pi = i; });
-    if (pi >= 0) {
-      var p = L.pend[pi], ch = p.ch === t.id, other = Engine.teamById(S, ch ? p.op : p.ch), choose = ch && pcChoosing() === p;
+    var L = Engine.pcLists(S), mate = t.a === u.id ? t.b : t.a, ctx = pcCtxFor(t.id);
+    if (ctx.p) {
+      var p = ctx.p, pi = L.pend.indexOf(p), ch = p.ch === t.id, other = Engine.teamById(S, ctx.opp), choose = ch && pcChoosing() === p;
       var free = S.courts.filter(function (c) { return freeCourts().indexOf(c.id) >= 0; }).sort(function (a, b) { return Engine.courtValue(S, b) - Engine.courtValue(S, a); });
-      return '<section class="mystatus ' + (choose ? 'play' : 'wait') + '">' + av(u.id) + '<div class="ms-txt"><span class="lbl-sm">' + (ch ? 'Timmu penantang' : 'Timmu ditantang') + '</span>' +
-        '<b>' + (choose ? 'Pilih court' : 'Menunggu court') + '</b><small>Partner ' + esc(P(mate).name) + ' · lawan ' + teamName(other) + '</small>' +
-        (choose ? '<small>Menang +nilai court, kalah −nilai court.</small><div class="pc-choose">' + free.map(function (c) { return pcCourtBtn(c, p, ''); }).join('') + '</div>'
-          : '<small>' + (ch ? (pi ? 'Memilih court setelah ' + pi + ' tantangan sebelumnya.' : 'Court dipilih saat ada court kosong.') : 'Penantang yang memilih court.') + '</small>') + '</div>' + acts + tools + '</section>';
+      return '<section class="mystatus ' + (choose ? 'play' : 'wait') + '">' + av(u.id) + '<div class="ms-txt"><span class="lbl-sm">Ronde ' + L.round + ' · ' + (ch ? 'timmu penantang' : 'timmu ditantang') + '</span>' +
+        '<b>' + (choose ? 'Pilih court' : pi === 0 ? 'Lawan memilih court' : 'Urutan pilih court ke-' + (pi + 1)) + '</b><small>Partner ' + esc(P(mate).name) + ' · lawan ' + teamName(other) + '</small>' +
+        (choose ? '<small>Berani court bernilai besar? Menang +nilai court, kalah −nilai court.</small><div class="pc-choose">' + free.map(function (c) { return pcCourtBtn(c, p, ''); }).join('') + '</div>'
+          : '<small>' + (ch ? 'Urutan memilih court dikocok. Giliranmu setelah ' + pi + ' tantangan sebelumnya.' : 'Penantang yang memilih court.') + '</small>') +
+        pcCardsPanel(ctx) + '</div>' + acts + tools + '</section>';
     }
-    var qi = L.q.indexOf(t.id);
-    if (qi >= 0) {
-      return '<section class="mystatus wait">' + av(u.id) + '<div class="ms-txt"><span class="lbl-sm">Antrean penantang</span><b>Urutan ke-' + (qi + 1) + '</b>' +
-        '<small>Partner ' + esc(P(mate).name) + ' · saat court kosong, timmu mengundi lawan (bukan lawan barusan).</small></div>' + acts + tools + '</section>';
-    }
-    return '<section class="mystatus wait">' + av(u.id) + '<div class="ms-txt"><span class="lbl-sm">Menunggu diundi</span><b>Siap ditantang</b>' +
-      '<small>Partner ' + esc(P(mate).name) + ' · timmu bisa diundi oleh penantang berikutnya.</small></div>' + acts + tools + '</section>';
+    var done = L.done.indexOf(t.id) >= 0;
+    return '<section class="mystatus wait">' + av(u.id) + '<div class="ms-txt"><span class="lbl-sm">Ronde ' + L.round + '</span><b>' + (done ? 'Menunggu court lain selesai' : 'Istirahat ronde ini') + '</b>' +
+      '<small>Partner ' + esc(P(mate).name) + ' · ' + (done ? 'ronde berikutnya diundi bersamaan setelah semua court selesai.' : 'timmu ikut lagi di ronde berikutnya.') + '</small>' +
+      pcCardsPanel(ctx) + '</div>' + acts + tools + '</section>';
   }
   /* match yang menunggu pemain dari court lain (cara mengundi 'wait') */
   function courtName(id) { return (S.courts.filter(function (c) { return c.id === id; })[0] || {}).name || 'court lain'; }
@@ -2188,6 +2384,7 @@ function MemoryAdapter(store, persist) {
       : '<button class="btn primary' + sm + '" data-act="ended" data-m="' + m.id + '">' + icon('flag') + 'Game ended</button>';
     var second = st === 'play' ? '<button class="btn' + sm + '" data-act="scoreboard" data-c="' + m.court + '">' + icon('trophy') + 'Hitung skor</button>'
       : '<button class="btn' + sm + '" data-act="call" data-m="' + m.id + '">' + icon('bell') + 'Panggil</button>';
+    if (isPCS(S)) second += '<button class="btn' + sm + '" data-act="pkManage" data-m="' + m.id + '">' + icon('star') + 'Kartu</button>';
     return main + second + (st !== 'play' && !isPCS(S) ? '<button class="' + ib + '" data-act="reshuffle" data-m="' + m.id + '" aria-label="Acak ulang" title="Acak ulang">' + icon('shuffle') + '</button>' : '') +
       '<button class="' + ib + '" data-act="voidMatch" data-m="' + m.id + '" aria-label="Batalkan match" title="Batalkan match">' + icon('x') + '</button>';
   }
@@ -2250,6 +2447,14 @@ function MemoryAdapter(store, persist) {
       return '<section class="mystatus off">' + av(u.id) + '<div class="ms-txt"><span class="lbl-sm">Status kamu</span><b>Sudah keluar dari sesi</b></div>' +
         '<div class="ms-act"><button class="btn primary" data-act="selfReady">' + icon('login') + 'Ikut lagi</button></div></section>';
     }
+    if (part.paused && part.absent) {
+      return '<section class="mystatus pause">' + av(u.id) + '<div class="ms-txt"><span class="lbl-sm">Status kamu</span><b>Belum ditandai datang — tidak diundi</b><small>Sudah sampai di venue? Tekan Saya sudah datang supaya ikut putaran.</small></div>' +
+        '<div class="ms-act"><button class="btn primary" data-act="selfReady">' + icon('check') + 'Saya sudah datang</button><button class="btn danger" data-act="selfLeave">' + icon('logout') + 'Batal hadir</button></div>' + tools + '</section>';
+    }
+    if (part.paused && part.wl) {
+      return '<section class="mystatus pause">' + av(u.id) + '<div class="ms-txt"><span class="lbl-sm">Waiting list</span><b>Cadangan</b><small>Daftar main sudah penuh (court × 4). Host memasangkanmu bila ada pemain yang keluar.</small></div>' +
+        '<div class="ms-act"><button class="btn danger" data-act="selfLeave">' + icon('logout') + 'Keluar dari waiting list</button></div>' + tools + '</section>';
+    }
     if (part.paused) {
       return '<section class="mystatus pause">' + av(u.id) + '<div class="ms-txt"><span class="lbl-sm">Status kamu</span><b>Belum siap — tidak diundi</b><small>Tekan Siap main kalau sudah bisa main lagi.</small></div>' +
         '<div class="ms-act"><button class="btn primary" data-act="selfReady">' + icon('play') + 'Siap main</button><button class="btn danger" data-act="selfLeave">' + icon('logout') + 'Keluar dari game</button></div>' + tools + '</section>';
@@ -2261,7 +2466,8 @@ function MemoryAdapter(store, persist) {
       return '<section class="mystatus ' + (waiting ? 'wait' : 'play') + '">' + av(u.id) + '<div class="ms-txt"><span class="lbl-sm">' + (waiting ? 'Berikutnya main' : m.go ? 'Sedang main' : 'Giliran main · menuju court') + '</span><b>' + esc(t.court) + (m.val ? ' <span class="cval">±' + m.val + '</span>' : '') + '</b>' +
         (isPCS(S) && m.tA ? '<small>' + (Engine.teamOf(S, u.id) && Engine.teamOf(S, u.id).id === m.tA ? 'Timmu penantang' : 'Timmu ditantang') + ' · menang +' + m.val + ', kalah −' + m.val + '</small>' : '') +
         (waiting ? '<small><b>Match in progress, please wait</b> · menunggu ' + esc(wl) + '</small>' : '') +
-        '<small>Partner ' + esc(P(t.partner).name) + ' · lawan ' + esc(P(t.opp[0]).name) + ' & ' + esc(P(t.opp[1]).name) + esc(after) + '</small></div>' +
+        '<small>Partner ' + esc(P(t.partner).name) + ' · lawan ' + esc(P(t.opp[0]).name) + ' & ' + esc(P(t.opp[1]).name) + esc(after) + '</small>' +
+        (isPCS(S) && Engine.teamOf(S, u.id) ? pcCardsPanel(pcCtxFor(Engine.teamOf(S, u.id).id)) : '') + '</div>' +
         '<div class="ms-act"><button class="btn" data-act="selfSkip">' + icon('coffee') + 'Skip</button><button class="btn danger" data-act="selfLeave">' + icon('logout') + 'Keluar dari game</button></div>' + tools + '</section>';
     }
     if (isPCS(S)) return pcMyStatus(u, tools);
@@ -2288,7 +2494,8 @@ function MemoryAdapter(store, persist) {
     var h = '<article class="cmini ' + (deal ? 'deal ' : '') + (mine || myRef ? 'mine ' : '') + (!c.active ? 'closing' : '') + courtCls(c) + '" data-court="' + c.id + '">' +
       '<header><span class="cnum">' + idx + '</span><div class="cm-meta"><b>' + esc(c.name) + '</b>' + (isPCS(S) ? valBadge(c) : '<span class="gpill ' + c.gender + '">' + icon(cgIcon(c.gender)) + cgLabel(c.gender) + '</span>') +
       (mine ? '<span class="youtag">Kamu</span>' : myRef ? '<span class="youtag">Court kamu</span>' : '') + refTag(c) + '</div>' +
-      (m ? timerHTML(m) : '') + '</header>' + (m ? waitBanner(m) : '');
+      (m ? timerHTML(m) : '') + '</header>' + (m ? waitBanner(m) : '') +
+      (isPCS(S) && shown && (shown.cards || []).length ? '<div class="cm-cards">' + shown.cards.map(function (c) { return pkChip(c); }).join('') + '</div>' : '');
     if (shown) {
       var aw = fin && fin.sA > fin.sB, bw = fin && fin.sB > fin.sA;
       var team = function (ids, side, win, lose) {
@@ -2331,7 +2538,7 @@ function MemoryAdapter(store, persist) {
     }).join('') + paused.map(function (k) {
       var wt = S.parts[k].timeOff === 'wait' && S.avail && S.avail[k];
       var tg2 = canRun() ? 'button' : 'span';
-      return '<' + tg2 + ' class="bchip paused"' + (canRun() ? ' data-act="benchP" data-p="' + k + '"' : '') + '>' + av(k) + '<span>' + esc(P(k).name) + '</span><span class="cnt">' + (wt ? 'mulai ' + hhdot(wt.from) : 'belum siap') + '</span></' + tg2 + '>';
+      return '<' + tg2 + ' class="bchip paused"' + (canRun() ? ' data-act="benchP" data-p="' + k + '"' : '') + '>' + av(k) + '<span>' + esc(P(k).name) + '</span><span class="cnt">' + (wt ? 'mulai ' + hhdot(wt.from) : S.parts[k].absent ? 'belum datang' : S.parts[k].wl ? 'cadangan' : 'belum siap') + '</span></' + tg2 + '>';
     }).join('');
     return '<div class="bench-wrap">' + (chips || '<span class="muted">' + (S.status === 'live' ? 'Semua pemain sedang bermain.' : 'Sesi selesai.') + '</span>') + '</div>';
   }
@@ -2354,14 +2561,14 @@ function MemoryAdapter(store, persist) {
     var h = '<article class="court ' + (deal ? 'deal ' : '') + (!c.active ? 'closing' : '') + (ref ? ' has-ref' : '') + courtCls(c) + '" data-court="' + c.id + '">' +
       '<header class="court-h"><div class="ch-l"><span class="cnum">' + idx + '</span><div class="cmeta"><div class="cname">' + esc(c.name) + (isPCS(S) ? valBadge(c) : '') + '</div>' +
       '<div class="ctags">' + (isPCS(S) ? '' : '<span class="gpill ' + c.gender + '">' + icon(cgIcon(c.gender)) + cgLabel(c.gender) + '</span>') + (ref ? '' : refTag(c)) +
-      (isPCS(S) && m && m.tA ? '<span class="pctag">' + icon('zap') + 'Penantang: ' + teamName(Engine.teamById(S, m.tA)) + '</span>' : '') +
+      (isPCS(S) && m && m.tA ? '<span class="pctag">' + icon('zap') + 'Penantang: ' + teamName(Engine.teamById(S, m.tA)) + '</span>' + pcHandTag(m) : '') +
       (shown ? '<span>Match #' + shown.no + '</span>' : '') +
       (fin && fin.sA !== fin.sB ? '<span class="wintag">' + icon('trophy') + esc((fin.sA > fin.sB ? fin.A : fin.B).map(function (x) { return P(x).name; }).join(' & ')) + ' menang' + (fin.val ? ' +' + fin.val : '') + '</span>' : '') +
       (fin && fin.sA === fin.sB ? '<span class="wintag">Seri</span>' : '') +
       (!c.active ? '<span style="color:var(--warn)">Ditutup setelah match ini</span>' : '') + '</div></div></div>' +
       ref + '<div class="ch-r">' + (m ? timerHTML(m) : '') + '</div></header>';
     var playing = !fin && matchState(m) === 'play';
-    h += '<div class="pitch">' + (playing ? '<div class="rally"><i></i></div>' : '');
+    h += '<div class="pitch">' + (playing ? '<div class="rally"><i></i></div>' : '') + (isPCS(S) && shown ? pcUseHTML(shown) : '');
     if (shown) {
       h += '<div class="side side-a">' + shown.A.map(function (p) { return pcard(p, shown, 'A', !!fin, isPCS(S)); }).join('') + '</div>';
       if (fin) {
@@ -2446,7 +2653,8 @@ function MemoryAdapter(store, persist) {
   function benchBar() {
     if (isPCS(S)) {
       var L = Engine.pcLists(S);
-      return '<section class="bench"><div class="bench-lbl"><b>' + icon('zap') + 'Power Cup</b><small>' + (L.pend.length ? L.pend.length + ' menunggu court · ' : '') + L.q.length + ' penantang · ' + L.pool.length + ' diundi</small></div>' + pcQueueHTML() + pcAllBtn('btn') +
+      return '<section class="bench"><div class="bench-lbl"><b>' + icon('zap') + 'Ronde ' + L.round + '</b><small>' + (L.pend.length ? L.pend.length + ' memilih court · ' : '') + Engine.liveMatches(S).length + ' court main' + (S.pc && S.pc.cd ? ' · tumpukan ' + S.pc.cd.n + ' kartu' : '') + '</small></div>' + pcQueueHTML() + pcAllBtn('btn') +
+        (canRun() ? '<button class="btn" data-act="pkManage">' + icon('star') + 'Kartu</button>' : '') +
         (isStaff() && startedFromLobby() ? '<button class="btn lobby-undo" data-act="toLobby" title="Salah tekan Mulai Sesi? Buka lagi ruang tunggu">' + icon('undo') + 'Kembali ke Lobi</button>' : '') + '</section>';
     }
     var b = Engine.bench(S);
@@ -2455,7 +2663,7 @@ function MemoryAdapter(store, persist) {
       return '<button class="bchip ' + (i < 4 ? 'next' : '') + '" data-act="benchP" data-p="' + x.id + '" style="animation-delay:' + (i * 0.03) + 's">' + av(x.id) +
         '<span>' + esc(P(x.id).name) + '</span><span class="cnt">' + x.played + '×</span>' + (x.rest ? icon('moon') : '') + '</button>';
     }).join('') + paused.map(function (k) {
-      return '<button class="bchip paused" data-act="benchP" data-p="' + k + '">' + av(k) + '<span>' + esc(P(k).name) + '</span><span class="cnt">belum siap</span></button>';
+      return '<button class="bchip paused" data-act="benchP" data-p="' + k + '">' + av(k) + '<span>' + esc(P(k).name) + '</span><span class="cnt">' + (S.parts[k].absent ? 'belum datang' : S.parts[k].wl ? 'cadangan' : 'belum siap') + '</span></button>';
     }).join('');
     if (!inner) inner = '<span class="muted" style="font-size:13px;align-self:center">' + (S.status === 'live' ? 'Semua pemain sedang bermain.' : 'Sesi selesai.') + '</span>';
     return '<section class="bench"><div class="bench-lbl"><b>' + icon('coffee') + 'Menunggu</b><small>' + b.length + ' pemain · urut giliran</small></div><div class="bench-row">' + inner + '</div>' +
@@ -2621,8 +2829,10 @@ function MemoryAdapter(store, persist) {
       cohosts: pl.cohosts || [], paid: (pl.pay && pl.pay.paid) || {}, waUrl: me() ? '' : adminWaUrl(pl),
       payView: me() ? payLine(pl.pay, pl.rsvp.filter(function (x) { return x.role === 'player'; }).map(function (x) { return x.pid; }), me().id, isStaff()) : null,
       session: { name: pl.name, whenText: pl.whenText, startAt: pl.when, venue: pl.venue || {}, url: lobbyUrl(pl.id), price: pl.pay && pl.pay.amount ? rupiah(pl.pay.amount) : '',
-        kicker: 'Ruang tunggu · ' + fmtName(pl.format) + ' · ' + pl.courts + ' court' + (pl.teamMode === 'fixed' ? ' · pasangan tetap' : '') },
-      people: pl.rsvp.map(function (x) { var o = lobbyPerson(x.pid, x.role); if (x.from) o.slot = slotLabel(x.from, x.to); return o; }),
+        kicker: 'Ruang tunggu · ' + fmtName(pl.format) + ' · ' + pl.courts + ' court' + (pl.cap ? ' · maks ' + pl.cap + ' pemain' : pl.teamMode === 'fixed' ? ' · pasangan tetap' : '') },
+      people: pl.rsvp.map(function (x) { var o = lobbyPerson(x.pid, x.role); if (x.from) o.slot = slotLabel(x.from, x.to); o.here = x.here === true; o.wl = x.w || 0; return o; }),
+      cap: pl.cap || 0, checkin: pl.rsvp.some(function (x) { return x.here !== undefined; }),
+      canMark: isStaff() || !!(me() && (pl.cohosts || []).indexOf(me().id) >= 0),
       hours: hourCounts(pl), canSlot: canSlot(pl) && !!me() && pl.rsvp.some(function (x) { return x.pid === me().id && x.role === 'player'; }),
       chat: pl.chat || []
     };
@@ -2680,7 +2890,10 @@ function MemoryAdapter(store, persist) {
     if (!me()) { UI.afterLogin = { lobby: sid, join: true }; go('login'); return; }
     var send = function (as, slot) {
       planAct(sid, 'rsvp', { on: true, as: as, from: slot ? slot[0] : null, to: slot ? slot[1] : null })
-        .then(function () { toast(slot ? 'Kamu tercatat hadir ' + slotLabel(slot[0], slot[1]) : 'Kamu tercatat hadir'); }).catch(function () {});
+        .then(function (r) {
+          var mine = r && r.plan && r.plan.rsvp.filter(function (x) { return x.pid === me().id; })[0];
+          toast(mine && mine.w ? 'Daftar main penuh. Kamu masuk waiting list #' + mine.w + '; dikabari bila naik ke daftar main.' : slot ? 'Kamu tercatat hadir ' + slotLabel(slot[0], slot[1]) : 'Kamu tercatat hadir');
+        }).catch(function () {});
     };
     var asPlayer = function (as) { var pl = planById(sid); if (canSlot(pl)) openSlotPicker(pl, null, function (slot) { send(as, slot); }); else send(as); };
     if (!isAdmin() && role() !== 'host') { asPlayer(); return; }
@@ -2717,6 +2930,7 @@ function MemoryAdapter(store, persist) {
       exit: function () { go(me() ? 'home' : 'dash'); },
       join: function () { lobbyJoin(sid); },
       leave: function () { planAct(sid, 'rsvp', { on: false }).catch(function () {}); },
+      here: function (pid, on) { planAct(sid, 'here', { pid: pid, on: on }).then(function () { toast(on ? (pid === (me() || {}).id ? 'Kamu ditandai sudah datang' : P(pid).name + ' ditandai sudah datang') : 'Ditandai belum datang'); }).catch(function () {}); },
       chat: function (text) { planAct(sid, 'chat', { text: text }).catch(function () {}); },
       login: function () { UI.afterLogin = { lobby: sid }; go('login'); },
       pay: function () { openPayment(sid); },
@@ -2733,7 +2947,7 @@ function MemoryAdapter(store, persist) {
     if (isStaff()) {
       h.add = function () { openLobbyAdd(sid); };
       h.remove = function (pid) { planAct(sid, 'rsvp', { pid: pid, on: false }).then(function () { toast(P(pid).name + ' ditandai tidak hadir'); }).catch(function () {}); };
-      h.start = function () { startPlanFlow(sid); };
+      h.start = function (extra) { startPlanFlow(sid, extra); };
       h.theme = function (id) { planAct(sid, 'theme', { theme: id }).catch(function () {}); };
       h.edit = function () { openPlanEdit(sid); };
     }
@@ -2761,8 +2975,9 @@ function MemoryAdapter(store, persist) {
     }
     draw();
   }
-  function startPlanFlow(sid) {
+  function startPlanFlow(sid, extra) {
     var start = function (payload) {
+      payload = Object.assign({}, extra || {}, payload || {});
       var other = LIVE.S && LIVE.S.status === 'live' && LIVE.sid && LIVE.sid !== sid ? LIVE.S : null;
       var run = function () {
         withBusy(planAct(sid, 'startPlan', payload)).then(function () { UI.seen = {}; UI.sort = null; UI.group = 'all'; toast('Sesi dimulai'); go(homeView()); }).catch(function () {});
@@ -2772,7 +2987,7 @@ function MemoryAdapter(store, persist) {
         .then(function (v) { if (v) api('act', { sid: other.id, type: 'end', payload: {} }).then(run).catch(function (e) { toast(errMsg(e), 'err'); }); });
     };
     var pl = planById(sid);
-    if (pl && pl.teamMode === 'fixed') openPairing(pl, start); else start({});
+    if (pl && pl.teamMode === 'fixed') openPairing(pl, start); else start(extra || {});
   }
   /* jadwal: tanggal & jam dari picker HP; disimpan sebagai waktu absolut + teks untuk notifikasi */
   function pad2(n) { return ('0' + n).slice(-2); }
@@ -2957,12 +3172,12 @@ function MemoryAdapter(store, persist) {
       optBtn('suFormat', 'powercup', pc, 'trophy', 'Power Cup', 'Turnamen pasangan tetap level atas + bawah. Kalah menantang, menang menunggu diundi. Court bernilai ±1, ±2, ±3.') + '</div></section>';
     h += '<section class="card"><h3><span class="stepno">' + (++k) + '</span>Jadwal & tempat</h3>' + planFieldsHTML(d, 'su', false) + '</section>';
     if (pc) h += '<section class="card"><h3><span class="stepno">' + (++k) + '</span>Aturan Power Cup</h3><ul class="pc-rules">' +
+      '<li>Pemain <b>maksimal court × 4</b> (' + d.courts.length + ' court = ' + d.courts.length * 4 + ' pemain), jadi semua tim main tiap ronde. Yang bergabung setelah penuh masuk waiting list.</li>' +
       '<li>Pasangan tetap: tiap pemain level atas diundi dengan satu pemain level bawah (diatur saat Mulai Sesi).</li>' +
       '<li>Satu match = <b>5 game, selalu dimainkan penuh</b>. Skor 15-30-40; 40-40 = poin penentu.</li>' +
-      '<li>Menang: <b>+nilai court</b>, lalu menunggu diundi. Kalah: <b>−nilai court</b>, lalu masuk antrean penantang (urut waktu kalah).</li>' +
-      '<li>Court kosong: penantang terdepan mengundi lawan dari tim yang menunggu (bukan lawan barusan). Court kosong lebih dari satu: penantang memilih court.</li>' +
-      '<li>Klasemen: total poin court (boleh minus), lalu selisih game.</li></ul>' +
-      '<small class="muted">Kartu power menyusul di tahap berikutnya.</small></section>';
+      '<li>Per ronde: lawan diundi berputar sampai semua tim bertemu. Urutan memilih court dikocok; penantang (yang kalah di match terakhir) memilih court. Menang <b>+nilai court</b>, kalah <b>−nilai court</b>.</li>' +
+      '<li>Kartu power: yang kalah mengambil 1 kartu (maks 2), maks 1 kartu per match, Block / Reverse untuk menjawab. Kartu yang dipakai tampil di court (papan iPad).</li>' +
+      '<li>Klasemen: total poin court (boleh minus), lalu selisih game.</li></ul></section>';
     else h += '<section class="card"><h3><span class="stepno">' + (++k) + '</span>Sistem pasangan</h3><div class="choice">' +
       optBtn('suTeam', 'random', d.teamMode === 'random', 'swap', 'Acak tiap match', 'Keempat pemain diacak setiap kali court dapat giliran.') +
       optBtn('suTeam', 'fixed', d.teamMode === 'fixed', 'users', 'Pasangan tetap', 'Pasangan sama sepanjang sesi, yang diacak hanya lawannya.') + '</div></section>';
@@ -3116,34 +3331,58 @@ function MemoryAdapter(store, persist) {
   }
   /* host menekan Mulai Sesi pada sesi pasangan tetap: atur pasangan dari yang benar-benar hadir */
   function openPairing(pl, done) {
-    var ids = pl.rsvp.filter(function (x) { return x.role === 'player'; }).map(function (x) { return x.pid; })
-      .filter(function (id) { var p = P(id); return !p.archived && p.role !== 'host'; });
+    var all = pl.rsvp.filter(function (x) { return x.role === 'player'; }).slice().sort(function (a, b) { return (a.at || 0) - (b.at || 0); })
+      .filter(function (x) { var p = P(x.pid); return !p.archived && p.role !== 'host'; });
+    var checkin = pl.rsvp.some(function (x) { return x.here !== undefined; }), pc = pl.format === 'powercup';
+    var st0 = { allHere: false }, ids = [], out = [];
+    // yang ikut putaran: yang sudah datang (bila check-in dipakai); Power Cup maksimal court × 4, urut waktu bergabung
+    function pickIds() {
+      var here = all.filter(function (x) { return !checkin || st0.allHere || x.here === true; }).map(function (x) { return x.pid; });
+      ids = pc && pl.cap ? here.slice(0, pl.cap) : here;
+      out = all.map(function (x) { return x.pid; }).filter(function (id) { return ids.indexOf(id) < 0; });
+    }
+    pickIds();
     var given = (pl.teams || []).filter(function (t) { return ids.indexOf(t.a) >= 0 && ids.indexOf(t.b) >= 0; }).map(function (t) { return { a: t.a, b: t.b }; });
-    var pc = pl.format === 'powercup', lv0 = {};
-    if (pc) ids.forEach(function (id) { if ((pl.levels || {})[id]) lv0[id] = 1; });
+    var lv0 = {};
+    if (pc) all.forEach(function (x) { if ((pl.levels || {})[x.pid]) lv0[x.pid] = 1; });
     // Power Cup dengan tanda level: tetap di mode level (pasangan dari rencana dipakai, sisanya dipasangkan atas + bawah)
     var st = pc ? { pc: true, pairMode: given.length && !Object.keys(lv0).length ? 'manual' : 'seed', seeds: lv0, teams: given.length ? given : Object.keys(lv0).length ? makePairs(ids, 'seed', lv0) : [], pairRest: true }
       : { pairMode: given.length ? 'manual' : 'mix', seeds: {}, teams: given.length ? given : makePairs(ids, 'mix', {}), pairRest: true };
     if (given.length && st.pairMode === 'manual') while (st.teams.length < Math.floor(ids.length / 2)) st.teams.push({ a: '', b: '' });
-    var nP = ids.filter(isPutri).length;
     var w = openModal({ title: pc ? 'Level & pasangan Power Cup' : 'Pasangan tetap', icon: pc ? 'trophy' : 'users', wide: true, body: '',
       foot: '<button class="btn" data-act="close">Batal</button><button class="btn primary" id="pm-go">' + icon('play') + 'Mulai sesi</button>' });
     function draw() {
-      setModal(w, '<p class="muted" style="margin:0">' + ids.length + ' pemain hadir · ' + (ids.length - nP) + ' putra · ' + nP + ' putri. ' + (pc ? 'Tandai pemain level atas: tiap pemain level atas dipasangkan acak dengan pemain level bawah, tetap sepanjang turnamen.' : 'Pasangan dipakai sepanjang sesi; yang diacak hanya lawannya.') +
-        (given.length ? ' Pasangan dari rencana sudah diisi.' : '') + ' Menekan Mulai sesi menutup lobi untuk semua orang dan langsung membuat undian court pertama.</p>' + pairEditorHTML(st, ids) +
+      var nP = ids.filter(isPutri).length, absent = out.filter(function (id) { var x = all.filter(function (y) { return y.pid === id; })[0]; return checkin && !st0.allHere && !(x && x.here === true); });
+      var extra = out.filter(function (id) { return absent.indexOf(id) < 0; });
+      setModal(w, '<p class="muted" style="margin:0">' + ids.length + ' pemain ikut putaran · ' + (ids.length - nP) + ' putra · ' + nP + ' putri' + (pc && pl.cap ? ' (maks ' + pl.cap + ' untuk ' + pl.courts + ' court)' : '') + '. ' +
+        (pc ? 'Tandai pemain level atas: tiap pemain level atas dipasangkan acak dengan pemain level bawah, tetap sepanjang turnamen.' : 'Pasangan dipakai sepanjang sesi; yang diacak hanya lawannya.') +
+        (given.length ? ' Pasangan dari rencana sudah diisi.' : '') + ' Menekan Mulai sesi menutup lobi untuk semua orang dan langsung membuat undian court pertama.</p>' +
+        (absent.length ? '<div class="demo-note">' + icon('info') + '<div><b>Belum ditandai datang (' + absent.length + '):</b> ' + absent.map(function (id) { return esc(P(id).name); }).join(', ') +
+          '. Mereka tercatat di sesi tapi tidak diundi sampai menekan Siap main.<div class="row" style="margin-top:8px"><button class="btn" id="pm-allhere">' + icon('check') + 'Anggap semua sudah datang</button></div></div></div>' : '') +
+        (extra.length ? '<div class="demo-note">' + icon('users') + '<div><b>Cadangan (waiting list, ' + extra.length + '):</b> ' + extra.map(function (id) { return esc(P(id).name); }).join(', ') + '. Bisa dipasangkan host bila ada yang keluar.</div></div>' : '') +
+        pairEditorHTML(st, ids) +
         '<label class="toggle"><span><b>Pasangkan sisanya otomatis</b><small>Pemain yang belum punya pasangan dipasangkan acak (' + (pc ? 'level atas + bawah dulu' : 'putra + putri dulu') + ') saat sesi dimulai. Bila dimatikan, mereka belum ikut main sampai dipasangkan.</small></span>' +
         '<span class="sw"><input type="checkbox" id="pm-rest" ' + (st.pairRest ? 'checked' : '') + '><i></i></span></label>');
       bindPairEditor(w, st, ids, draw);
       $('#pm-rest', w).addEventListener('change', function (e) { st.pairRest = e.target.checked; });
+      var ah = $('#pm-allhere', w);
+      if (ah) ah.addEventListener('click', function () {
+        st0.allHere = true; pickIds();
+        if (st.pairMode !== 'manual') st.teams = st.pairMode === 'seed' && !ids.some(function (id) { return st.seeds[id]; }) ? [] : makePairs(ids, st.pairMode, st.seeds);
+        draw();
+      });
     }
     draw();
     $('#pm-go', w).addEventListener('click', function () {
-      var teams = st.teams.filter(function (t) { return t.a && t.b && t.a !== t.b; }), free = ids.length - teams.length * 2;
-      if (teams.length + (st.pairRest ? Math.floor(free / 2) : 0) < 2) { toast('Butuh minimal 2 tim untuk mulai', 'err'); return; }
+      var teams = st.teams.filter(function (t) { return t.a && t.b && t.a !== t.b && ids.indexOf(t.a) >= 0 && ids.indexOf(t.b) >= 0; }), free = ids.length - teams.length * 2;
+      if (teams.length + (st.pairRest ? Math.floor(free / 2) : 0) < 2) { toast('Butuh minimal 2 tim dari yang sudah datang untuk mulai', 'err'); return; }
       closeModal(w);
-      done(pc ? { teams: teams, pairRest: st.pairRest, levels: st.seeds } : { teams: teams, pairRest: st.pairRest });
+      var o = { teams: teams, pairRest: st.pairRest, allHere: st0.allHere };
+      if (pc) o.levels = st.seeds;
+      done(o);
     });
   }
+
 
 
   /* ---------- database orang (admin & host) ---------- */
@@ -3600,6 +3839,7 @@ function MemoryAdapter(store, persist) {
       if (done && inM && !(dp && dp.st === 'open')) acts += '<button type="button" class="btn sm ghost" data-dispute="' + m.id + '">' + icon('alertMsg') + 'Koreksi skor</button>';
       return '<div class="hist' + (m.status === 'void' ? ' void' : '') + (inM ? ' mine' : '') + '"><span class="no">#' + m.no + '</span><span class="tm"><span class="' + (aw ? 'w' : '') + '">' + esc(P(m.A[0]).name) + ' & ' + esc(P(m.A[1]).name) + '</span><br>' +
         '<span class="' + (bw ? 'w' : '') + '">' + esc(P(m.B[0]).name) + ' & ' + esc(P(m.B[1]).name) + '</span><br><small class="muted">' + cn(m.court) + (m.val ? ' ±' + m.val + (done && m.sA !== m.sB ? ' (penantang ' + (m.sA > m.sB ? 'menang' : 'kalah') + ')' : '') : '') + ' · ' + stt + (dur ? ' · ' + icon('timer') + dur : '') + '</small>' +
+        ((m.cards || []).length ? '<br><span class="pc-hand-row">' + m.cards.map(function (c) { return pkChip(c); }).join('') + '</span>' : '') +
         (badge ? '<br>' + badge : '') + (acts ? '<span class="h-acts">' + acts + '</span>' : '') + '</span>' +
         '<span class="sc">' + (done ? m.sA + '-' + m.sB : m.status === 'live' ? icon('timer') : '–') + '</span></div>';
     }).join('') + '</div>';
@@ -4332,7 +4572,7 @@ function MemoryAdapter(store, persist) {
       (st === 'ready' ? '<button class="btn primary" data-act="go" data-m="' + m.id + '">' + icon('play') + 'Game start</button>' : '') +
       '<button class="btn" data-act="sbUndo" data-m="' + m.id + '" ' + (t.n ? '' : 'disabled') + '>' + icon('undo') + 'Batal poin</button>' +
       (st !== 'wait' ? '<button class="btn ' + (t.done || st === 'play' ? 'primary' : '') + '" data-act="ended" data-m="' + m.id + '">' + icon('flag') + 'Game ended</button>' : '') + '</footer>';
-    return '<div class="sb' + courtCls(c) + '">' + head + team('A') + '<div class="sb-mid">' + note + '</div>' + team('B') + foot + '</div>';
+    return '<div class="sb' + courtCls(c) + '">' + head + team('A') + '<div class="sb-mid">' + (isPCS(S) ? pcSbNote(m) : '') + note + '</div>' + team('B') + foot + '</div>';
   }
   /* ketukan poin langsung tampil di HP ini, lalu dikirim ke server berurutan */
   var tallyQ = Promise.resolve(), tallyPend = 0;
@@ -5041,6 +5281,14 @@ function MemoryAdapter(store, persist) {
     pcCourt: function (el) {
       act('pcCourt', { c: el.dataset.c, p: el.dataset.p }, { quiet: true }).then(function () { toast('Court dipilih. Selamat bertanding!'); }).catch(function () {});
     },
+    pkOpen: function (el) { openCardInfo(el.dataset.card, el.dataset.team || null); },
+    pkResp: function (el) {
+      act('pcResp', { card: el.dataset.card, of: el.dataset.of, ref: el.dataset.ref, team: el.dataset.team || undefined }, { quiet: true }).then(function () { toast('Kartu lawan dijawab'); }).catch(function () {});
+    },
+    pkPass: function (el) {
+      act('pcPass', { ref: el.dataset.ref, team: el.dataset.team || undefined }, { quiet: true }).then(function () { toast('Diumumkan: tanpa kartu'); }).catch(function () {});
+    },
+    pkManage: function (el) { openCardManager(el.dataset.m || null); },
     pcCourtAll: function () {
       confirmBox('Acak court?', 'Semua tantangan yang menunggu court dipilihkan court secara acak.', [{ label: 'Batal', value: null }, { label: 'Acak court', value: 1, kind: 'primary' }])
         .then(function (v) { if (v) act('pcCourt', { all: true }, { quiet: true }).catch(function () {}); });

@@ -97,7 +97,7 @@ var Core = (function () {
   }
   function status() {
     var hasAdmin = people().some(function (p) { return p.role === 'admin' && !p.archived; });
-    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.10', migrated: !!A.prop('MIGRATED_AT') };
+    return { hasAdmin: hasAdmin, needCode: !hasAdmin && !!A.prop('APP_PIN'), ai: A.aiEnabled(), version: '2.11', migrated: !!A.prop('MIGRATED_AT') };
   }
   function createAdmin(r) {
     return A.lock(function () {
@@ -356,11 +356,53 @@ var Core = (function () {
     o.matches.forEach(function (m) { delete m.snap; });
     if (o.plan) { o.plan.chatN = (o.plan.chat || []).length; delete o.plan.chat; } // chat lobi hanya lewat plans (anggota)
     if (o.pay) o.pay = paySummary(S);                                                  // rekening & bukti bayar lewat payInfo (login)
+    if (o.pc && o.pc.cd) {                                                             // Power Cup: isi kartu di tangan lewat pcHand (login)
+      var cd = o.pc.cd, hand = {};
+      Object.keys(cd.hand || {}).forEach(function (t) { hand[t] = (cd.hand[t] || []).length; });
+      o.pc.cd = { n: (cd.deck || []).length, d: (cd.disc || []).length, hand: hand, hv: cd.hv || {} };
+      o.matches.forEach(function (m) { if (m.drawn && !m.drawn.z) delete m.drawn.id; });
+    }
     return o;
+  }
+  /* Power Cup: kartu di tangan. Pemain melihat kartu timnya; admin, host, dan host sesi melihat semua tim */
+  function pcHand(r) {
+    var actor = auth(r.token), S = loadS(r.sid || A.prop('ACTIVE_SID'));
+    if (!S || !Engine.isPC(S) || !S.pc || !S.pc.cd) throw err('NOT_FOUND', 'Tidak ada sesi Power Cup');
+    var all = roleStaff(actor) || isCohost(S, actor.id), t = Engine.teamOf(S, actor.id), out = {};
+    Object.keys(S.pc.cd.hand || {}).forEach(function (tid) { if (all || (t && t.id === tid)) out[tid] = S.pc.cd.hand[tid]; });
+    if (t && !out[t.id]) out[t.id] = [];
+    return { sid: S.id, all: all, team: t ? t.id : null, hands: out, hv: S.pc.cd.hv || {} };
+  }
+  /* kartu yang baru diambil tim kalah dikabarkan hanya ke HP tim itu */
+  function pcDrawNotify(S, m, prevId) {
+    var dr = m.drawn;
+    if (!A.notify || !dr || !dr.t || (dr.id && dr.id === prevId) || dr.full) return;
+    var t = Engine.teamById(S, dr.t), card = dr.z ? { k: 'zonk' } : ((S.pc.cd.hand[dr.t] || []).filter(function (c) { return c.id === dr.id; })[0]);
+    if (!t || !card) return;
+    var def = Engine.PC_CARDS[card.k] || {};
+    [t.a, t.b].forEach(function (pid) {
+      A.notify(pid, { title: card.k === 'zonk' ? 'Kartu power: Zonk' : 'Kartu power baru: ' + def.name, tag: 'pccard-' + m.id, url: '/',
+        body: card.k === 'zonk' ? 'Zonk langsung dibuang, tidak ada efek. ' + S.name : 'Timmu mendapat ' + def.name + ' setelah Match #' + m.no + '. Buka app untuk memakainya. ' + S.name });
+    });
   }
 
   /* ---------------- rencana sesi & ruang tunggu (lobi) ---------------- */
-  var PLAN_ACTIONS = { rsvp: 1, chat: 1, theme: 1, editPlan: 1, startPlan: 1 };
+  var PLAN_ACTIONS = { rsvp: 1, chat: 1, theme: 1, editPlan: 1, startPlan: 1, here: 1 };
+  /* Power Cup: pemain maksimal = court × 4 (semua main tiap ronde); yang bergabung setelah penuh masuk waiting list */
+  function planCap(S) { return S.format === 'powercup' ? S.courts.filter(function (c) { return c.active; }).length * 4 : 0; }
+  function planPlayers(S) {
+    return ((S.plan || {}).rsvp || []).filter(function (x) { return x.role === 'player'; }).slice().sort(function (a, b) { return (a.at || 0) - (b.at || 0); });
+  }
+  function waitPos(S) {
+    var cap = planCap(S), w = {};
+    if (cap) planPlayers(S).forEach(function (x, i) { if (i >= cap) w[x.pid] = i - cap + 1; });
+    return w;
+  }
+  /* sudah datang: bila belum ada yang ditandai sama sekali (fitur tidak dipakai), semua dianggap datang */
+  function arrivedFn(p, all) {
+    var used = (p.rsvp || []).some(function (x) { return x.here !== undefined; });
+    return function (pid) { var x = (p.rsvp || []).filter(function (y) { return y.pid === pid; })[0]; return !!all || !used || !!(x && x.here === true); };
+  }
   function isMember(token) { if (!token) return false; try { auth(token); return true; } catch (e) { return false; } }
   function planFields(src, old) {
     src = src || {}; old = old || {};
@@ -378,11 +420,12 @@ var Core = (function () {
     };
   }
   function planView(S, member) {
-    var p = S.plan || {};
+    var p = S.plan || {}, wl = waitPos(S);
     var o = { id: S.id, v: S.v || 0, name: S.name, status: S.status, format: S.format, teamMode: S.teamMode,
       courts: S.courts.filter(function (c) { return c.active; }).length, hosts: S.hosts || [],
       when: p.when, until: p.until || null, whenText: p.whenText, venue: p.venue || {}, theme: p.theme || 'court', by: p.by,
-      rsvp: (p.rsvp || []).map(function (x) { var o2 = { pid: x.pid, role: x.role, at: x.at }; if (x.from) { o2.from = x.from; o2.to = x.to; } return o2; }), chatN: (p.chat || []).length,
+      rsvp: (p.rsvp || []).map(function (x) { var o2 = { pid: x.pid, role: x.role, at: x.at }; if (x.from) { o2.from = x.from; o2.to = x.to; } if (x.here !== undefined) o2.here = x.here; if (wl[x.pid]) o2.w = wl[x.pid]; return o2; }), chatN: (p.chat || []).length,
+      cap: planCap(S),
       cohosts: S.cohosts || [], pay: paySummary(S) };
     if (member) o.chat = (p.chat || []).slice(-100);
     if (S.teamMode === 'fixed') o.teams = (p.teams || []).map(function (t) { return { a: t.a, b: t.b }; });
@@ -470,8 +513,13 @@ var Core = (function () {
     d = d || {};
     var p = S.plan, alive = {};
     people().forEach(function (x) { if (!x.archived) alive[x.id] = x; });
-    var players = p.rsvp.filter(function (x) { return x.role === 'player' && alive[x.pid] && alive[x.pid].role !== 'host'; }).map(function (x) { return x.pid; });
+    var players = planPlayers(S).filter(function (x) { return alive[x.pid] && alive[x.pid].role !== 'host'; }).map(function (x) { return x.pid; });
     if (players.length < 4) throw err('INVALID', 'Butuh minimal 4 pemain yang hadir untuk memulai');
+    // yang belum datang ikut tercatat tapi "belum siap" (tidak diundi) sampai menekan Siap main.
+    // Power Cup: yang main = yang sudah datang, urut waktu bergabung, maksimal court × 4; sisanya cadangan
+    var here = arrivedFn(p, d.allHere), cap = planCap(S), inPlay = players.filter(here);
+    if (cap) inPlay = inPlay.slice(0, cap);
+    if (inPlay.length < 4) throw err('INVALID', 'Butuh minimal 4 pemain yang sudah datang (sekarang ' + inPlay.length + '). Tandai yang sudah datang di lobi');
     var hostIds = p.rsvp.filter(function (x) { return x.role === 'host' && alive[x.pid]; }).map(function (x) { return x.pid; });
     var teams = [], pc = S.format === 'powercup', lvIn = pc ? d.levels || p.levels || {} : null;   // Power Cup: tanda level dari host, atau dari rencana
     if (S.teamMode === 'fixed') {
@@ -479,26 +527,31 @@ var Core = (function () {
         // pasangan dari host (acak campuran/putra/putri, best player, atau manual); sisanya boleh tidak dipasangkan
         var used = {};
         var given = d.teams.filter(function (t) {
-          var okT = t && players.indexOf(t.a) >= 0 && players.indexOf(t.b) >= 0 && t.a !== t.b && !used[t.a] && !used[t.b];
+          var okT = t && inPlay.indexOf(t.a) >= 0 && inPlay.indexOf(t.b) >= 0 && t.a !== t.b && !used[t.a] && !used[t.b];
           if (okT) used[t.a] = used[t.b] = 1;
           return okT;
         }).map(function (t) { return { a: t.a, b: t.b }; });
-        teams = !d.pairRest ? given : pc ? levelTeams(players, lvIn, given) : autoTeams(players, P, given);
-      } else teams = pc ? levelTeams(players, lvIn, p.teams) : autoTeams(players, P, p.teams);
+        teams = !d.pairRest ? given : pc ? levelTeams(inPlay, lvIn, given) : autoTeams(inPlay, P, given);
+      } else teams = pc ? levelTeams(inPlay, lvIn, p.teams) : autoTeams(inPlay, P, p.teams);
     }
     // jam hadir sebagian: yang belum jamnya dijeda, masuk antrean otomatis saat jamnya mulai
     var avail = {}, t0 = now();
     if (!pc) p.rsvp.forEach(function (x) { if (x.from && players.indexOf(x.pid) >= 0) avail[x.pid] = { from: x.from, to: x.to, st: 'in' }; });
-    var ready = players.filter(function (pid) { var a = avail[pid]; return !a || (t0 >= a.from - JOIN_EARLY && t0 < a.to - END_BUFFER); });
+    var ready = inPlay.filter(function (pid) { var a = avail[pid]; return !a || (t0 >= a.from - JOIN_EARLY && t0 < a.to - END_BUFFER); });
     if (ready.length < 4) throw err('INVALID', 'Butuh minimal 4 pemain yang jam hadirnya sudah mulai (sekarang ' + ready.length + '). Pemain jam berikutnya masuk otomatis');
     var fresh = Engine.newSession({ name: S.name, format: S.format, teamMode: S.teamMode, scoring: S.scoring, rules: S.rules, courts: S.courts, playerIds: players, teams: teams });
     S.parts = fresh.parts; S.teams = fresh.teams; S.matches = []; S.seq = 0; S.status = 'live'; S.date = new Date().toISOString();
     S.calls = {}; S.lastDone = {};
     S.avail = avail;
+    players.forEach(function (pid) {                               // belum datang / cadangan: tercatat tapi tidak diundi
+      if (inPlay.indexOf(pid) >= 0 || !S.parts[pid]) return;
+      S.parts[pid].paused = true;
+      if (here(pid)) S.parts[pid].wl = true; else S.parts[pid].absent = true;
+    });
     applyAvail(S, t0, true);
     setHosts(S, (S.hosts || []).concat(hostIds));
     p.startedAt = now(); p.prevActive = A.prop('ACTIVE_SID') || '';
-    if (pc) pcBegin(S, P, levelMap(players, lvIn)); else Engine.fillCourts(S, P);
+    if (pc) pcBegin(S, P, levelMap(inPlay, lvIn)); else Engine.fillCourts(S, P);
     A.setProp('ACTIVE_SID', S.id);
   }
   function backToLobby(S) {
@@ -525,14 +578,28 @@ var Core = (function () {
       var who = person(d.pid || actor.id);
       if (!who || who.archived) throw err('NOT_FOUND', 'Orang tidak ditemukan');
       if (!staff && who.id !== actor.id) throw err('FORBIDDEN');
-      var prev = p.rsvp.filter(function (x) { return x.pid === who.id; })[0];
+      var prev = p.rsvp.filter(function (x) { return x.pid === who.id; })[0], wl0 = waitPos(S);
       p.rsvp = p.rsvp.filter(function (x) { return x.pid !== who.id; });
       if (d.on !== false) {
         var role = who.role === 'host' ? 'host' : who.role === 'admin' ? (d.as === 'player' ? 'player' : 'host') : 'player';
         var slot = role === 'player' && S.format !== 'powercup' ? planSlot(p, d) : null, entry = { pid: who.id, role: role, at: prev ? prev.at : now(), by: actor.id };
         if (slot) { entry.from = slot.from; entry.to = slot.to; }
+        if (prev && prev.here !== undefined) entry.here = prev.here;
         p.rsvp.push(entry);
       }
+      // Power Cup: yang naik dari waiting list ke daftar main diberi tahu
+      var wl1 = waitPos(S);
+      if (A.notify) Object.keys(wl0).forEach(function (pid) {
+        if (!wl1[pid] && pid !== who.id && p.rsvp.some(function (x) { return x.pid === pid; })) A.notify(pid, { title: 'Kamu masuk daftar main: ' + S.name,
+          body: 'Ada yang batal, kamu naik dari waiting list. Sampai jumpa di court!', tag: 'wl-' + S.id, url: '/?lobby=' + S.id });
+      });
+      return null;
+    }
+    if (type === 'here') {                                         // sudah datang / belum: pemain sendiri, atau admin/host/host sesi
+      var hw = p.rsvp.filter(function (x) { return x.pid === (d.pid || actor.id); })[0];
+      if (!hw) throw err('NOT_FOUND', 'Orang itu belum bergabung di lobi');
+      if (!staff && hw.pid !== actor.id) throw err('FORBIDDEN');
+      hw.here = d.on !== false; hw.hereAt = now(); hw.hereBy = actor.id;
       return null;
     }
     if (!roleStaff(actor)) throw err('FORBIDDEN', 'Aksi ini khusus admin atau host');
@@ -822,7 +889,7 @@ var Core = (function () {
   /* ---------------- host sesi dari pemain, pembayaran, koreksi skor ---------------- */
   // pemain yang ditunjuk jadi host sesi: mengurus skor & pemain di sesi itu saja (bukan mengakhiri, mengatur court, atau database)
   var COHOST_ACTIONS = { fill: 1, score: 1, reshuffle: 1, void: 1, swap: 1, swapTeam: 1, unwait: 1, kick: 1, join: 1, skip: 1, ready: 1, pair: 1,
-    call: 1, go: 1, tally: 1, swapX: 1, swapTeamX: 1, rsvp: 1, pcCourt: 1 };
+    call: 1, go: 1, tally: 1, swapX: 1, swapTeamX: 1, rsvp: 1, pcCourt: 1, pcCard: 1, pcResp: 1, pcPass: 1, here: 1 };
   // Power Cup: susunan match ditentukan alur menang-kalah-undi, jadi tidak diacak ulang atau ditukar manual
   var PC_OFF = { reshuffle: 1, swap: 1, swapTeam: 1, unwait: 1, swapX: 1, swapTeamX: 1 };
   // aksi dengan aturan izin sendiri (dicek di applyCommon), berlaku di lobi, saat main, dan setelah selesai
@@ -945,8 +1012,9 @@ var Core = (function () {
         if (!mm || mm.status !== 'done') throw err('STALE', 'Match sudah berubah');
         var na = d.a != null ? Math.round(Number(d.a)) : x.a, nb = d.b != null ? Math.round(Number(d.b)) : x.b, vv = Engine.validateScore(S, na, nb);
         if (!vv.ok) throw err('INVALID', vv.msg);
+        var dr1 = mm.drawn && mm.drawn.id;
         Engine.submitScore(S, mm.id, na, nb);
-        if (Engine.isPC(S) && S.status === 'live') Engine.fillCourts(S, P);     // Power Cup: menang/kalah bisa tertukar
+        if (Engine.isPC(S)) pcDrawNotify(S, mm, dr1);                // Power Cup: menang/kalah tertukar → kartu tim kalah ikut berpindah
         x.st = 'fixed'; x.final = [na, nb];
       } else x.st = 'rejected';
       x.reply = String(d.reply || '').replace(/\s+/g, ' ').trim().slice(0, 200); x.doneBy = actor.id; x.doneAt = now();
@@ -999,7 +1067,7 @@ var Core = (function () {
     return { S: publicS(S) };
   }
 
-  var SELF_ACTIONS = { skip: 1, ready: 1, leave: 1, rsvp: 1, chat: 1, pcCourt: 1 };
+  var SELF_ACTIONS = { skip: 1, ready: 1, leave: 1, rsvp: 1, chat: 1, pcCourt: 1, pcCard: 1, pcResp: 1, pcPass: 1, here: 1 };
   function act(r) {
     var actor = auth(r.token);
     var type = r.type, d = r.payload || {};
@@ -1045,10 +1113,21 @@ var Core = (function () {
       case 'fill': if (S.status === 'live') Engine.fillCourts(S, P, null, !!d.force); break;
       case 'score':
         m = findM(S, d.m);
-        var wasLive = m.status === 'live';
+        var wasLive = m.status === 'live', dr0 = m.drawn && m.drawn.id;
         Engine.submitScore(S, m.id, Number(d.a), Number(d.b));
+        if (Engine.isPC(S)) pcDrawNotify(S, m, dr0);
         if (wasLive) S.lastDone[m.court] = { m: m.id, at: now() };
         if (wasLive || Engine.isPC(S)) fill(S, P);                    // Power Cup: koreksi skor bisa menukar menang/kalah
+        break;
+      case 'pcCard':  // Power Cup: pakai kartu power
+      case 'pcResp':  // jawab kartu lawan dengan Block / Reverse
+      case 'pcPass':  // penantang menyatakan tanpa kartu sebelum match
+        if (!Engine.isPC(S) || S.status !== 'live') throw err('INVALID', 'Hanya untuk sesi Power Cup yang berjalan');
+        var tm = staff && d.team ? Engine.teamById(S, d.team) : Engine.teamOf(S, d.pid || actor.id);
+        if (!tm) throw err('FORBIDDEN', 'Kamu tidak ada di tim mana pun di sesi ini');
+        var pe = type === 'pcCard' ? Engine.pcPlay(S, { team: tm.id, card: d.card, ref: d.ref, target: d.target, pid: d.vs })
+          : type === 'pcResp' ? Engine.pcRespond(S, { team: tm.id, card: d.card, of: d.of, ref: d.ref }) : Engine.pcPass(S, d.ref, tm.id);
+        if (pe) throw err('INVALID', pe);
         break;
       case 'pcCourt': // Power Cup: tim penantang memilih court untuk tantangannya (host boleh memilihkan)
         if (!Engine.isPC(S) || S.status !== 'live') throw err('INVALID', 'Hanya untuk sesi Power Cup yang berjalan');
@@ -1091,7 +1170,7 @@ var Core = (function () {
         break;
       case 'ready':
         if (!S.parts[d.pid]) throw err('NOT_FOUND', 'Pemain tidak ada di sesi ini');
-        S.parts[d.pid].paused = false;
+        S.parts[d.pid].paused = false; delete S.parts[d.pid].absent;
         if (S.parts[d.pid].timeOff === 'wait' && S.avail && S.avail[d.pid]) S.avail[d.pid].st = 'in';   // datang lebih awal
         delete S.parts[d.pid].timeOff;                                                                   // atau lanjut main setelah jamnya habis
         if (!S.parts[d.pid].active) Engine.addParticipant(S, d.pid, S.rules.catchUp);
@@ -1202,7 +1281,7 @@ var Core = (function () {
     createSession: createSession, act: act, importPerson: importPerson, importSession: importSession, markMigrated: markMigrated,
     pushSubscribe: pushSubscribe, venueSearch: venueSearch, generateChibi: generateChibi, saveSprite: saveSprite,
     saveTheme: saveTheme, deleteTheme: deleteTheme, kudosForm: kudosForm, giveKudos: giveKudos, myKudos: myKudos, kudosAdmin: kudosAdmin,
-    payInfo: payInfo, pastSessions: pastSessions, pastSession: pastSession
+    payInfo: payInfo, pastSessions: pastSessions, pastSession: pastSession, pcHand: pcHand
   };
   function call(fn, req) {
     var f = PUBLIC[fn] || PRIVATE[fn];

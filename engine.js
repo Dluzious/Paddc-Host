@@ -171,19 +171,22 @@ var Engine = (function () {
       var sides = [[m.A, m.sA, m.sB, m.tA], [m.B, m.sB, m.sA, m.tB]];
       sides.forEach(function (s) {
         var res = s[1] > s[2] ? 'w' : (s[1] < s[2] ? 'l' : 'd');
-        // Power Cup: poin court untuk klasemen (menang +nilai court, kalah −nilai court)
-        var pts = pcv && m.val ? (res === 'w' ? m.val : res === 'l' ? -m.val : 0) : 0;
         s[0].forEach(function (pid) {
           var x = P(pid);
-          x.played++; x[res]++; x.pf += s[1]; x.pa += s[2]; x.pts += pts;
+          x.played++; x[res]++; x.pf += s[1]; x.pa += s[2];
         });
         if (s[3]) {
           var t = T(s[3]);
-          t.played++; t[res]++; t.pf += s[1]; t.pa += s[2]; t.pts += pts;
+          t.played++; t[res]++; t.pf += s[1]; t.pa += s[2];
         }
       });
     });
     function fin(x) { x.diff = x.pf - x.pa; x.avg = x.played ? x.pf / x.played : 0; }
+    if (pcv) {                                                     // Power Cup: poin court tim (dengan efek kartu); pemain ikut timnya
+      var pts = pcPoints(S);
+      Object.keys(tm).forEach(function (k) { tm[k].pts = pts[k] || 0; });
+      Object.keys(pl).forEach(function (k) { var tt = teamOf(S, k); pl[k].pts = tt ? pts[tt.id] || 0 : 0; });
+    }
     Object.keys(pl).forEach(function (k) { fin(pl[k]); });
     Object.keys(tm).forEach(function (k) { fin(tm[k]); });
     return { players: pl, teams: tm, partner: partner, opp: opp, teamOpp: teamOpp };
@@ -681,11 +684,12 @@ var Engine = (function () {
     var m = findMatch(S, id);
     if (!m) return;
     m.sA = a; m.sB = b;
-    if (m.status === 'live') {
+    var first = m.status === 'live';
+    if (first) {
       m.status = 'done'; m.end = now();
       if (!m.start) m.start = m.end; // skor dipaksa sebelum match menunggu sempat mulai
     }
-    if (isPC(S) && m.status === 'done') pcAfterMatch(S, m);
+    if (isPC(S) && m.status === 'done') pcResult(S, m, first);
     return release(S);
   }
 
@@ -737,16 +741,29 @@ var Engine = (function () {
     var h = m.tally || [], sc = S.scoring || {}, n = sc.n || 21, race = sc.mode === 'race';
     if (sc.type !== 'tennis') {
       var a = 0, b = 0;
-      h.forEach(function (x) { if (x === 'A') a++; else b++; });
+      h.forEach(function (x) { if (x === 'A') a++; else if (x === 'B') b++; });
       return { a: a, b: b, done: race ? Math.max(a, b) >= n : a + b >= n, n: h.length };
     }
-    var adv = S.rules && S.rules.deuce === 'adv';
-    var ga = 0, gb = 0, pa = 0, pb = 0;
+    var adv = S.rules && S.rules.deuce === 'adv', cards = m.cards || [];
+    // Power Cup: Free 15 / Free 30 = skor awal tiap game, Golden Point = 40-40 langsung untuk pemegang (keduanya → batal)
+    var on = function (k, t) { return !!t && cards.some(function (c) { return c.k === k && c.by === t && c.st === 'on'; }); };
+    var sA = (on('free15', m.tA) ? 1 : 0) + (on('free30', m.tA) ? 2 : 0), sB = (on('free15', m.tB) ? 1 : 0) + (on('free30', m.tB) ? 2 : 0);
+    var gA = on('golden', m.tA), gB = on('golden', m.tB);
+    if (gA && gB) gA = gB = false;
+    var ga = 0, gb = 0, pa = sA, pb = sB;
     h.forEach(function (x) {
-      if (x === 'A') pa++; else pb++;
+      if (x === 'A') pa++;
+      else if (x === 'B') pb++;
+      else {                                                       // 'S:<kartu>' = Ambil Semua Poin
+        var c = cards.filter(function (q) { return 'S:' + q.id === x; })[0], byA = c && c.by === m.tA;
+        if (c && c.st === 'on') { if (byA) { pa = pb; pb = 0; } else { pb = pa; pa = 0; } }
+        else if (c && c.st === 'reversed') { if (byA) pa = 0; else pb = 0; }
+        return;
+      }
       var lead = pa - pb;
-      if (adv ? (pa >= 4 && lead >= 2) : pa >= 4) { ga++; pa = pb = 0; }
-      else if (adv ? (pb >= 4 && lead <= -2) : pb >= 4) { gb++; pa = pb = 0; }
+      if (adv ? (pa >= 4 && lead >= 2) : pa >= 4) { ga++; pa = sA; pb = sB; }
+      else if (adv ? (pb >= 4 && lead <= -2) : pb >= 4) { gb++; pa = sA; pb = sB; }
+      else if (pa === 3 && pb === 3 && (gA || gB)) { if (gA) ga++; else gb++; pa = sA; pb = sB; }
     });
     var la, lb;
     if (pa >= 3 && pb >= 3) {
@@ -762,7 +779,7 @@ var Engine = (function () {
     var m = findMatch(S, id);
     if (!m || m.status !== 'live' || !m.start) return null;
     m.tally = m.tally || [];
-    if (undo) m.tally.pop();
+    if (undo) { for (var i = m.tally.length - 1; i >= 0; i--) if (m.tally[i] === 'A' || m.tally[i] === 'B') { m.tally.splice(i, 1); break; } }   // kartu Ambil Semua Poin tidak ikut terhapus
     else if ((side === 'A' || side === 'B') && !tallyState(S, m).done) {
       if (!m.go) m.go = now(); // poin pertama dianggap Game start
       m.tally.push(side);
@@ -824,12 +841,33 @@ var Engine = (function () {
 
 
   /* ============================================================
-     POWER CUP: pasangan tetap (level atas + bawah), nilai court ±1/±2/±3, 5 game selalu dimainkan penuh.
-     Tim kalah masuk antrean penantang (urut waktu kalah); tim menang masuk kolam tunggu untuk diundi.
-     Saat court kosong, penantang terdepan mengundi lawan dari kolam tunggu (bukan lawan barusan); kolam kosong
-     → dari penantang lain. Lebih dari satu court kosong → penantang memilih court berurutan, court terakhir otomatis.
-     S.pc = { st: { tim: { s: 'pool' | 'q' | 'pend' | 'play', at } }, pend: [tantangan menunggu court], last: { tim: lawan terakhir }, order, lv }
+     POWER CUP: pasangan tetap (level atas + bawah), nilai court ±1..±6, 5 game selalu dimainkan penuh.
+     Pemain = court × 4, jadi dimainkan per RONDE: semua tim main bersamaan, ronde berikutnya diundi setelah semua
+     court selesai. Lawan diundi acak dengan rotasi (yang belum pernah bertemu didahulukan; bila sama, tim kalah
+     bertemu tim menang). Penantang = tim yang kalah di match terakhirnya (ronde pertama acak). Urutan memilih court
+     dikocok; penantang memilih court (siapa berani court bernilai besar); court terakhir yang tersisa otomatis.
+     Kartu power: tim kalah mengambil 1 kartu (maks 2 di tangan, Zonk langsung dibuang); maks 1 kartu per tim per
+     match; Block membatalkan kartu lawan, Reverse membalik No Smash / No Glass / Switch Hand / Ambil Semua Poin.
+     S.pc = { lv, round, pend: [{ id, ch, op, rd, cards }], cd: { deck, disc, hand: { tim: [kartu] }, hv: { tim: n } } }
+     m.cards = [{ id, k, by, tg, st: 'on' | 'blocked' | 'reversed', n0, g, pid, of }]
      ============================================================ */
+  // when: pre = sebelum match dimulai, game = sebelum servis sebuah game (berlaku 2 game), live = saat game berjalan,
+  // draw = saat undian lawan (sebelum dapat court), resp = menjawab kartu lawan
+  var PC_CARDS = {
+    free15: { n: 3, name: 'Free 15', cat: 'self', when: 'pre' },
+    free30: { n: 1, name: 'Free 30', cat: 'self', when: 'pre' },
+    golden: { n: 2, name: 'Golden Point', cat: 'self', when: 'pre' },
+    double: { n: 2, name: 'Double Point', cat: 'self', when: 'pre' },
+    pick: { n: 2, name: 'Pilih Lawan', cat: 'ctrl', when: 'draw' },
+    nosmash: { n: 2, name: 'No Smash', cat: 'ctrl', when: 'game', rev: 1, dur: 2 },
+    noglass: { n: 2, name: 'No Glass', cat: 'ctrl', when: 'game', rev: 1, dur: 2 },
+    swh: { n: 2, name: 'Switch Hand', cat: 'ctrl', when: 'game', rev: 1, dur: 2 },
+    steal: { n: 1, name: 'Ambil Semua Poin', cat: 'rare', when: 'live', rev: 1 },
+    swap: { n: 1, name: 'Tukar Ranking', cat: 'rare', when: 'pre' },
+    block: { n: 3, name: 'Block', cat: 'def', when: 'resp' },
+    reverse: { n: 1, name: 'Reverse', cat: 'def', when: 'resp' },
+    zonk: { n: 6, name: 'Zonk', cat: 'zonk', when: 'none' }
+  };
   function isPC(S) { return !!S && S.format === 'powercup'; }
   function courtValue(S, c) {
     if (!c) return 1;
@@ -839,85 +877,150 @@ var Engine = (function () {
     return i >= 0 ? i + 1 : 1;
   }
   function teamById(S, id) { return S.teams.filter(function (t) { return t.id === id; })[0] || null; }
-  function pcFree(S, id) {                      // tim bisa diundi / menantang: aktif & tidak sedang "belum siap"
+  function pcFree(S, id) {                      // tim bisa diundi: aktif & tidak sedang "belum siap"
     var t = teamById(S, id);
     return !!t && teamActive(S, t) && !S.parts[t.a].paused && !S.parts[t.b].paused;
   }
   function shuffled(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; }
-  /* ronde pertama: urutan semua pasangan diundi; urutan 1..(jumlah court) jadi penantang, sisanya menunggu diundi */
-  function pcInit(S) {
-    var ids = shuffled(S.teams.filter(function (t) { return teamActive(S, t); }).map(function (t) { return t.id; }));
-    var k = Math.min(S.courts.filter(function (c) { return c.active; }).length, Math.floor(ids.length / 2)), t0 = now();
-    S.pc = Object.assign({}, S.pc || {}, { st: {}, pend: [], last: {}, order: ids });
-    ids.forEach(function (id, i) { S.pc.st[id] = { s: i < k ? 'q' : 'pool', at: t0 + i }; });
+  function pcDeck() {
+    var deck = [];
+    Object.keys(PC_CARDS).forEach(function (k) { for (var i = 0; i < PC_CARDS[k].n; i++) deck.push({ id: uid('k_'), k: k }); });
+    return { deck: shuffled(deck), disc: [], hand: {}, hv: {} };
   }
+  function pcState(S) {
+    var pc = S.pc || (S.pc = {});
+    pc.lv = pc.lv || {}; pc.round = pc.round || 0; pc.pend = pc.pend || [];
+    if (!pc.cd || !pc.cd.deck) pc.cd = pcDeck();
+    return pc;
+  }
+  function pcInit(S) {
+    S.pc = { lv: (S.pc && S.pc.lv) || {}, round: 0, pend: [], cd: pcDeck() };
+  }
+  function pcHandOf(S, tid) { var cd = pcState(S).cd; return cd.hand[tid] || (cd.hand[tid] = []); }
+  /* jumlah kartu di tangan (data publik hanya berisi jumlah) */
+  function pcHandCount(S, tid) { var h = S.pc && S.pc.cd && S.pc.cd.hand && S.pc.cd.hand[tid]; return typeof h === 'number' ? h : h ? h.length : 0; }
+  function pcBump(S, tid) { var cd = S.pc.cd; cd.hv[tid] = (cd.hv[tid] || 0) + 1; }
+  function pcDrawOne(S) {
+    var cd = S.pc.cd;
+    if (!cd.deck.length) { cd.deck = shuffled(cd.disc); cd.disc = []; }       // tumpukan habis: tumpukan buang dikocok ulang
+    return cd.deck.pop() || null;
+  }
+  /* kartu yang sudah dipakai kembali ke tangan pemakainya (match dibatalkan / tantangan batal) */
+  function pcReturn(S, list) {
+    (list || []).forEach(function (c) { if (c.id && c.by && PC_CARDS[c.k]) { pcHandOf(S, c.by).push({ id: c.id, k: c.k }); pcBump(S, c.by); } });
+  }
+  function tallyPts(m) { return (m.tally || []).filter(function (x) { return x === 'A' || x === 'B'; }).length; }
+  function pcLastRes(S, tid) {
+    var last = null;
+    S.matches.forEach(function (m) {
+      if (m.status === 'done' && (m.tA === tid || m.tB === tid) && m.sA !== m.sB && (!last || (m.end || 0) > (last.end || 0) || ((m.end || 0) === (last.end || 0) && m.no > last.no))) last = m;
+    });
+    return last ? ((last.sA > last.sB) === (last.tA === tid) ? 'w' : 'l') : null;
+  }
+  function teamLive(S) { var b = {}; liveMatches(S).forEach(function (m) { if (m.tA) b[m.tA] = 1; if (m.tB) b[m.tB] = 1; }); return b; }
+  /* lawan ronde berikutnya: pasangan dengan biaya terkecil (bertemu lagi mahal, sesama kalah/sesama menang sedikit),
+     diacak bila sama; dicari menyeluruh (maks 12 tim = 10.395 kemungkinan, dipangkas) */
+  function pcPairs(S, ids) {
+    var opp = stats(S).teamOpp, res = {}, C = {};
+    ids.forEach(function (id) { res[id] = pcLastRes(S, id); });
+    ids.forEach(function (a) { ids.forEach(function (b) { if (a < b) C[a + '|' + b] = (opp[pairKey(a, b)] || 0) * 100 + (res[a] && res[a] === res[b] ? 3 : 0) + Math.random(); }); });
+    var cost = function (a, b) { return C[a < b ? a + '|' + b : b + '|' + a]; };
+    var order = shuffled(ids), best = null, bestC = Infinity, cur = [];
+    if (order.length > 14) {                    // tidak terjadi (maks 6 court), cadangan: rakus
+      var left = order.slice(), out = [];
+      while (left.length >= 2) { var a0 = left.shift(), bi = 0; left.forEach(function (b, i) { if (cost(a0, b) < cost(a0, left[bi])) bi = i; }); out.push([a0, left.splice(bi, 1)[0]]); }
+      return out;
+    }
+    (function rec(rest, c) {
+      if (c >= bestC) return;
+      if (!rest.length) { bestC = c; best = cur.slice(); return; }
+      for (var i = 1; i < rest.length; i++) {
+        cur.push([rest[0], rest[i]]);
+        rec(rest.slice(1, i).concat(rest.slice(i + 1)), c + cost(rest[0], rest[i]));
+        cur.pop();
+      }
+    })(order, 0);
+    return best || [];
+  }
+  /* jadwal round-robin (metode lingkaran) dari urutan tim yang diacak: n tim → n−1 ronde, tiap tim bertemu semua tim
+     lain tepat sekali (tim ganjil: satu tim istirahat bergiliran). Ronde dari jadwal dipakai dalam urutan acak. */
+  function pcSchedule(ids) {
+    var o = shuffled(ids), rounds = [];
+    if (o.length % 2) o.push(null);
+    var n = o.length;
+    for (var r = 0; r < n - 1; r++) {
+      var pr = [];
+      for (var i = 0; i < n / 2; i++) { var a = o[i], b = o[n - 1 - i]; if (a && b) pr.push([a, b]); }
+      rounds.push(pr);
+      o.splice(1, 0, o.pop());                                    // putar semua kecuali tim pertama
+    }
+    return { ids: ids.slice().sort(), rounds: rounds };
+  }
+  /* lawan ronde berikutnya: ronde jadwal yang belum dipakai & semua timnya siap (yang paling sedikit pertemuan ulang,
+     lalu yang paling banyak tim kalah vs tim menang, acak bila sama); tidak ada yang cocok (tim berubah / ada yang
+     belum siap) → undian dengan biaya pertemuan ulang terkecil */
+  function pcRoundPairs(S, ids, k) {
+    var pc = S.pc, all = S.teams.filter(function (t) { return teamActive(S, t); }).map(function (t) { return t.id; }).sort();
+    if (!pc.rr || pc.rr.ids.join() !== all.join() || !pc.rr.rounds.length) pc.rr = pcSchedule(all);
+    var opp = stats(S).teamOpp, res = {}, ok = {}, best = null, bestC = Infinity;
+    ids.forEach(function (id) { ok[id] = 1; res[id] = pcLastRes(S, id); });
+    pc.rr.rounds.forEach(function (pr, i) {
+      if (pr.length > k || !pr.every(function (x) { return ok[x[0]] && ok[x[1]]; })) return;
+      var c = Math.random();
+      pr.forEach(function (x) { c += (opp[pairKey(x[0], x[1])] || 0) * 100 + (res[x[0]] && res[x[0]] === res[x[1]] ? 3 : 0); });
+      if (c < bestC) { bestC = c; best = i; }
+    });
+    if (best !== null && bestC < 100) return pc.rr.rounds.splice(best, 1)[0];
+    if (ids.length > 2 * k) {                                      // tim lebih banyak dari court: yang paling sedikit main ikut lebih dulu
+      var pl = {};
+      S.matches.forEach(function (m) { if (m.status !== 'void') [m.tA, m.tB].forEach(function (t) { if (t) pl[t] = (pl[t] || 0) + 1; }); });
+      ids = shuffled(ids).sort(function (a, b) { return (pl[a] || 0) - (pl[b] || 0); }).slice(0, 2 * k);
+    }
+    return pcPairs(S, ids);
+  }
+  /* ronde baru: lawan dari jadwal rotasi, penantang = yang kalah di match terakhirnya, urutan memilih court dikocok */
+  function pcNewRound(S) {
+    var pc = S.pc;
+    var ids = S.teams.filter(function (t) { return pcFree(S, t.id); }).map(function (t) { return t.id; });
+    var k = Math.min(S.courts.filter(function (c) { return c.active; }).length, Math.floor(ids.length / 2));
+    if (k < 1) return false;
+    var pairs = pcRoundPairs(S, ids, k);
+    if (!pairs.length) return false;
+    pc.round++;
+    pc.pend = shuffled(pairs).map(function (x) {
+      var ra = pcLastRes(S, x[0]), rb = pcLastRes(S, x[1]);
+      var ch = ra === 'l' && rb !== 'l' ? x[0] : rb === 'l' && ra !== 'l' ? x[1] : Math.random() < 0.5 ? x[0] : x[1];
+      return { id: uid('d_'), ch: ch, op: ch === x[0] ? x[1] : x[0], rd: pc.round, cards: [] };
+    });
+    return true;
+  }
+  /* tantangan yang timnya tidak bisa main lagi dibatalkan; kartunya kembali ke tangan */
   function pcSync(S) {
-    var pc = S.pc || (S.pc = { st: {}, pend: [], last: {}, order: [] });
-    pc.st = pc.st || {}; pc.pend = pc.pend || []; pc.last = pc.last || {};
-    var live = {};
-    liveMatches(S).forEach(function (m) { if (m.tA) live[m.tA] = 1; if (m.tB) live[m.tB] = 1; });
-    // tantangan yang timnya tidak aktif lagi dibatalkan; tim lainnya kembali ke tempat semula
+    var pc = pcState(S), live = teamLive(S);
     pc.pend = pc.pend.filter(function (p) {
-      var ok = pcFree(S, p.ch) && pcFree(S, p.op);
-      if (!ok) { pc.st[p.ch] = { s: p.chFrom || 'q', at: p.chAt }; pc.st[p.op] = { s: p.opFrom, at: p.opAt }; }
+      var ok = pcFree(S, p.ch) && pcFree(S, p.op) && !live[p.ch] && !live[p.op];
+      if (!ok) pcReturn(S, p.cards);
       return ok;
     });
-    var inPend = {};
-    pc.pend.forEach(function (p) { inPend[p.ch] = inPend[p.op] = 1; });
-    S.teams.forEach(function (t) {
-      var x = pc.st[t.id];
-      if (!teamActive(S, t)) { if (x) delete pc.st[t.id]; return; }
-      if (live[t.id]) { if (!x || x.s !== 'play') pc.st[t.id] = { s: 'play', at: x ? x.at : now() }; return; }
-      if (!x || x.s === 'play' || (x.s === 'pend' && !inPend[t.id])) pc.st[t.id] = { s: 'pool', at: x ? x.at : now() };
-    });
-  }
-  function byAt(st) { return function (a, b) { return (st[a].at - st[b].at) || (a < b ? -1 : 1); }; }
-  /* penantang terdepan yang bisa mengundi lawan → tantangan baru (menunggu court).
-     Penantang = antrean kalah (urut waktu kalah); bila tidak ada yang bisa mengundi (antrean kosong, belum siap, atau
-     hanya tersisa lawan barusan), tim kolam yang paling lama menunggu jadi penantang supaya court tidak menganggur. */
-  function pcDraw(S) {
-    var pc = S.pc, st = pc.st;
-    var ids = Object.keys(st).filter(function (id) { return pcFree(S, id); });
-    var q = ids.filter(function (id) { return st[id].s === 'q'; }).sort(byAt(st));
-    var pool = ids.filter(function (id) { return st[id].s === 'pool'; }).sort(byAt(st));
-    var two = S.teams.filter(function (t) { return teamActive(S, t); }).length <= 2;
-    var chs = q.concat(pool);
-    for (var i = 0; i < chs.length; i++) {
-      var ch = chs[i];
-      var fresh = function (id) { return id !== ch && id !== pc.last[ch] && pc.last[id] !== ch; };   // bukan lawan barusan
-      var cand = pool.filter(fresh);
-      if (!cand.length) cand = q.filter(fresh);
-      // hanya tersisa lawan barusan & tidak ada tim lain sama sekali (2 tim): rematch tidak terhindarkan
-      if (!cand.length && two) cand = pool.concat(q).filter(function (id) { return id !== ch; });
-      if (!cand.length) continue;
-      var op = cand[Math.floor(Math.random() * cand.length)];
-      var p = { id: uid('d_'), ch: ch, op: op, at: now(), chFrom: st[ch].s, chAt: st[ch].at, opFrom: st[op].s, opAt: st[op].at };
-      st[ch] = { s: 'pend', at: st[ch].at }; st[op] = { s: 'pend', at: st[op].at };
-      pc.pend.push(p);
-      return p;
-    }
-    return null;
   }
   function pcStart(S, p, court) {
     var tc = teamById(S, p.ch), to = teamById(S, p.op);
     S.pc.pend = S.pc.pend.filter(function (x) { return x !== p; });
     var m = commitMatch(S, court, { A: [tc.a, tc.b], B: [to.a, to.b], tA: tc.id, tB: to.id }, true);
     m.val = courtValue(S, court);
-    m.pc = { ch: p.ch, op: p.op, chFrom: p.chFrom, chAt: p.chAt, opFrom: p.opFrom, opAt: p.opAt };
-    S.pc.st[p.ch] = { s: 'play', at: p.chAt }; S.pc.st[p.op] = { s: 'play', at: p.opAt };
+    m.pc = { ch: p.ch, op: p.op, rd: p.rd || S.pc.round };
+    m.cards = p.cards || [];
     return m;
   }
   function pcFreeCourts(S) { return S.courts.filter(function (c) { return c.active && !courtLive(S, c.id); }); }
-  /* isi court kosong: undi tantangan sebanyak court kosong; satu court kosong → langsung dipakai tantangan terdepan */
+  /* semua court selesai → ronde baru; court kosong tinggal satu → tantangan terdepan otomatis ke court itu */
   function pcAdvance(S) {
     pcSync(S);
     var pc = S.pc, created = [];
-    for (var guard = 0; guard < 24; guard++) {
+    if (!pc.pend.length && !liveMatches(S).length) pcNewRound(S);
+    for (var g = 0; g < 12 && pc.pend.length; g++) {
       var free = pcFreeCourts(S);
-      if (!free.length) break;
-      while (pc.pend.length < free.length && pcDraw(S)) { /* undi berikutnya */ }
-      if (!pc.pend.length) break;
-      if (free.length > 1) break;                                   // menunggu tantangan terdepan memilih court
+      if (free.length !== 1) break;                                 // lebih dari satu: penantang memilih court
       created.push(pcStart(S, pc.pend[0], free[0]));
     }
     return created;
@@ -934,32 +1037,165 @@ var Engine = (function () {
     pcAdvance(S);
     return m;
   }
-  /* hasil match: menang → kolam tunggu, kalah → antrean penantang. Skor dikoreksi & pemenang berubah →
-     ditukar, selama kedua tim belum pindah dari tempat hasil match ini */
-  function pcAfterMatch(S, m) {
-    if (!m.tA || !m.tB || m.sA === m.sB) return;
-    var pc = S.pc || (pcSync(S), S.pc), st = pc.st, live = {};
-    liveMatches(S).forEach(function (x) { if (x.tA) live[x.tA] = 1; if (x.tB) live[x.tB] = 1; });
-    var win = m.sA > m.sB ? m.tA : m.tB, lose = win === m.tA ? m.tB : m.tA, t = m.end || now();
-    // tim masih milik match ini: baru selesai (masih tercatat main), atau sudah ditempatkan hasil match ini & belum diundi lagi
-    var fromThis = function (id) { var x = st[id]; return !live[id] && (!x || x.s === 'play' || ((x.s === 'pool' || x.s === 'q') && x.m === m.id)); };
-    if (fromThis(win) && fromThis(lose)) { st[win] = { s: 'pool', at: t, m: m.id }; st[lose] = { s: 'q', at: t + 1, m: m.id }; }
-    pc.last[win] = lose; pc.last[lose] = win;
+  /* hasil match: kartu yang dipakai ke tumpukan buang; tim kalah mengambil 1 kartu (bila belum memegang 2).
+     Koreksi skor yang menukar pemenang: kartu yang diambil tim sebelumnya ditarik bila belum dipakai, tim kalah baru mengambil */
+  function pcResult(S, m, first) {
+    if (!m.tA || !m.tB) return;
+    var pc = pcState(S), cd = pc.cd;
+    if (first) (m.cards || []).forEach(function (c) { if (PC_CARDS[c.k]) cd.disc.push({ id: c.id, k: c.k }); });
+    if (m.sA === m.sB) return;
+    var lose = m.sA > m.sB ? m.tB : m.tA;
+    if (m.drawn && m.drawn.t === lose) return;
+    if (m.drawn && m.drawn.id && !m.drawn.z) {
+      var h = pcHandOf(S, m.drawn.t), i = h.map(function (x) { return x.id; }).indexOf(m.drawn.id);
+      if (i >= 0) { cd.disc.push(h.splice(i, 1)[0]); pcBump(S, m.drawn.t); }
+    }
+    var hand = pcHandOf(S, lose);
+    if (hand.length >= 2) { m.drawn = { t: lose, full: 1 }; return; }
+    var card = pcDrawOne(S);
+    if (!card) { m.drawn = null; return; }
+    if (card.k === 'zonk') { cd.disc.push(card); m.drawn = { t: lose, z: 1, id: card.id }; }
+    else { hand.push(card); m.drawn = { t: lose, id: card.id }; pcBump(S, lose); }
   }
-  /* match dibatalkan: penantang & lawannya kembali ke tempat semula (posisi antrean tidak hilang) */
+  /* match dibatalkan: tantangannya kembali ke depan antrean pilih court, kartu yang dipakai kembali ke tangan */
   function pcVoid(S, m) {
-    if (!m.pc || !S.pc) return;
-    S.pc.st[m.pc.ch] = { s: m.pc.chFrom === 'pool' ? 'pool' : 'q', at: m.pc.chAt };
-    S.pc.st[m.pc.op] = { s: m.pc.opFrom === 'q' ? 'q' : 'pool', at: m.pc.opAt };
+    if (!m.pc) return;
+    var pc = pcState(S);
+    pc.pend.unshift({ id: uid('d_'), ch: m.pc.ch, op: m.pc.op, rd: m.pc.rd, cards: [] });
+    pcReturn(S, m.cards);
+    m.cards = [];
+    if (m.tally) m.tally = m.tally.filter(function (x) { return x === 'A' || x === 'B'; });
   }
-  /* untuk tampilan: antrean penantang, kolam tunggu, tantangan yang menunggu court */
+  /* tempat kartu dipakai: match (di court) atau tantangan (belum dapat court) */
+  function pcCtx(S, ref) {
+    var m = findMatch(S, ref);
+    if (m && m.pc) return { m: m, list: m.cards || (m.cards = []), ch: m.pc.ch, teams: [m.tA, m.tB] };
+    var p = (pcState(S).pend).filter(function (x) { return x.id === ref; })[0];
+    if (p) return { p: p, list: p.cards || (p.cards = []), ch: p.ch, teams: [p.ch, p.op] };
+    return null;
+  }
+  function pcUsed(list, tid) { return (list || []).some(function (c) { return c.by === tid; }); }
+  /* penantang sudah mengumumkan: sudah memakai kartu, menyatakan tanpa kartu, atau tidak memegang kartu sebelum-match */
+  function pcChDeclared(S, x) {
+    if (pcUsed(x.list, x.ch) || (x.m && x.m.pass && x.m.pass[x.ch])) return true;
+    return !pcHandOf(S, x.ch).some(function (c) { return PC_CARDS[c.k] && PC_CARDS[c.k].when === 'pre'; });
+  }
+  /* pakai kartu. o: { team, card, ref (match / tantangan), target (tim untuk Pilih Lawan), pid (pemain lawan untuk Switch Hand) }
+     → pesan error, atau null bila berhasil */
+  function pcPlay(S, o) {
+    var pc = pcState(S), hand = pcHandOf(S, o.team), idx = hand.map(function (x) { return x.id; }).indexOf(o.card);
+    if (idx < 0) return 'Kartu itu tidak ada di tangan timmu';
+    var card = hand[idx], def = PC_CARDS[card.k];
+    if (def.when === 'resp') return 'Block dan Reverse dipakai untuk menjawab kartu lawan';
+    if (def.when === 'none') return 'Kartu ini tidak bisa dipakai';
+    var x = pcCtx(S, o.ref);
+    if (!x || x.teams.indexOf(o.team) < 0) return 'Timmu tidak ada di match itu';
+    if (pcUsed(x.list, o.team)) return 'Timmu sudah memakai 1 kartu di match ini';
+    var opp = x.teams[0] === o.team ? x.teams[1] : x.teams[0];
+    var e = { id: card.id, k: card.k, by: o.team, tg: opp, at: now(), st: 'on' };
+    if (def.when === 'draw') {
+      if (!x.p) return 'Pilih Lawan dipakai saat undian lawan, sebelum timmu mendapat court';
+      var tp = pc.pend.filter(function (p) { return p !== x.p && (p.ch === o.target || p.op === o.target); })[0];
+      if (!tp) return 'Pilih tim yang belum mendapat court';
+      if (pcUsed(tp.cards, o.target)) return 'Tim itu sudah memakai kartu untuk match berikutnya';
+      var mine = x.p.ch === o.team ? x.p.op : x.p.ch, theirs = tp.ch === o.target ? tp.op : tp.ch;
+      e.tg = o.target; e.p2 = tp.id;
+      e.prev = [x.p.ch, x.p.op, tp.ch, tp.op];
+      x.p.ch = o.team; x.p.op = o.target;                         // pemegang kartu jadi penantang lawan pilihannya
+      tp.ch = theirs; tp.op = mine;                                // lawan lama kedua tim saling bertemu
+      // kartu tim lawan lama yang sudah dipakai ikut pindah ke tantangan barunya
+      (x.p.cards || []).filter(function (c) { return c.by === mine; }).forEach(function (c) { x.p.cards.splice(x.p.cards.indexOf(c), 1); tp.cards.push(c); });
+      (tp.cards || []).filter(function (c) { return c.by === o.target; }).forEach(function (c) { tp.cards.splice(tp.cards.indexOf(c), 1); x.p.cards.push(c); });
+    } else {
+      if (!x.m || x.m.status !== 'live') return 'Kartu ini dipakai saat timmu sudah di court';
+      var started = !!x.m.go || tallyPts(x.m) > 0;
+      if (def.when === 'pre') {
+        if (started) return 'Kartu ini harus diumumkan sebelum match dimulai';
+        if (o.team !== x.ch && !pcChDeclared(S, x)) return 'Penantang mengumumkan kartu lebih dulu';
+      }
+      if (def.when === 'live' && !x.m.go) return 'Ambil Semua Poin dipakai saat game berjalan (setelah Game start)';
+      if (card.k === 'swh') {
+        var ot = teamById(S, opp);
+        if (!ot || (o.pid !== ot.a && o.pid !== ot.b)) return 'Pilih satu pemain lawan untuk Switch Hand';
+        e.pid = o.pid;
+      }
+      e.n0 = tallyPts(x.m);
+      if (def.dur) { var ts = tallyState(S, x.m); e.g = ts.a + ts.b + 1; }
+      if (card.k === 'steal') (x.m.tally = x.m.tally || []).push('S:' + card.id);
+    }
+    hand.splice(idx, 1); pcBump(S, o.team);
+    x.list.push(e);
+    return null;
+  }
+  /* jawab kartu lawan dengan Block (batal) atau Reverse (efek berbalik); hanya sebelum poin berikutnya,
+     atau sebelum tantangan mendapat court untuk Pilih Lawan */
+  function pcRespond(S, o) {
+    var pc = pcState(S), hand = pcHandOf(S, o.team), idx = hand.map(function (x) { return x.id; }).indexOf(o.card);
+    var card = hand[idx];
+    if (!card || (card.k !== 'block' && card.k !== 'reverse')) return 'Pilih kartu Block atau Reverse di tangan timmu';
+    var x = pcCtx(S, o.ref);
+    if (!x) return 'Match tidak ditemukan';
+    var tc = x.list.filter(function (c) { return c.id === o.of && !c.of; })[0];
+    if (!tc || tc.st !== 'on') return 'Kartu itu sudah tidak bisa dijawab';
+    if (tc.tg !== o.team) return 'Kartu itu tidak ditujukan ke timmu';
+    if (card.k === 'reverse' && !PC_CARDS[tc.k].rev) return 'Reverse hanya untuk No Smash, No Glass, Switch Hand, dan Ambil Semua Poin';
+    var own = x.list;
+    if (tc.k === 'pick') {
+      var p2 = pc.pend.filter(function (p) { return p.id === tc.p2; })[0];
+      if (!p2 || !x.p || pc.pend.indexOf(x.p) < 0) return 'Tantangan itu sudah mendapat court';
+      if (pcUsed(x.list.filter(function (c) { return c !== tc; }), o.team) || pcUsed(p2.cards, o.team)) return 'Timmu sudah memakai 1 kartu di match ini';
+      var mine = tc.by;
+      x.p.ch = tc.prev[0]; x.p.op = tc.prev[1]; p2.ch = tc.prev[2]; p2.op = tc.prev[3];
+      // kartu tim yang pindah dikembalikan ke tantangan asalnya
+      var inP2 = function (t) { return t === p2.ch || t === p2.op; };
+      x.p.cards.filter(function (c) { return c !== tc && inP2(c.by); }).forEach(function (c) { x.p.cards.splice(x.p.cards.indexOf(c), 1); p2.cards.push(c); });
+      p2.cards.filter(function (c) { return !inP2(c.by); }).forEach(function (c) { p2.cards.splice(p2.cards.indexOf(c), 1); x.p.cards.push(c); });
+      if (mine !== x.p.ch && mine !== x.p.op) return 'Tantangan berubah';
+      own = p2.cards;
+    } else {
+      if (x.m && (x.m.status !== 'live' || tallyPts(x.m) !== tc.n0)) return 'Waktu menjawab sudah lewat (sudah ada poin baru)';
+      if (pcUsed(x.list, o.team)) return 'Timmu sudah memakai 1 kartu di match ini';
+    }
+    hand.splice(idx, 1); pcBump(S, o.team);
+    tc.st = card.k === 'block' ? 'blocked' : 'reversed';
+    own.push({ id: card.id, k: card.k, by: o.team, tg: tc.by, of: tc.id, ofk: tc.k, at: now(), st: 'on' });
+    return null;
+  }
+  /* penantang menyatakan tanpa kartu sebelum match, supaya lawan bisa mengumumkan kartunya */
+  function pcPass(S, ref, team) {
+    var m = findMatch(S, ref);
+    if (!m || m.status !== 'live' || !m.pc) return 'Match tidak ditemukan';
+    if (team !== m.pc.ch) return 'Hanya penantang yang mengumumkan lebih dulu';
+    (m.pass = m.pass || {})[team] = 1;
+    return null;
+  }
+  /* poin court tiap tim, urut waktu selesai: menang +nilai (Double Point ×2), kalah −nilai;
+     Tukar Ranking: pemegang menang & totalnya masih di bawah lawan → total keduanya ditukar */
+  function pcPoints(S) {
+    var tot = {};
+    S.teams.forEach(function (t) { tot[t.id] = 0; });
+    S.matches.filter(function (m) { return m.status === 'done' && m.tA && m.tB && m.sA !== m.sB; })
+      .sort(function (a, b) { return (a.end || 0) - (b.end || 0) || a.no - b.no; })
+      .forEach(function (m) {
+        var w = m.sA > m.sB ? m.tA : m.tB, l = w === m.tA ? m.tB : m.tA, v = m.val || 1;
+        var on = function (k) { return (m.cards || []).some(function (c) { return c.k === k && c.by === w && c.st === 'on'; }); };
+        tot[w] = (tot[w] || 0) + (on('double') ? 2 * v : v);
+        tot[l] = (tot[l] || 0) - v;
+        if (on('swap') && tot[w] < tot[l]) { var t = tot[w]; tot[w] = tot[l]; tot[l] = t; }
+      });
+    return tot;
+  }
+  /* untuk tampilan: ronde, tantangan yang menunggu court, tim yang sudah selesai di ronde ini, yang istirahat */
   function pcLists(S) {
-    if (!isPC(S) || !S.pc || !S.pc.st) return { q: [], pool: [], pend: [] };
-    var st = S.pc.st, ids = Object.keys(st).filter(function (id) { return teamById(S, id); });
+    if (!isPC(S) || !S.pc) return { round: 0, pend: [], done: [], out: [] };
+    var pc = S.pc, live = teamLive(S), inPend = {}, doneR = {};
+    (pc.pend || []).forEach(function (p) { inPend[p.ch] = inPend[p.op] = 1; });
+    S.matches.forEach(function (m) { if (m.status === 'done' && m.pc && m.pc.rd === pc.round) { doneR[m.tA] = doneR[m.tB] = 1; } });
+    var idle = S.teams.filter(function (t) { return teamActive(S, t) && !live[t.id] && !inPend[t.id]; });
     return {
-      q: ids.filter(function (id) { return st[id].s === 'q'; }).sort(byAt(st)),
-      pool: ids.filter(function (id) { return st[id].s === 'pool'; }).sort(byAt(st)),
-      pend: (S.pc.pend || []).slice()
+      round: pc.round || 0, pend: (pc.pend || []).slice(),
+      done: idle.filter(function (t) { return doneR[t.id]; }).map(function (t) { return t.id; }),
+      out: idle.filter(function (t) { return !doneR[t.id]; }).map(function (t) { return t.id; })
     };
   }
 
@@ -974,7 +1210,9 @@ var Engine = (function () {
     playingMatchOf: playingMatchOf, nextMatchOf: nextMatchOf, canWait: canWait,
     tallyState: tallyState, tally: tally, swapCandidates: swapCandidates, swapAcross: swapAcross, swapTeamAcross: swapTeamAcross,
     COURT_COLORS: COURT_COLORS,
-    isPC: isPC, courtValue: courtValue, teamById: teamById, pcInit: pcInit, pcAdvance: pcAdvance, pcChoose: pcChoose, pcLists: pcLists, pcSync: pcSync
+    isPC: isPC, courtValue: courtValue, teamById: teamById, pcInit: pcInit, pcAdvance: pcAdvance, pcChoose: pcChoose, pcLists: pcLists, pcSync: pcSync,
+    PC_CARDS: PC_CARDS, pcPlay: pcPlay, pcRespond: pcRespond, pcPass: pcPass, pcPoints: pcPoints, pcHandCount: pcHandCount, pcLastRes: pcLastRes,
+    pcChDeclared: function (S, ref) { var x = pcCtx(S, ref); return !x || pcChDeclared(S, x); }, tallyPts: tallyPts
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = Engine;
