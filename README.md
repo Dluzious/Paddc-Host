@@ -1,4 +1,4 @@
-# Paddoc Host v2.9.1
+# Paddoc Host v2.10
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -169,6 +169,34 @@ Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas 
   Silent Killer. Kudos host: Super Host, Organized Host, Vibe Master, Problem Solver, Game Day Hero, Reliable Host.
 - Kudos tersimpan per orang dan terakumulasi antar sesi. **Profil → Kudos untukmu** menampilkan jumlah per kudos dan
   siapa pemberinya; orang lain tidak bisa melihatnya. Admin melihat semua di **Database → Kudos**.
+
+## Power Cup (v2.10, tahap 1: tanpa kartu)
+
+Format turnamen khusus: pilih **Power Cup** di *Buat rencana sesi*. Aturannya tetap, tidak ikut pengaturan skor,
+rotasi, atau klasemen biasa.
+
+- **Pasangan tetap level atas + bawah.** Tandai pemain level atas saat membuat rencana atau saat *Mulai Sesi*; tiap
+  pemain level atas dipasangkan acak dengan satu pemain level bawah. Jumlah level tidak seimbang → sebanyak mungkin
+  atas + bawah, sisanya dipasangkan acak. Mode *Manual* tetap ada. Hadir selalu full (tanpa jam hadir 1/2 jam).
+- **Nilai court**: bawaan Court 1 ±1 (hijau), Court 2 ±2 (oranye), Court 3 ±3 (navy); bisa diubah ±1–±6 di rencana
+  atau *Atur* (berlaku untuk match berikutnya). Menang **+nilai**, kalah **−nilai**.
+- **Match = 5 game, selalu dimainkan penuh** (skor game total 5, mis. 3-2 atau 4-1). Skor 15-30-40; 40-40 = poin
+  penentu dimainkan.
+- **Ronde pertama**: urutan semua pasangan diundi; pasangan urutan 1..(jumlah court) jadi penantang dan mengundi lawan
+  dari tim lain. Penantang memilih court berurutan (urutan 1 dulu); court terakhir otomatis.
+- **Setelah match**: yang menang masuk *menunggu diundi*; yang kalah masuk **antrean penantang** (urut waktu kalah).
+  Court kosong → penantang terdepan langsung mengundi lawan dari tim yang menunggu, **bukan lawan barusan**. Tidak ada
+  tim menang yang menunggu → diundi dari penantang lain. Hanya tersisa lawan barusan → penantang menunggu (rematch
+  hanya bila timnya tinggal 2). Antrean kosong / belum siap → tim yang paling lama menunggu jadi penantang, supaya court
+  tidak menganggur.
+- **Pilih court**: hanya bila court kosong lebih dari satu. HP pemain tim penantang menampilkan tombol court (nilai
+  tertinggi di atas); host bisa memilihkan dari papan iPad, atau **Acak court** untuk semua tantangan sekaligus.
+- **Klasemen**: total poin court (boleh minus; tim yang belum main = 0, di atas tim minus), lalu selisih game.
+  Papan, HP, riwayat match (*C3 ±3, penantang menang/kalah*), riwayat sesi, dan podium memakai urutan ini.
+- Batal match → kedua tim kembali ke posisinya semula. Pemain *Belum siap* / keluar → timnya dilewati sampai siap lagi.
+  Koreksi skor menukar menang/kalah selama kedua tim belum diundi lagi; klasemen selalu ikut skor terakhir.
+- Tukar pemain & acak ulang court tidak dipakai di Power Cup (lawan ditentukan undian penantang).
+- Belum ada: kartu power (tahap 2), tampilan & animasi khusus Power Cup di iPad (tahap 3).
 
 ## Home: halaman pembuka (v2.9.1)
 

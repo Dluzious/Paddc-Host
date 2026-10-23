@@ -14,19 +14,23 @@ var Engine = (function () {
 
   /* ---------- sesi baru ---------- */
   function newSession(o) {
+    var pc = o.format === 'powercup';
     var S = {
       id: uid('s_'),
       name: o.name || 'Sesi Paddoc',
       date: new Date().toISOString(),
       status: 'live',
-      format: o.format || 'americano',          // americano | mexicano
-      teamMode: o.teamMode || 'random',         // random | fixed
-      scoring: o.scoring || { type: 'points', mode: 'total', n: 21 },
-      rules: Object.assign({ maxStreak: 2, catchUp: true, sortBy: 'wins', drawMode: 'rolling', deuce: 'golden' }, o.rules || {}),
+      format: pc ? 'powercup' : o.format === 'mexicano' ? 'mexicano' : 'americano',   // americano | mexicano | powercup
+      teamMode: pc ? 'fixed' : o.teamMode || 'random',                               // random | fixed (Power Cup selalu pasangan tetap)
+      // Power Cup: 5 game selalu dimainkan penuh, skor 15-30-40, 40-40 = poin penentu dimainkan
+      scoring: pc ? { type: 'tennis', mode: 'total', n: 5 } : o.scoring || { type: 'points', mode: 'total', n: 21 },
+      rules: Object.assign({ maxStreak: 2, catchUp: true, sortBy: 'wins', drawMode: 'rolling', deuce: 'golden' }, o.rules || {}, pc ? { sortBy: 'pc', drawMode: 'rolling', deuce: 'golden' } : {}),
       courts: (o.courts || []).map(function (c, i) {
+        var v = Math.round(Number(c.value));
         return {
-          id: c.id || uid('c_'), name: c.name || ('Court ' + (i + 1)), gender: c.gender || 'mix', active: c.active !== false,
-          color: COURT_COLORS.indexOf(c.color) >= 0 ? c.color : 'blue', hostId: c.hostId || null
+          id: c.id || uid('c_'), name: c.name || ('Court ' + (i + 1)), gender: pc ? 'mix' : c.gender || 'mix', active: c.active !== false,
+          color: COURT_COLORS.indexOf(c.color) >= 0 ? c.color : 'blue', hostId: c.hostId || null,
+          value: v >= 1 && v <= 9 ? v : pc ? i + 1 : null          // Power Cup: nilai court (menang +nilai, kalah −nilai)
         };
       }),
       parts: {},
@@ -148,11 +152,12 @@ var Engine = (function () {
   function stats(S) {
     var pl = {}, tm = {}, partner = {}, opp = {}, teamOpp = {};
     function P(id) {
-      return pl[id] || (pl[id] = { id: id, played: 0, w: 0, d: 0, l: 0, pf: 0, pa: 0 });
+      return pl[id] || (pl[id] = { id: id, played: 0, w: 0, d: 0, l: 0, pf: 0, pa: 0, pts: 0 });
     }
     function T(id) {
-      return tm[id] || (tm[id] = { id: id, played: 0, w: 0, d: 0, l: 0, pf: 0, pa: 0 });
+      return tm[id] || (tm[id] = { id: id, played: 0, w: 0, d: 0, l: 0, pf: 0, pa: 0, pts: 0 });
     }
+    var pcv = isPC(S);
     Object.keys(S.parts).forEach(P);
     S.teams.forEach(function (t) { T(t.id); });
     S.matches.forEach(function (m) {
@@ -166,13 +171,15 @@ var Engine = (function () {
       var sides = [[m.A, m.sA, m.sB, m.tA], [m.B, m.sB, m.sA, m.tB]];
       sides.forEach(function (s) {
         var res = s[1] > s[2] ? 'w' : (s[1] < s[2] ? 'l' : 'd');
+        // Power Cup: poin court untuk klasemen (menang +nilai court, kalah −nilai court)
+        var pts = pcv && m.val ? (res === 'w' ? m.val : res === 'l' ? -m.val : 0) : 0;
         s[0].forEach(function (pid) {
           var x = P(pid);
-          x.played++; x[res]++; x.pf += s[1]; x.pa += s[2];
+          x.played++; x[res]++; x.pf += s[1]; x.pa += s[2]; x.pts += pts;
         });
         if (s[3]) {
           var t = T(s[3]);
-          t.played++; t[res]++; t.pf += s[1]; t.pa += s[2];
+          t.played++; t[res]++; t.pf += s[1]; t.pa += s[2]; t.pts += pts;
         }
       });
     });
@@ -184,10 +191,12 @@ var Engine = (function () {
 
   function sorter(sortBy, nameOf) {
     return function (a, b) {
-      if ((a.played > 0) !== (b.played > 0)) return a.played > 0 ? -1 : 1;
+      // Power Cup: poin boleh minus, jadi tim yang belum main (0) tetap di atas tim minus
+      if (sortBy !== 'pc' && (a.played > 0) !== (b.played > 0)) return a.played > 0 ? -1 : 1;
       var k;
       // utama: jumlah menang; sama → selisih poin (poin dapat − poin kebobolan, dijumlah tiap match)
-      if (sortBy === 'wins') k = (b.w - a.w) || (b.diff - a.diff) || (b.pf - a.pf);
+      if (sortBy === 'pc') k = (b.pts - a.pts) || (b.diff - a.diff) || (b.w - a.w);      // Power Cup: poin court, lalu selisih game
+      else if (sortBy === 'wins') k = (b.w - a.w) || (b.diff - a.diff) || (b.pf - a.pf);
       else if (sortBy === 'avg') k = (b.avg - a.avg) || (b.diff - a.diff) || (b.w - a.w);
       else k = (b.pf - a.pf) || (b.diff - a.diff) || (b.w - a.w);
       if (k) return k;
@@ -199,7 +208,7 @@ var Engine = (function () {
   function standings(S, players, opt) {
     opt = opt || {};
     var st = stats(S);
-    var sortBy = opt.sortBy || S.rules.sortBy || 'wins';
+    var sortBy = isPC(S) ? 'pc' : opt.sortBy || S.rules.sortBy || 'wins';
     var nameOf = function (id) {
       if (opt.unit === 'team') {
         var t = S.teams.filter(function (x) { return x.id === id; })[0];
@@ -469,6 +478,7 @@ var Engine = (function () {
      - 'round'   : court yang selesai menunggu sampai semua court selesai, lalu semua court diundi
                    bersamaan dari seluruh pemain (lebih adil, semua bisa bertemu). force = undi sekarang. */
   function fillCourts(S, players, onlyCourt, force) {
+    if (isPC(S)) return pcAdvance(S);
     var created = [];
     var roundMode = S.rules && S.rules.drawMode === 'round';
     var anyLive = liveMatches(S).length > 0;
@@ -553,6 +563,7 @@ var Engine = (function () {
   function voidMatch(S, id) {
     var m = findMatch(S, id);
     if (!m || m.status !== 'live') return;
+    if (isPC(S)) pcVoid(S, m);
     m.status = 'void';
     matchPlayers(m).forEach(function (pid) { restoreSnap(S, m, pid, false); });
     release(S);
@@ -561,7 +572,7 @@ var Engine = (function () {
   /* acak ulang satu court, hindari susunan yang sama */
   function reshuffle(S, players, id) {
     var m = findMatch(S, id);
-    if (!m || m.status !== 'live') return null;
+    if (!m || m.status !== 'live' || isPC(S)) return null;      // Power Cup: batalkan match, lalu penantang mengundi ulang
     var prev = { A: m.A.slice(), B: m.B.slice() };
     voidMatch(S, id);
     S.matches = S.matches.filter(function (x) { return x.id !== id; });
@@ -674,6 +685,7 @@ var Engine = (function () {
       m.status = 'done'; m.end = now();
       if (!m.start) m.start = m.end; // skor dipaksa sebelum match menunggu sempat mulai
     }
+    if (isPC(S) && m.status === 'done') pcAfterMatch(S, m);
     return release(S);
   }
 
@@ -810,6 +822,147 @@ var Engine = (function () {
       .sort(function (a, b) { return (a.eff - b.eff) || (b.skips - a.skips); });
   }
 
+
+  /* ============================================================
+     POWER CUP: pasangan tetap (level atas + bawah), nilai court ±1/±2/±3, 5 game selalu dimainkan penuh.
+     Tim kalah masuk antrean penantang (urut waktu kalah); tim menang masuk kolam tunggu untuk diundi.
+     Saat court kosong, penantang terdepan mengundi lawan dari kolam tunggu (bukan lawan barusan); kolam kosong
+     → dari penantang lain. Lebih dari satu court kosong → penantang memilih court berurutan, court terakhir otomatis.
+     S.pc = { st: { tim: { s: 'pool' | 'q' | 'pend' | 'play', at } }, pend: [tantangan menunggu court], last: { tim: lawan terakhir }, order, lv }
+     ============================================================ */
+  function isPC(S) { return !!S && S.format === 'powercup'; }
+  function courtValue(S, c) {
+    if (!c) return 1;
+    var v = Math.round(Number(c.value));
+    if (v >= 1 && v <= 9) return v;
+    var i = S.courts.indexOf(c);
+    return i >= 0 ? i + 1 : 1;
+  }
+  function teamById(S, id) { return S.teams.filter(function (t) { return t.id === id; })[0] || null; }
+  function pcFree(S, id) {                      // tim bisa diundi / menantang: aktif & tidak sedang "belum siap"
+    var t = teamById(S, id);
+    return !!t && teamActive(S, t) && !S.parts[t.a].paused && !S.parts[t.b].paused;
+  }
+  function shuffled(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), x = a[i]; a[i] = a[j]; a[j] = x; } return a; }
+  /* ronde pertama: urutan semua pasangan diundi; urutan 1..(jumlah court) jadi penantang, sisanya menunggu diundi */
+  function pcInit(S) {
+    var ids = shuffled(S.teams.filter(function (t) { return teamActive(S, t); }).map(function (t) { return t.id; }));
+    var k = Math.min(S.courts.filter(function (c) { return c.active; }).length, Math.floor(ids.length / 2)), t0 = now();
+    S.pc = Object.assign({}, S.pc || {}, { st: {}, pend: [], last: {}, order: ids });
+    ids.forEach(function (id, i) { S.pc.st[id] = { s: i < k ? 'q' : 'pool', at: t0 + i }; });
+  }
+  function pcSync(S) {
+    var pc = S.pc || (S.pc = { st: {}, pend: [], last: {}, order: [] });
+    pc.st = pc.st || {}; pc.pend = pc.pend || []; pc.last = pc.last || {};
+    var live = {};
+    liveMatches(S).forEach(function (m) { if (m.tA) live[m.tA] = 1; if (m.tB) live[m.tB] = 1; });
+    // tantangan yang timnya tidak aktif lagi dibatalkan; tim lainnya kembali ke tempat semula
+    pc.pend = pc.pend.filter(function (p) {
+      var ok = pcFree(S, p.ch) && pcFree(S, p.op);
+      if (!ok) { pc.st[p.ch] = { s: p.chFrom || 'q', at: p.chAt }; pc.st[p.op] = { s: p.opFrom, at: p.opAt }; }
+      return ok;
+    });
+    var inPend = {};
+    pc.pend.forEach(function (p) { inPend[p.ch] = inPend[p.op] = 1; });
+    S.teams.forEach(function (t) {
+      var x = pc.st[t.id];
+      if (!teamActive(S, t)) { if (x) delete pc.st[t.id]; return; }
+      if (live[t.id]) { if (!x || x.s !== 'play') pc.st[t.id] = { s: 'play', at: x ? x.at : now() }; return; }
+      if (!x || x.s === 'play' || (x.s === 'pend' && !inPend[t.id])) pc.st[t.id] = { s: 'pool', at: x ? x.at : now() };
+    });
+  }
+  function byAt(st) { return function (a, b) { return (st[a].at - st[b].at) || (a < b ? -1 : 1); }; }
+  /* penantang terdepan yang bisa mengundi lawan → tantangan baru (menunggu court).
+     Penantang = antrean kalah (urut waktu kalah); bila tidak ada yang bisa mengundi (antrean kosong, belum siap, atau
+     hanya tersisa lawan barusan), tim kolam yang paling lama menunggu jadi penantang supaya court tidak menganggur. */
+  function pcDraw(S) {
+    var pc = S.pc, st = pc.st;
+    var ids = Object.keys(st).filter(function (id) { return pcFree(S, id); });
+    var q = ids.filter(function (id) { return st[id].s === 'q'; }).sort(byAt(st));
+    var pool = ids.filter(function (id) { return st[id].s === 'pool'; }).sort(byAt(st));
+    var two = S.teams.filter(function (t) { return teamActive(S, t); }).length <= 2;
+    var chs = q.concat(pool);
+    for (var i = 0; i < chs.length; i++) {
+      var ch = chs[i];
+      var fresh = function (id) { return id !== ch && id !== pc.last[ch] && pc.last[id] !== ch; };   // bukan lawan barusan
+      var cand = pool.filter(fresh);
+      if (!cand.length) cand = q.filter(fresh);
+      // hanya tersisa lawan barusan & tidak ada tim lain sama sekali (2 tim): rematch tidak terhindarkan
+      if (!cand.length && two) cand = pool.concat(q).filter(function (id) { return id !== ch; });
+      if (!cand.length) continue;
+      var op = cand[Math.floor(Math.random() * cand.length)];
+      var p = { id: uid('d_'), ch: ch, op: op, at: now(), chFrom: st[ch].s, chAt: st[ch].at, opFrom: st[op].s, opAt: st[op].at };
+      st[ch] = { s: 'pend', at: st[ch].at }; st[op] = { s: 'pend', at: st[op].at };
+      pc.pend.push(p);
+      return p;
+    }
+    return null;
+  }
+  function pcStart(S, p, court) {
+    var tc = teamById(S, p.ch), to = teamById(S, p.op);
+    S.pc.pend = S.pc.pend.filter(function (x) { return x !== p; });
+    var m = commitMatch(S, court, { A: [tc.a, tc.b], B: [to.a, to.b], tA: tc.id, tB: to.id }, true);
+    m.val = courtValue(S, court);
+    m.pc = { ch: p.ch, op: p.op, chFrom: p.chFrom, chAt: p.chAt, opFrom: p.opFrom, opAt: p.opAt };
+    S.pc.st[p.ch] = { s: 'play', at: p.chAt }; S.pc.st[p.op] = { s: 'play', at: p.opAt };
+    return m;
+  }
+  function pcFreeCourts(S) { return S.courts.filter(function (c) { return c.active && !courtLive(S, c.id); }); }
+  /* isi court kosong: undi tantangan sebanyak court kosong; satu court kosong → langsung dipakai tantangan terdepan */
+  function pcAdvance(S) {
+    pcSync(S);
+    var pc = S.pc, created = [];
+    for (var guard = 0; guard < 24; guard++) {
+      var free = pcFreeCourts(S);
+      if (!free.length) break;
+      while (pc.pend.length < free.length && pcDraw(S)) { /* undi berikutnya */ }
+      if (!pc.pend.length) break;
+      if (free.length > 1) break;                                   // menunggu tantangan terdepan memilih court
+      created.push(pcStart(S, pc.pend[0], free[0]));
+    }
+    return created;
+  }
+  /* tantangan terdepan memilih court (courtId kosong = dipilihkan acak) */
+  function pcChoose(S, courtId) {
+    pcSync(S);
+    var p = S.pc.pend[0];
+    if (!p) return null;
+    var free = pcFreeCourts(S);
+    var c = courtId ? free.filter(function (x) { return x.id === courtId; })[0] : free[Math.floor(Math.random() * free.length)];
+    if (!c) return null;
+    var m = pcStart(S, p, c);
+    pcAdvance(S);
+    return m;
+  }
+  /* hasil match: menang → kolam tunggu, kalah → antrean penantang. Skor dikoreksi & pemenang berubah →
+     ditukar, selama kedua tim belum pindah dari tempat hasil match ini */
+  function pcAfterMatch(S, m) {
+    if (!m.tA || !m.tB || m.sA === m.sB) return;
+    var pc = S.pc || (pcSync(S), S.pc), st = pc.st, live = {};
+    liveMatches(S).forEach(function (x) { if (x.tA) live[x.tA] = 1; if (x.tB) live[x.tB] = 1; });
+    var win = m.sA > m.sB ? m.tA : m.tB, lose = win === m.tA ? m.tB : m.tA, t = m.end || now();
+    // tim masih milik match ini: baru selesai (masih tercatat main), atau sudah ditempatkan hasil match ini & belum diundi lagi
+    var fromThis = function (id) { var x = st[id]; return !live[id] && (!x || x.s === 'play' || ((x.s === 'pool' || x.s === 'q') && x.m === m.id)); };
+    if (fromThis(win) && fromThis(lose)) { st[win] = { s: 'pool', at: t, m: m.id }; st[lose] = { s: 'q', at: t + 1, m: m.id }; }
+    pc.last[win] = lose; pc.last[lose] = win;
+  }
+  /* match dibatalkan: penantang & lawannya kembali ke tempat semula (posisi antrean tidak hilang) */
+  function pcVoid(S, m) {
+    if (!m.pc || !S.pc) return;
+    S.pc.st[m.pc.ch] = { s: m.pc.chFrom === 'pool' ? 'pool' : 'q', at: m.pc.chAt };
+    S.pc.st[m.pc.op] = { s: m.pc.opFrom === 'q' ? 'q' : 'pool', at: m.pc.opAt };
+  }
+  /* untuk tampilan: antrean penantang, kolam tunggu, tantangan yang menunggu court */
+  function pcLists(S) {
+    if (!isPC(S) || !S.pc || !S.pc.st) return { q: [], pool: [], pend: [] };
+    var st = S.pc.st, ids = Object.keys(st).filter(function (id) { return teamById(S, id); });
+    return {
+      q: ids.filter(function (id) { return st[id].s === 'q'; }).sort(byAt(st)),
+      pool: ids.filter(function (id) { return st[id].s === 'pool'; }).sort(byAt(st)),
+      pend: (S.pc.pend || []).slice()
+    };
+  }
+
   return {
     uid: uid, newSession: newSession, stats: stats, standings: standings,
     fillCourts: fillCourts, courtLive: courtLive, voidMatch: voidMatch, reshuffle: reshuffle,
@@ -820,7 +973,8 @@ var Engine = (function () {
     isWaiting: isWaiting, waitingFor: waitingFor, release: release, freeWaiting: freeWaiting,
     playingMatchOf: playingMatchOf, nextMatchOf: nextMatchOf, canWait: canWait,
     tallyState: tallyState, tally: tally, swapCandidates: swapCandidates, swapAcross: swapAcross, swapTeamAcross: swapTeamAcross,
-    COURT_COLORS: COURT_COLORS
+    COURT_COLORS: COURT_COLORS,
+    isPC: isPC, courtValue: courtValue, teamById: teamById, pcInit: pcInit, pcAdvance: pcAdvance, pcChoose: pcChoose, pcLists: pcLists, pcSync: pcSync
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = Engine;

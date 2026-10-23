@@ -3,7 +3,7 @@
    Semua digambar di <canvas> supaya bisa disimpan sebagai foto (PNG) dan video (MP4/WebM).
    Ceremony.open(data, opts) → { update(data), close(), root }
    data: { title, sub, bg, podium: [{ rank, people: [{ id, name, sprite, svg, photo }], line }],
-           table: [{ rank, name, photos: [url], w, diff, me }], crowd: [{ id, name, sprite, svg }] }
+           table: [{ rank, name, photos: [url], w, diff, me }], crowd: [{ id, name, sprite, svg }], cols: judul kolom angka (opsional) }
    opts: { nextLabel, onNext, onClose, extra: [{ label, onClick }] }
    ============================================================ */
 var Ceremony = (function () {
@@ -228,7 +228,7 @@ var Ceremony = (function () {
       var x0 = b.x + pad * 1.6, x1 = b.x + b.w - pad * 2, y = b.y + pad * 2.6;
       c.textAlign = 'left'; c.textBaseline = 'alphabetic';
       c.fillStyle = '#F2C14E'; c.font = '900 ' + 20 + 'px ' + DISPLAY; c.fillText('KLASEMEN AKHIR', x0, y);
-      c.textAlign = 'right'; c.fillStyle = 'rgba(242,235,221,0.6)'; c.font = '700 10px ' + BODY; c.fillText('MENANG · SELISIH', x1, y);
+      c.textAlign = 'right'; c.fillStyle = 'rgba(242,235,221,0.6)'; c.font = '700 10px ' + BODY; c.fillText(D.cols || 'MENANG · SELISIH', x1, y);
       y += 10;
       var rows = D.table, avail = b.y + b.h - pad * 2.4 - y, rh = clamp(avail / Math.max(rows.length, 1), 22, 40), fitN = Math.floor(avail / rh);
       var shown = rows.length > fitN ? rows.slice(0, Math.max(1, fitN - 1)) : rows;
@@ -245,7 +245,7 @@ var Ceremony = (function () {
         var dtx = (r.diff > 0 ? '+' : '') + r.diff; c.fillText(dtx, x1, mid);
         var dw = Math.max(c.measureText('+00').width, c.measureText(dtx).width) + 10;
         c.fillStyle = '#FFFFFF'; c.font = '900 ' + Math.round(fs * 1.25) + 'px ' + DISPLAY; c.fillText(String(r.w), x1 - dw, mid + 1);
-        var ww = c.measureText('00').width + 8;
+        var ww = Math.max(c.measureText('00').width, c.measureText(String(r.w)).width) + 8;
         c.textAlign = 'left'; c.fillStyle = '#F2EBDD'; c.font = (r.me ? '800 ' : '600 ') + Math.round(fs) + 'px ' + BODY;
         c.fillText(fitText(c, r.name, x1 - dw - ww - nx - 4), nx, mid);
       });
