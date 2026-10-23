@@ -364,11 +364,11 @@ var Core = (function () {
     }
     return o;
   }
-  /* Power Cup: kartu di tangan. Pemain melihat kartu timnya; admin, host, dan host sesi melihat semua tim */
+  /* Power Cup: kartu di tangan. Pemain (termasuk host sesi) melihat kartu timnya; admin & host melihat semua tim */
   function pcHand(r) {
     var actor = auth(r.token), S = loadS(r.sid || A.prop('ACTIVE_SID'));
     if (!S || !Engine.isPC(S) || !S.pc || !S.pc.cd) throw err('NOT_FOUND', 'Tidak ada sesi Power Cup');
-    var all = roleStaff(actor) || isCohost(S, actor.id), t = Engine.teamOf(S, actor.id), out = {};
+    var all = roleStaff(actor), t = Engine.teamOf(S, actor.id), out = {};      // host sesi ikut bermain: hanya kartu timnya
     Object.keys(S.pc.cd.hand || {}).forEach(function (tid) { if (all || (t && t.id === tid)) out[tid] = S.pc.cd.hand[tid]; });
     if (t && !out[t.id]) out[t.id] = [];
     return { sid: S.id, all: all, team: t ? t.id : null, hands: out, hv: S.pc.cd.hv || {} };
@@ -1123,7 +1123,7 @@ var Core = (function () {
       case 'pcResp':  // jawab kartu lawan dengan Block / Reverse
       case 'pcPass':  // penantang menyatakan tanpa kartu sebelum match
         if (!Engine.isPC(S) || S.status !== 'live') throw err('INVALID', 'Hanya untuk sesi Power Cup yang berjalan');
-        var tm = staff && d.team ? Engine.teamById(S, d.team) : Engine.teamOf(S, d.pid || actor.id);
+        var tm = roleStaff(actor) && d.team ? Engine.teamById(S, d.team) : Engine.teamOf(S, actor.id);   // atas nama tim lain: admin/host saja
         if (!tm) throw err('FORBIDDEN', 'Kamu tidak ada di tim mana pun di sesi ini');
         var pe = type === 'pcCard' ? Engine.pcPlay(S, { team: tm.id, card: d.card, ref: d.ref, target: d.target, pid: d.vs })
           : type === 'pcResp' ? Engine.pcRespond(S, { team: tm.id, card: d.card, of: d.of, ref: d.ref }) : Engine.pcPass(S, d.ref, tm.id);

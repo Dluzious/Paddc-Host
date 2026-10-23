@@ -1097,6 +1097,7 @@ var Engine = (function () {
       if (!x.p) return 'Pilih Lawan dipakai saat undian lawan, sebelum timmu mendapat court';
       var tp = pc.pend.filter(function (p) { return p !== x.p && (p.ch === o.target || p.op === o.target); })[0];
       if (!tp) return 'Pilih tim yang belum mendapat court';
+      tp.cards = tp.cards || [];
       if (pcUsed(tp.cards, o.target)) return 'Tim itu sudah memakai kartu untuk match berikutnya';
       var mine = x.p.ch === o.team ? x.p.op : x.p.ch, theirs = tp.ch === o.target ? tp.op : tp.ch;
       e.tg = o.target; e.p2 = tp.id;
@@ -1143,6 +1144,7 @@ var Engine = (function () {
     if (tc.k === 'pick') {
       var p2 = pc.pend.filter(function (p) { return p.id === tc.p2; })[0];
       if (!p2 || !x.p || pc.pend.indexOf(x.p) < 0) return 'Tantangan itu sudah mendapat court';
+      p2.cards = p2.cards || [];
       if (pcUsed(x.list.filter(function (c) { return c !== tc; }), o.team) || pcUsed(p2.cards, o.team)) return 'Timmu sudah memakai 1 kartu di match ini';
       var mine = tc.by;
       x.p.ch = tc.prev[0]; x.p.op = tc.prev[1]; p2.ch = tc.prev[2]; p2.op = tc.prev[3];

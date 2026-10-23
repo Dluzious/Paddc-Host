@@ -2180,7 +2180,7 @@ function MemoryAdapter(store, persist) {
   var PKH = { sig: '', data: null, busy: false, redraw: null };
   function pkSync() {
     if (!S || !isPCS(S) || S.status !== 'live' || !me() || PKH.busy) return;
-    var t = Engine.teamOf(S, me().id), all = canRun(), hv = (S.pc && S.pc.cd && S.pc.cd.hv) || {};
+    var t = Engine.teamOf(S, me().id), all = isStaff(), hv = (S.pc && S.pc.cd && S.pc.cd.hv) || {};
     if (!t && !all) return;
     var sig = S.id + '|' + (all ? JSON.stringify(hv) : t.id + ':' + (hv[t.id] || 0));
     if (sig === PKH.sig) return;
@@ -2384,7 +2384,7 @@ function MemoryAdapter(store, persist) {
       : '<button class="btn primary' + sm + '" data-act="ended" data-m="' + m.id + '">' + icon('flag') + 'Game ended</button>';
     var second = st === 'play' ? '<button class="btn' + sm + '" data-act="scoreboard" data-c="' + m.court + '">' + icon('trophy') + 'Hitung skor</button>'
       : '<button class="btn' + sm + '" data-act="call" data-m="' + m.id + '">' + icon('bell') + 'Panggil</button>';
-    if (isPCS(S)) second += '<button class="btn' + sm + '" data-act="pkManage" data-m="' + m.id + '">' + icon('star') + 'Kartu</button>';
+    if (isPCS(S) && isStaff()) second += '<button class="btn' + sm + '" data-act="pkManage" data-m="' + m.id + '">' + icon('star') + 'Kartu</button>';
     return main + second + (st !== 'play' && !isPCS(S) ? '<button class="' + ib + '" data-act="reshuffle" data-m="' + m.id + '" aria-label="Acak ulang" title="Acak ulang">' + icon('shuffle') + '</button>' : '') +
       '<button class="' + ib + '" data-act="voidMatch" data-m="' + m.id + '" aria-label="Batalkan match" title="Batalkan match">' + icon('x') + '</button>';
   }
@@ -2654,7 +2654,7 @@ function MemoryAdapter(store, persist) {
     if (isPCS(S)) {
       var L = Engine.pcLists(S);
       return '<section class="bench"><div class="bench-lbl"><b>' + icon('zap') + 'Ronde ' + L.round + '</b><small>' + (L.pend.length ? L.pend.length + ' memilih court · ' : '') + Engine.liveMatches(S).length + ' court main' + (S.pc && S.pc.cd ? ' · tumpukan ' + S.pc.cd.n + ' kartu' : '') + '</small></div>' + pcQueueHTML() + pcAllBtn('btn') +
-        (canRun() ? '<button class="btn" data-act="pkManage">' + icon('star') + 'Kartu</button>' : '') +
+        (isStaff() ? '<button class="btn" data-act="pkManage">' + icon('star') + 'Kartu</button>' : '') +
         (isStaff() && startedFromLobby() ? '<button class="btn lobby-undo" data-act="toLobby" title="Salah tekan Mulai Sesi? Buka lagi ruang tunggu">' + icon('undo') + 'Kembali ke Lobi</button>' : '') + '</section>';
     }
     var b = Engine.bench(S);

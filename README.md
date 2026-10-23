@@ -1,4 +1,4 @@
-# Paddoc Host v2.10
+# Paddoc Host v2.11
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -170,33 +170,70 @@ Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas 
 - Kudos tersimpan per orang dan terakumulasi antar sesi. **Profil → Kudos untukmu** menampilkan jumlah per kudos dan
   siapa pemberinya; orang lain tidak bisa melihatnya. Admin melihat semua di **Database → Kudos**.
 
-## Power Cup (v2.10, tahap 1: tanpa kartu)
+## Power Cup (v2.11: per ronde + kartu power)
 
 Format turnamen khusus: pilih **Power Cup** di *Buat rencana sesi*. Aturannya tetap, tidak ikut pengaturan skor,
 rotasi, atau klasemen biasa.
 
-- **Pasangan tetap level atas + bawah.** Tandai pemain level atas saat membuat rencana atau saat *Mulai Sesi*; tiap
-  pemain level atas dipasangkan acak dengan satu pemain level bawah. Jumlah level tidak seimbang → sebanyak mungkin
-  atas + bawah, sisanya dipasangkan acak. Mode *Manual* tetap ada. Hadir selalu full (tanpa jam hadir 1/2 jam).
-- **Nilai court**: bawaan Court 1 ±1 (hijau), Court 2 ±2 (oranye), Court 3 ±3 (navy); bisa diubah ±1–±6 di rencana
-  atau *Atur* (berlaku untuk match berikutnya). Menang **+nilai**, kalah **−nilai**.
-- **Match = 5 game, selalu dimainkan penuh** (skor game total 5, mis. 3-2 atau 4-1). Skor 15-30-40; 40-40 = poin
-  penentu dimainkan.
-- **Ronde pertama**: urutan semua pasangan diundi; pasangan urutan 1..(jumlah court) jadi penantang dan mengundi lawan
-  dari tim lain. Penantang memilih court berurutan (urutan 1 dulu); court terakhir otomatis.
-- **Setelah match**: yang menang masuk *menunggu diundi*; yang kalah masuk **antrean penantang** (urut waktu kalah).
-  Court kosong → penantang terdepan langsung mengundi lawan dari tim yang menunggu, **bukan lawan barusan**. Tidak ada
-  tim menang yang menunggu → diundi dari penantang lain. Hanya tersisa lawan barusan → penantang menunggu (rematch
-  hanya bila timnya tinggal 2). Antrean kosong / belum siap → tim yang paling lama menunggu jadi penantang, supaya court
-  tidak menganggur.
-- **Pilih court**: hanya bila court kosong lebih dari satu. HP pemain tim penantang menampilkan tombol court (nilai
-  tertinggi di atas); host bisa memilihkan dari papan iPad, atau **Acak court** untuk semua tantangan sekaligus.
-- **Klasemen**: total poin court (boleh minus; tim yang belum main = 0, di atas tim minus), lalu selisih game.
-  Papan, HP, riwayat match (*C3 ±3, penantang menang/kalah*), riwayat sesi, dan podium memakai urutan ini.
-- Batal match → kedua tim kembali ke posisinya semula. Pemain *Belum siap* / keluar → timnya dilewati sampai siap lagi.
-  Koreksi skor menukar menang/kalah selama kedua tim belum diundi lagi; klasemen selalu ikut skor terakhir.
-- Tukar pemain & acak ulang court tidak dipakai di Power Cup (lawan ditentukan undian penantang).
-- Belum ada: kartu power (tahap 2), tampilan & animasi khusus Power Cup di iPad (tahap 3).
+### Pemain, pasangan, court
+- **Pemain maksimal court × 4** (2 court = 8, 4 court = 16, 6 court = 24), jadi semua tim main tiap ronde. Yang
+  bergabung setelah penuh masuk **waiting list** (urut waktu bergabung): di lobi avatarnya berbaris di luar court
+  (label `#1 Nama`). Ada yang batal → waiting list teratas naik ke daftar main dan mendapat notifikasi.
+- **Pasangan tetap level atas + bawah.** Tandai level atas saat membuat rencana atau saat *Mulai Sesi*; tiap pemain
+  level atas dipasangkan acak dengan satu pemain level bawah. Level tidak seimbang → sebanyak mungkin atas + bawah,
+  sisanya acak. Mode *Manual* tetap ada. Hadir selalu full (tanpa jam hadir 1/2 jam).
+- **Nilai court** ±1 sampai ±6 (bawaan = nomor court; Court 1 hijau, 2 oranye, 3 navy), bisa diubah di rencana atau
+  *Atur* (berlaku untuk match berikutnya).
+- **Match = 5 game, selalu dimainkan penuh** (skor game total 5). Skor 15-30-40; 40-40 = poin penentu.
+
+### Ronde
+- Semua tim main bersamaan; **ronde berikutnya diundi setelah semua court selesai** (court yang selesai lebih dulu
+  menunggu court lain).
+- **Lawan berputar sampai semua tim bertemu**: jadwal round-robin dari urutan tim yang diacak (n tim → n−1 ronde, tiap
+  pasangan tim bertemu tepat sekali), ronde jadwal dipakai dalam urutan acak; bila sama, tim kalah bertemu tim menang.
+  Tim berubah / ada yang belum siap → undian dengan pertemuan ulang paling sedikit. Tim ganjil / lebih banyak dari court
+  → yang istirahat bergiliran.
+- **Penantang** = tim yang kalah di match terakhirnya (ronde pertama acak). **Urutan memilih court dikocok**; penantang
+  memilih court lewat HP (siapa berani court bernilai besar), host bisa memilihkan di iPad atau **Acak court**. Court
+  terakhir yang tersisa otomatis.
+- **Klasemen**: total poin court (menang +nilai, kalah −nilai, boleh minus; efek kartu ikut), lalu selisih game.
+- Batal match → tantangan yang sama kembali memilih court, kartu yang dipakai kembali ke tangan. Pemain *Belum siap* /
+  keluar → tantangannya batal, lawannya istirahat ronde itu.
+
+### Kartu power (dek digital 28 kartu)
+| Kartu | Jumlah | Waktu pakai | Efek di aplikasi |
+|---|---|---|---|
+| Free 15 / Free 30 | 3 / 1 | sebelum match | tiap game pemegang mulai 15-0 / 30-0 (otomatis di papan skor wasit) |
+| Golden Point | 2 | sebelum match | 40-40 langsung game untuk pemegang (otomatis); kedua tim memakai → keduanya batal |
+| Double Point | 2 | sebelum match | menang: poin court ×2 (klasemen) |
+| Tukar Ranking | 1 | sebelum match | menang & total masih di bawah lawan: total poin ditukar setelah match (klasemen) |
+| Pilih Lawan | 2 | saat undian ronde, sebelum dapat court | pemegang menantang tim pilihannya; lawan lama kedua tim saling bertemu |
+| No Smash / No Glass / Switch Hand | 2 / 2 / 2 | sebelum servis sebuah game, 2 game | dicatat & tampil di court (game n–n+1, pemain untuk Switch Hand); pelanggaran = wasit memberi poin |
+| Ambil Semua Poin | 1 | saat game berjalan | skor lawan di game itu pindah ke pemegang, lawan 0 (otomatis) |
+| Block / Reverse | 3 / 1 | menjawab kartu lawan, sebelum poin berikutnya | Block membatalkan kartu apa pun; Reverse membalik No Smash, No Glass, Switch Hand, Ambil Semua Poin |
+| Zonk | 6 | — | langsung dibuang |
+
+- Tim **kalah** mengambil 1 kartu acak (maks 2 di tangan; Zonk langsung dibuang dan tidak mengisi slot). Tumpukan habis
+  → tumpukan buang dikocok ulang. Kartu baru dikabarkan lewat notifikasi ke HP kedua pemain tim itu.
+- **Maks 1 kartu per tim per match** (termasuk Block / Reverse). **Penantang mengumumkan lebih dulu** (atau menekan
+  *Umumkan: tanpa kartu*), lalu lawan. Kartu sebelum-match ditutup saat Game start.
+- **Kartu di tangan rahasia**: data sesi publik (papan iPad, penonton) hanya berisi jumlah kartu; isi tangan hanya
+  terlihat di HP tim itu sendiri (dan admin/host/host sesi lewat tombol **Kartu**).
+- **Papan iPad**: kartu yang dipakai tampil di court (kiri atas untuk tim kiri, kanan bawah untuk tim kanan) dengan
+  animasi muncul, status *diblok* / *dibalik* / *game n–n+1*, dan jumlah kartu di tangan kedua tim. Riwayat match &
+  papan skor wasit juga menampilkan kartu dan efeknya.
+- Koreksi skor yang menukar pemenang: kartu yang diambil tim sebelumnya ditarik (bila belum dipakai), tim kalah baru
+  mengambil.
+
+## Lobi: sudah datang & waiting list (v2.11)
+
+- Di daftar *Hadir* tiap pemain punya status **Datang / Belum datang**. Pemain menandai dirinya sendiri (*Saya sudah
+  datang*); admin, host, dan host sesi bisa menandai siapa pun.
+- Saat *Mulai Sesi*: yang belum ditandai datang **tidak masuk putaran** (tercatat "Belum datang — tidak diundi") sampai
+  menekan *Saya sudah datang* di HP-nya. Host bisa memilih *Semua sudah datang* atau *Mulai tanpa mereka*.
+  Bila status datang belum dipakai sama sekali, semua dianggap datang (perilaku lama).
+- Power Cup: yang main = yang sudah datang, urut waktu bergabung, maksimal court × 4; waiting list yang sudah datang
+  menggantikan yang belum datang. Sisanya jadi **cadangan**.
 
 ## Home: halaman pembuka (v2.9.1)
 
