@@ -228,6 +228,15 @@
 .lb-paytx b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lb-paytx small { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lb-pay .lb-btn { flex: none; }
+.lb-here { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px; font: 700 11px/1.2 inherit; font-family: inherit; white-space: nowrap;
+  border: 1px solid var(--line, rgba(242,235,221,.16)); background: transparent; color: var(--muted, #9CAEC4); }
+button.lb-here { cursor: pointer; }
+.lb-here.on { background: #2FAF6B; border-color: #2FAF6B; color: #fff; }
+.lb-here .ic { width: 12px; height: 12px; }
+.lb-row.wl { opacity: 0.8; }
+.lb-row.wl .lb-av { border-style: dashed; }
+.lb-sprite.wl .tag { background: rgba(232, 144, 47, 0.92); color: #1E1206; }
+.lb-sprite .tag b.ok { color: #7FE3A6; }
 .lb-paid { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; background: #2FAF6B; color: #fff; }
 .lb-paid .ic { width: 14px; height: 14px; }
 

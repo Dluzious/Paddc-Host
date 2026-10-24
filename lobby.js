@@ -376,8 +376,9 @@ var Lobby = (function () {
   /* ============================================================
      mount(root, state, handlers) → { update(state), destroy() }
      state: { role:'host'|'player'|'public', meId, session:{name, kicker, whenText, startAt, venue:{name,address,maps}, url},
-              theme, people:[{id,name,role:'player'|'host',sprite?,photo?,look?}], chat:[{id,pid,name,role,text,at}], started }
-     handlers: join, leave, add, remove(pid), start, back, login, theme(id), chat(text), photo, share,
+              theme, people:[{id,name,role:'player'|'host',sprite?,photo?,look?,here?,wl?}], chat:[{id,pid,name,role,text,at}], started,
+              cap (Power Cup: maks pemain, 0 = tanpa batas), checkin (status datang dipakai), canMark (boleh menandai orang lain) }
+     handlers: join, leave, add, remove(pid), start(extra), back, login, theme(id), chat(text), photo, share, here(pid, on),
                playSend(msg) → kirim pesan mode main ke server (app), atau playLocal: true untuk pratinjau tanpa server
      instance.play(msg): pesan mode main dari server ({t:'net'|'hi'|'p'|'m'|'a'|'b'|'bx'|'h'|'off', ...})
      ============================================================ */
@@ -455,7 +456,21 @@ var Lobby = (function () {
       });
       Object.keys(ents).forEach(function (id) { if (ents[id].el) draw(ents[id]); });
     }
+    /* waiting list (Power Cup penuh): berbaris di luar lapangan. Layar lebar & HP tegak (lapangan digambar): di belakang
+       garis belakang (layar lebar: kiri dari host); gambar tegak tema: di luar sisi lapangan dekat tempat host */
+    function queueSpot(i) {
+      if (LY.mode === 'land') {
+        var hs = LY.hosts[0], v0 = hs[2] + .03, maxU = Math.max(.2, hs[0] - .05), per = Math.max(3, Math.floor((maxU - .02) / .1) + 1);
+        var u = .02 + (i % per) * .1, v = v0 + Math.floor(i / per) * .05;
+        return [[u, u + .003, v, v + .003]];
+      }
+      if (LY.mode === 'drawn') { var uD = .12 + (i % 4) * .25, vD = 1.13 + Math.floor(i / 4) * .05; return [[uD, uD + .003, vD, vD + .003]]; }
+      // gambar tegak dari tema: di luar sisi lapangan, di atas & bawah tempat host
+      var hp = LY.hosts[1] || LY.hosts[0], hv = (hp[2] + hp[3]) / 2, k = Math.floor(i / 2), vv = hv + (i % 2 ? 1 : -1) * (.14 + k * .07), uu = hp[0] + .004;
+      return [[uu, uu + .003, vv, vv + .003]];
+    }
     function spotOf(e) {
+      if (e.p && e.p.wl) return queueSpot(e.p.wl - 1);
       if (e.role === 'host') return [LY.hosts[e.hostIdx % LY.hosts.length]];
       return LY.zones[e.side];
     }
@@ -509,10 +524,12 @@ var Lobby = (function () {
     var BUBBLES = ['Gas!', 'Siap main', 'Pemanasan dulu', 'Court berapa?', 'Bola baru?', 'Partner siapa ya?', 'Kaki sudah panas', 'Bandeja!', 'Vibora!'];
     var HOSTSAY = ['Yang belum hadir, ditunggu ya', 'Cek raket dan sepatu', 'Sebentar lagi mulai', 'Air minum di bench'];
     var HITSAY = ['Aduh!', 'Balas!', 'Eits!', 'Nice!', 'Vamos!', 'Bandeja!', 'Hampir!'];
+    function tagHTML(p) { return (p.role === 'host' ? 'HOST · ' : p.wl ? '#' + p.wl + ' ' : p.here ? '<b class="ok">✓</b> ' : '') + esc(p.name); }
     function makeEl(e) {
       var d = document.createElement('div');
       d.className = 'lb-sprite' + (e.role === 'host' ? ' host' : '') + (e.id === S.meId ? ' me' : '') + (e.p.sprite ? ' png' : '');
-      d.innerHTML = '<div class="sh"></div><div class="fig">' + figure(e.p) + '</div><div class="tag">' + (e.role === 'host' ? 'HOST · ' : '') + esc(e.p.name) + '</div><div class="bub"></div>';
+      d.className += e.p.wl ? ' wl' : '';
+      d.innerHTML = '<div class="sh"></div><div class="fig">' + figure(e.p) + '</div><div class="tag">' + tagHTML(e.p) + '</div><div class="bub"></div>';
       d.addEventListener('click', function () { act(e, 'jump'); say(e, e.role === 'host' ? pick(Math.random, HOSTSAY) : pick(Math.random, BUBBLES)); });
       layer.appendChild(d); e.el = d;
     }
@@ -635,7 +652,7 @@ var Lobby = (function () {
     }
     /* sisi net & jangkar pemain dari daftar hadir; berubah → pemain berjalan ke tempat barunya */
     function replan() {
-      var ids = people().filter(function (p) { return p.role !== 'host'; }).map(function (p) { return p.id; });
+      var ids = people().filter(function (p) { return p.role !== 'host' && !p.wl; }).map(function (p) { return p.id; });
       var th = themeDef(S.theme), z = (th.land && th.land.zones) || null, sig = JSON.stringify([ids, z]);
       if (sig === plSig) return;
       plSig = sig;
@@ -806,7 +823,7 @@ var Lobby = (function () {
       else if (m.t === 'h') onHit(m);
       else if (m.t === 'off') { NETS.off = true; release(false); renderPlay(); }
     }
-    function canPlay() { return !!psend && !!S.meId && !S.started && people().some(function (p) { return p.id === S.meId; }); }
+    function canPlay() { return !!psend && !!S.meId && !S.started && people().some(function (p) { return p.id === S.meId && !p.wl; }); }
     function renderPlay() {
       var ok = canPlay();
       if (!ok && playing) setPlaying(false);
@@ -873,18 +890,22 @@ var Lobby = (function () {
       el.theme.value = S.theme;
     }
     function renderCount() {
-      var pl = people().filter(function (p) { return p.role !== 'host'; }).length, ho = people().length - pl;
-      el.cnt.textContent = pl; el.cntTxt.textContent = 'pemain · ' + ho + ' host hadir'; el.hN.textContent = people().length;
+      var pl = people().filter(function (p) { return p.role !== 'host'; }).length, ho = people().length - pl, wl = people().filter(function (p) { return p.wl; }).length;
+      el.cnt.textContent = S.cap ? (pl - wl) + '/' + S.cap : pl;
+      el.cntTxt.textContent = 'pemain' + (wl ? ' · ' + wl + ' antre' : '') + ' · ' + ho + ' host hadir'; el.hN.textContent = people().length;
       if (LY) measureChips();
     }
     function renderRoster() {
-      var list = people().slice().sort(function (a, b) { return (a.role === 'host' ? 0 : 1) - (b.role === 'host' ? 0 : 1) || ((ents[b.id] || {}).at || 0) - ((ents[a.id] || {}).at || 0); });
+      var list = people().slice().sort(function (a, b) { return (a.role === 'host' ? 0 : 1) - (b.role === 'host' ? 0 : 1) || (a.wl || 0) - (b.wl || 0) || ((ents[b.id] || {}).at || 0) - ((ents[a.id] || {}).at || 0); });
       el.hours.hidden = !(S.hours && S.hours.length > 1);
       if (!el.hours.hidden) el.hours.innerHTML = '<span>Pemain per jam</span>' + S.hours.map(function (h) { return '<b>' + esc(h.label) + ' <i>' + h.n + '</i></b>'; }).join('');
       el.roster.innerHTML = list.length ? list.map(function (p) {
         var paid = S.paid && S.paid[p.id], co = (S.cohosts || []).indexOf(p.id) >= 0;
-        return '<div class="lb-row' + (p.role === 'host' ? ' host' : '') + '">' + head(p) + '<span class="lb-nm">' + esc(p.name) + '<small>' + (p.role === 'host' ? 'Host · wasit' : (p.id === S.meId ? 'Kamu' : 'Pemain') + (co ? ' · host sesi' : '') + (p.slot ? ' · ' + p.slot : '')) + '</small></span>' +
-          (paid ? '<span class="lb-paid" title="Sudah bayar" aria-label="Sudah bayar">' + ic('check') + '</span>' : '') +
+        var canHere = p.role !== 'host' && !S.started && (S.canMark || p.id === S.meId);
+        var here = p.role === 'host' ? '' : canHere ? '<button class="lb-here' + (p.here ? ' on' : '') + '" type="button" data-lb="here" data-pid="' + esc(p.id) + '" aria-pressed="' + !!p.here + '" title="Ketuk untuk mengubah">' + (p.here ? ic('check') + 'Datang' : 'Belum datang') + '</button>'
+          : '<span class="lb-here' + (p.here ? ' on' : '') + '">' + (p.here ? ic('check') + 'Datang' : 'Belum datang') + '</span>';
+        return '<div class="lb-row' + (p.role === 'host' ? ' host' : '') + (p.wl ? ' wl' : '') + '">' + head(p) + '<span class="lb-nm">' + esc(p.name) + '<small>' + (p.role === 'host' ? 'Host · wasit' : (p.wl ? 'Waiting list #' + p.wl + ' · ' : '') + (p.id === S.meId ? 'Kamu' : 'Pemain') + (co ? ' · host sesi' : '') + (p.slot ? ' · ' + p.slot : '')) + '</small></span>' +
+          here + (paid ? '<span class="lb-paid" title="Sudah bayar" aria-label="Sudah bayar">' + ic('check') + '</span>' : '') +
           (S.role === 'host' && !S.started ? '<button class="lb-x" type="button" data-lb="remove" data-pid="' + esc(p.id) + '" aria-label="Tandai ' + esc(p.name) + ' tidak hadir" title="Tandai tidak hadir">' + ic('x') + '</button>' : '<span></span>') + '</div>';
       }).join('') : '<p class="lb-empty">Belum ada yang hadir. Bagikan link lobi ke grup.</p>';
     }
@@ -899,14 +920,17 @@ var Lobby = (function () {
     }
     function renderControls() {
       var me = S.meId && people().some(function (p) { return p.id === S.meId; }), pl = people().filter(function (p) { return p.role !== 'host'; }).length, h = '';
+      var mine = people().filter(function (p) { return p.id === S.meId; })[0], full = S.cap && pl - people().filter(function (p) { return p.wl; }).length >= S.cap;
       // tombol kecil: di HP tegak hanya ikon (label tetap dibaca pembaca layar)
       var small = function (act, icon, label) { return '<button class="lb-btn sm" type="button" data-lb="' + act + '" aria-label="' + label + '" title="' + label + '">' + ic(icon) + '<span class="lbl">' + label + '</span></button>'; };
+      var hereBtn = mine && mine.role !== 'host' && !S.started ? (mine.here ? small('hereOff', 'check', 'Sudah datang') : '<button class="lb-btn primary" type="button" data-lb="hereMe">' + ic('check') + 'Saya sudah datang</button>') : '';
       if (S.role === 'host') h = small('share', 'share', 'Bagikan lobi') + small('add', 'plus', 'Tambah yang hadir') +
-        (S.meId ? (me ? small('leave', 'x', 'Saya batal hadir') : small('join', 'check', 'Saya hadir')) : '') +
+        (S.meId ? (me ? small('leave', 'x', 'Saya batal hadir') : small('join', 'check', 'Saya hadir')) : '') + hereBtn +
         (me && S.canSlot && handlers.slot ? small('slot', 'cal', 'Ubah jam hadir') : '') +
         (handlers.edit ? small('edit', 'pencil', 'Ubah rencana') : '') +
         '<button class="lb-btn primary grow" type="button" data-lb="start"' + (pl < 4 || S.started ? ' disabled' : '') + '>' + ic('play') + 'Mulai Sesi</button>';
-      else if (S.role === 'player') h = (me ? '<button class="lb-btn danger grow" type="button" data-lb="leave">Batal Bergabung</button>' : '<button class="lb-btn join grow" type="button" data-lb="join">' + ic('check') + 'Saya Bergabung</button>') +
+      else if (S.role === 'player') h = (me ? '<button class="lb-btn danger grow" type="button" data-lb="leave">' + (mine.wl ? 'Keluar waiting list' : 'Batal Bergabung') + '</button>' + hereBtn
+          : '<button class="lb-btn join grow" type="button" data-lb="join">' + ic('check') + (full ? 'Masuk waiting list' : 'Saya Bergabung') + '</button>') +
         (me && S.canSlot && handlers.slot ? small('slot', 'cal', 'Ubah jam hadir') : '') + small('share', 'share', 'Bagikan lobi');
       else h = '<button class="lb-btn grow" type="button" data-lb="login">' + ic('login') + 'Masuk</button>' + small('share', 'share', 'Bagikan lobi');
       el.controls.innerHTML = h;
@@ -953,8 +977,16 @@ var Lobby = (function () {
     function confirmStart() {
       if (S.pairing) { if (handlers.start) handlers.start(); return; }   // pasangan tetap: app menampilkan pilihan pasangan sebagai konfirmasi
       var pl = people().filter(function (p) { return p.role !== 'host'; }).length, ho = people().length - pl;
+      var absent = S.checkin ? people().filter(function (p) { return p.role !== 'host' && !p.wl && !p.here; }) : [];
+      if (absent.length) {
+        modal('Mulai sesi sekarang?', '<p><b>' + (pl - absent.length) + ' pemain</b> sudah datang. <b>Belum datang (' + absent.length + '):</b> ' + absent.map(function (p) { return esc(p.name); }).join(', ') +
+          '. Mereka tercatat di sesi tapi tidak diundi sampai menekan Siap main di HP-nya.</p>',
+          [{ label: 'Batal' }, { label: 'Semua sudah datang', on: function () { if (handlers.start) handlers.start({ allHere: true }); } },
+            { label: 'Mulai tanpa mereka', cls: 'primary', on: function () { if (handlers.start) handlers.start({}); } }]);
+        return;
+      }
       modal('Mulai sesi sekarang?', '<p><b>' + pl + ' pemain</b> dan <b>' + ho + ' host</b> hadir. Lobi ditutup untuk semua orang dan undian court pertama langsung dibuat.</p>',
-        [{ label: 'Batal' }, { label: 'Ya, mulai sesi', cls: 'primary', on: function () { if (handlers.start) handlers.start(); } }]);
+        [{ label: 'Batal' }, { label: 'Ya, mulai sesi', cls: 'primary', on: function () { if (handlers.start) handlers.start({}); } }]);
     }
     root.addEventListener('click', function (e) {
       var b = e.target.closest('[data-lb]'); if (!b || b.disabled) return;
@@ -966,6 +998,8 @@ var Lobby = (function () {
       else if (a === 'start') confirmStart();
       else if (a === 'play') { if (NETS.off) toast(OFF_TXT); else if (!NETS.up && !playing) toast('Mode main sedang menyambung, coba lagi sebentar.'); else setPlaying(!playing); }
       else if (a === 'remove') { var p = people().filter(function (x) { return x.id === b.dataset.pid; })[0]; if (p && handlers.remove) handlers.remove(p.id); }
+      else if (a === 'here') { var q = people().filter(function (x) { return x.id === b.dataset.pid; })[0]; if (q && handlers.here) handlers.here(q.id, !q.here); }
+      else if (a === 'hereMe' || a === 'hereOff') { if (handlers.here) handlers.here(S.meId, a === 'hereMe'); }
       else if (handlers[a]) handlers[a]();
     });
     root.addEventListener('pointerdown', function first(ev) {
@@ -998,8 +1032,12 @@ var Lobby = (function () {
       people().forEach(function (p) {
         var e = ents[p.id];
         if (!e) { if (LY) enter(p, first || (opts && opts.quiet)); }
+        else if ((e.p.wl || 0) !== (p.wl || 0)) { exit(p.id); if (LY) enter(p, true); }
         else if (e.p.sprite !== p.sprite || (!p.sprite && JSON.stringify(e.p.look) !== JSON.stringify(p.look))) { e.p = p; e.el.querySelector('.fig').innerHTML = figure(p); e.el.classList.toggle('png', !!p.sprite); }
-        else e.p = p;
+        else {
+          if (!!e.p.here !== !!p.here) { e.p = p; e.el.querySelector('.tag').innerHTML = tagHTML(p); e.tw = 0; }
+          e.p = p;
+        }
       });
       if (S.started) { musicOn(false); var mb = root.querySelector('[data-lb="music"]'); if (mb) mb.setAttribute('aria-pressed', 'false'); }
       renderInfo(); renderCount(); renderRoster(); renderControls(); renderPay(); renderChat(first); countdown();
