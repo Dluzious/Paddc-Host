@@ -1,4 +1,4 @@
-# Paddoc Host v2.11
+# Paddoc Host v2.12
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -170,7 +170,7 @@ Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas 
 - Kudos tersimpan per orang dan terakumulasi antar sesi. **Profil → Kudos untukmu** menampilkan jumlah per kudos dan
   siapa pemberinya; orang lain tidak bisa melihatnya. Admin melihat semua di **Database → Kudos**.
 
-## Power Cup (v2.11: per ronde + kartu power)
+## Power Cup (v2.11: per ronde + kartu power · v2.12: gambar & animasi kartu)
 
 Format turnamen khusus: pilih **Power Cup** di *Buat rencana sesi*. Aturannya tetap, tidak ikut pengaturan skor,
 rotasi, atau klasemen biasa.
@@ -207,21 +207,44 @@ rotasi, atau klasemen biasa.
 | Golden Point | 2 | sebelum match | 40-40 langsung game untuk pemegang (otomatis); kedua tim memakai → keduanya batal |
 | Double Point | 2 | sebelum match | menang: poin court ×2 (klasemen) |
 | Tukar Ranking | 1 | sebelum match | menang & total masih di bawah lawan: total poin ditukar setelah match (klasemen) |
-| Pilih Lawan | 2 | saat undian ronde, sebelum dapat court | pemegang menantang tim pilihannya; lawan lama kedua tim saling bertemu |
-| No Smash / No Glass / Switch Hand | 2 / 2 / 2 | sebelum servis sebuah game, 2 game | dicatat & tampil di court (game n–n+1, pemain untuk Switch Hand); pelanggaran = wasit memberi poin |
-| Ambil Semua Poin | 1 | saat game berjalan | skor lawan di game itu pindah ke pemegang, lawan 0 (otomatis) |
+| Pilih Lawan | 2 | sebelum match dimulai (masih menunggu court atau sudah di court) | pilih tim lain yang sudah punya lawan dan belum mulai: pemegang melawan tim itu, lawan lama kedua tim saling bertemu (tim & pemain di court ikut pindah) |
+| No Smash / No Glass | 2 / 2 | sebelum servis sebuah game, 2 game | dicatat & tampil di court (game n–n+1); pelanggaran = wasit memberi poin |
+| Switch Hand | 2 | sebelum match, game 1–2 | **kedua pemain lawan** memakai tangan non-dominan di game 1 dan 2 |
+| Ambil Semua Poin | 1 | sebelum match | menang: poin **klasemen** lawan (bila > 0) pindah ke pemegang, lawan jadi 0 lalu −nilai court; kalah: hangus (klasemen) |
 | Block / Reverse | 3 / 1 | menjawab kartu lawan, sebelum poin berikutnya | Block membatalkan kartu apa pun; Reverse membalik No Smash, No Glass, Switch Hand, Ambil Semua Poin |
 | Zonk | 6 | — | langsung dibuang |
 
-- Tim **kalah** mengambil 1 kartu acak (maks 2 di tangan; Zonk langsung dibuang dan tidak mengisi slot). Tumpukan habis
-  → tumpukan buang dikocok ulang. Kartu baru dikabarkan lewat notifikasi ke HP kedua pemain tim itu.
+- Tim **kalah** berhak mengambil 1 kartu (maks 2 di tangan; Zonk langsung dibuang dan tidak mengisi slot). Kartunya
+  **diambil manual**: tombol *Ambil kartu power* di HP tim itu (kartu diacak lalu berhenti di satu kartu, hanya tim itu
+  yang melihat), atau host mengambilkan di papan iPad lewat antrean **Ambil kartu · urut selesai main** (kartu tampil
+  terbuka di layar). Tim kalah dikabari lewat notifikasi; partner dikabari kartu yang didapat. Saat diambil tangan sudah
+  penuh → tidak mendapat kartu.
+- **Kartu tidak pernah habis**: tumpukan habis → tumpukan buang dikocok ulang; bila semua kartu sedang dipegang / dipakai
+  → dek baru 28 kartu dari awal.
 - **Maks 1 kartu per tim per match** (termasuk Block / Reverse). **Penantang mengumumkan lebih dulu** (atau menekan
   *Umumkan: tanpa kartu*), lalu lawan. Kartu sebelum-match ditutup saat Game start.
+- **Batalkan kartu**: kartu yang sudah dipasang bisa dibatalkan (kembali ke tangan) selama match belum dimulai dan belum
+  dijawab lawan. Jawaban Block / Reverse tidak bisa dibatalkan. Pilih Lawan yang dibatalkan → lawan kembali seperti semula.
 - **Kartu di tangan rahasia**: data sesi publik (papan iPad, penonton) hanya berisi jumlah kartu; isi tangan hanya
-  terlihat di HP tim itu sendiri (dan admin/host/host sesi lewat tombol **Kartu**).
-- **Papan iPad**: kartu yang dipakai tampil di court (kiri atas untuk tim kiri, kanan bawah untuk tim kanan) dengan
-  animasi muncul, status *diblok* / *dibalik* / *game n–n+1*, dan jumlah kartu di tangan kedua tim. Riwayat match &
-  papan skor wasit juga menampilkan kartu dan efeknya.
+  terlihat di HP tim itu sendiri (dan admin/host lewat tombol **Kartu**; host sesi yang ikut bermain hanya timnya).
+- **Papan iPad**: kartu yang dipakai tampil sebagai gambar kartu di court (kiri atas untuk tim kiri, kanan bawah untuk
+  tim kanan) dengan cap *diblok* / *dibalik* dan keterangan *game n–n+1* / pemain Switch Hand, plus jumlah kartu di
+  tangan kedua tim. Riwayat match & papan skor wasit menampilkan kartu dan efeknya (label teks).
+
+### Gambar & animasi kartu (v2.12)
+- Gambar dek ada di `img/cards/<kunci>.webp` (600×840): `free15`, `free30`, `golden`, `double`, `pick`, `nosmash`,
+  `noglass`, `swh`, `steal`, `swap`, `block`, `reverse`, `zonk`, dan `back` (sisi belakang). Mengganti desain cukup
+  menimpa file dengan nama yang sama.
+- **Kartu dipakai** (papan iPad): kartu terbalik muncul di tengah layar, dibuka, keterangan "Tim X memakai …", lalu
+  kartunya terbang ke sisi tim itu di court. **Block** menghantam kartu lawan (cap *DIBLOK!*), **Reverse** memutar
+  balik kartu lawan (cap *DIBALIK!*). **Zonk** yang diambil tim kalah ikut tampil (cap *DIBUANG*).
+- **Ambil kartu**: kartu diacak cepat, melambat, lalu berhenti di kartu yang didapat (hasilnya diundi server). Di HP
+  hanya tim itu yang melihat; di papan iPad (host mengambilkan) kartunya tampil terbuka. Zonk mendapat cap *DIBUANG*.
+- **HP pemain**: animasi yang sama untuk kartu yang dipakai oleh / ke timnya, Zonk timnya, dan **kartu baru** yang
+  diambilkan host untuk timnya (rahasia, hanya di HP tim itu; papan iPad tidak menampilkan kartu yang diambil di HP).
+- Di tangan (HP) kartu tampil sebagai gambar; ketuk untuk melihat gambar besar & memakainya.
+- Kartu yang sudah ada saat aplikasi dibuka tidak dianimasikan; beberapa kartu sekaligus diputar bergiliran (maks 6
+  antre). Ketuk layar untuk melewati. Perangkat dengan *kurangi gerakan* hanya mendapat animasi pudar.
 - Koreksi skor yang menukar pemenang: kartu yang diambil tim sebelumnya ditarik (bila belum dipakai), tim kalah baru
   mengambil.
 
