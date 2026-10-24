@@ -754,12 +754,7 @@ var Engine = (function () {
     h.forEach(function (x) {
       if (x === 'A') pa++;
       else if (x === 'B') pb++;
-      else {                                                       // 'S:<kartu>' = Ambil Semua Poin
-        var c = cards.filter(function (q) { return 'S:' + q.id === x; })[0], byA = c && c.by === m.tA;
-        if (c && c.st === 'on') { if (byA) { pa = pb; pb = 0; } else { pb = pa; pa = 0; } }
-        else if (c && c.st === 'reversed') { if (byA) pa = 0; else pb = 0; }
-        return;
-      }
+      else return;                                                 // catatan lain (data lama) tidak mengubah skor
       var lead = pa - pb;
       if (adv ? (pa >= 4 && lead >= 2) : pa >= 4) { ga++; pa = sA; pb = sB; }
       else if (adv ? (pb >= 4 && lead <= -2) : pb >= 4) { gb++; pa = sA; pb = sB; }
@@ -779,7 +774,7 @@ var Engine = (function () {
     var m = findMatch(S, id);
     if (!m || m.status !== 'live' || !m.start) return null;
     m.tally = m.tally || [];
-    if (undo) { for (var i = m.tally.length - 1; i >= 0; i--) if (m.tally[i] === 'A' || m.tally[i] === 'B') { m.tally.splice(i, 1); break; } }   // kartu Ambil Semua Poin tidak ikut terhapus
+    if (undo) { for (var i = m.tally.length - 1; i >= 0; i--) if (m.tally[i] === 'A' || m.tally[i] === 'B') { m.tally.splice(i, 1); break; } }
     else if ((side === 'A' || side === 'B') && !tallyState(S, m).done) {
       if (!m.go) m.go = now(); // poin pertama dianggap Game start
       m.tally.push(side);
@@ -846,13 +841,15 @@ var Engine = (function () {
      court selesai. Lawan diundi acak dengan rotasi (yang belum pernah bertemu didahulukan; bila sama, tim kalah
      bertemu tim menang). Penantang = tim yang kalah di match terakhirnya (ronde pertama acak). Urutan memilih court
      dikocok; penantang memilih court (siapa berani court bernilai besar); court terakhir yang tersisa otomatis.
-     Kartu power: tim kalah mengambil 1 kartu (maks 2 di tangan, Zonk langsung dibuang); maks 1 kartu per tim per
-     match; Block membatalkan kartu lawan, Reverse membalik No Smash / No Glass / Switch Hand / Ambil Semua Poin.
-     S.pc = { lv, round, pend: [{ id, ch, op, rd, cards }], cd: { deck, disc, hand: { tim: [kartu] }, hv: { tim: n } } }
-     m.cards = [{ id, k, by, tg, st: 'on' | 'blocked' | 'reversed', n0, g, pid, of }]
+     Kartu power: tim kalah berhak mengambil 1 kartu (maks 2 di tangan, Zonk langsung dibuang); kartunya diambil sendiri
+     di HP atau oleh host di iPad (antrean urut waktu selesai). Maks 1 kartu per tim per match; kartu yang dipasang bisa
+     dibatalkan sebelum match dimulai; Block membatalkan kartu lawan, Reverse membalik No Smash / No Glass / Switch Hand /
+     Ambil Semua Poin.
+     S.pc = { lv, round, pend: [{ id, ch, op, rd, cards }], owe: [{ t, m, at }], cd: { deck, disc, hand: { tim: [kartu] }, hv: { tim: n } } }
+     m.cards = [{ id, k, by, tg, st: 'on' | 'blocked' | 'reversed', n0, g, of, p2, prev }]
      ============================================================ */
-  // when: pre = sebelum match dimulai, game = sebelum servis sebuah game (berlaku 2 game), live = saat game berjalan,
-  // draw = saat undian lawan (sebelum dapat court), resp = menjawab kartu lawan
+  // when: pre = sebelum match dimulai, game = sebelum servis sebuah game (berlaku 2 game),
+  // draw = Pilih Lawan: sebelum match dimulai (tantangan atau sudah di court), resp = menjawab kartu lawan
   var PC_CARDS = {
     free15: { n: 3, name: 'Free 15', cat: 'self', when: 'pre' },
     free30: { n: 1, name: 'Free 30', cat: 'self', when: 'pre' },
@@ -861,8 +858,8 @@ var Engine = (function () {
     pick: { n: 2, name: 'Pilih Lawan', cat: 'ctrl', when: 'draw' },
     nosmash: { n: 2, name: 'No Smash', cat: 'ctrl', when: 'game', rev: 1, dur: 2 },
     noglass: { n: 2, name: 'No Glass', cat: 'ctrl', when: 'game', rev: 1, dur: 2 },
-    swh: { n: 2, name: 'Switch Hand', cat: 'ctrl', when: 'game', rev: 1, dur: 2 },
-    steal: { n: 1, name: 'Ambil Semua Poin', cat: 'rare', when: 'live', rev: 1 },
+    swh: { n: 2, name: 'Switch Hand', cat: 'ctrl', when: 'pre', rev: 1, dur: 2 },       // kedua pemain lawan, game 1–2
+    steal: { n: 1, name: 'Ambil Semua Poin', cat: 'rare', when: 'pre', rev: 1 },        // poin klasemen lawan (lihat pcPoints)
     swap: { n: 1, name: 'Tukar Ranking', cat: 'rare', when: 'pre' },
     block: { n: 3, name: 'Block', cat: 'def', when: 'resp' },
     reverse: { n: 1, name: 'Reverse', cat: 'def', when: 'resp' },
@@ -889,12 +886,12 @@ var Engine = (function () {
   }
   function pcState(S) {
     var pc = S.pc || (S.pc = {});
-    pc.lv = pc.lv || {}; pc.round = pc.round || 0; pc.pend = pc.pend || [];
+    pc.lv = pc.lv || {}; pc.round = pc.round || 0; pc.pend = pc.pend || []; pc.owe = pc.owe || [];
     if (!pc.cd || !pc.cd.deck) pc.cd = pcDeck();
     return pc;
   }
   function pcInit(S) {
-    S.pc = { lv: (S.pc && S.pc.lv) || {}, round: 0, pend: [], cd: pcDeck() };
+    S.pc = { lv: (S.pc && S.pc.lv) || {}, round: 0, pend: [], owe: [], cd: pcDeck() };
   }
   function pcHandOf(S, tid) { var cd = pcState(S).cd; return cd.hand[tid] || (cd.hand[tid] = []); }
   /* jumlah kartu di tangan (data publik hanya berisi jumlah) */
@@ -903,7 +900,8 @@ var Engine = (function () {
   function pcDrawOne(S) {
     var cd = S.pc.cd;
     if (!cd.deck.length) { cd.deck = shuffled(cd.disc); cd.disc = []; }       // tumpukan habis: tumpukan buang dikocok ulang
-    return cd.deck.pop() || null;
+    if (!cd.deck.length) { cd.deck = pcDeck().deck; cd.rf = (cd.rf || 0) + 1; }  // semua kartu sedang dipegang: dek baru 28 kartu dari awal
+    return cd.deck.pop();
   }
   /* kartu yang sudah dipakai kembali ke tangan pemakainya (match dibatalkan / tantangan batal) */
   function pcReturn(S, list) {
@@ -1008,7 +1006,7 @@ var Engine = (function () {
     S.pc.pend = S.pc.pend.filter(function (x) { return x !== p; });
     var m = commitMatch(S, court, { A: [tc.a, tc.b], B: [to.a, to.b], tA: tc.id, tB: to.id }, true);
     m.val = courtValue(S, court);
-    m.pc = { ch: p.ch, op: p.op, rd: p.rd || S.pc.round };
+    m.pc = { ch: p.ch, op: p.op, rd: p.rd || S.pc.round, from: p.id };
     m.cards = p.cards || [];
     return m;
   }
@@ -1037,8 +1035,9 @@ var Engine = (function () {
     pcAdvance(S);
     return m;
   }
-  /* hasil match: kartu yang dipakai ke tumpukan buang; tim kalah mengambil 1 kartu (bila belum memegang 2).
-     Koreksi skor yang menukar pemenang: kartu yang diambil tim sebelumnya ditarik bila belum dipakai, tim kalah baru mengambil */
+  /* hasil match: kartu yang dipakai ke tumpukan buang; tim kalah berhak mengambil 1 kartu (bila belum memegang 2) —
+     diambil sendiri lewat HP atau oleh host di iPad (pcDraw), antrean urut waktu selesai.
+     Koreksi skor yang menukar pemenang: hak / kartu tim kalah sebelumnya ditarik (bila belum dipakai), hak pindah ke tim kalah baru */
   function pcResult(S, m, first) {
     if (!m.tA || !m.tB) return;
     var pc = pcState(S), cd = pc.cd;
@@ -1046,16 +1045,32 @@ var Engine = (function () {
     if (m.sA === m.sB) return;
     var lose = m.sA > m.sB ? m.tB : m.tA;
     if (m.drawn && m.drawn.t === lose) return;
-    if (m.drawn && m.drawn.id && !m.drawn.z) {
-      var h = pcHandOf(S, m.drawn.t), i = h.map(function (x) { return x.id; }).indexOf(m.drawn.id);
-      if (i >= 0) { cd.disc.push(h.splice(i, 1)[0]); pcBump(S, m.drawn.t); }
+    if (m.drawn) {
+      pc.owe = pc.owe.filter(function (o) { return o.m !== m.id; });
+      if (m.drawn.id && !m.drawn.z) {
+        var h = pcHandOf(S, m.drawn.t), i = h.map(function (x) { return x.id; }).indexOf(m.drawn.id);
+        if (i >= 0) { cd.disc.push(h.splice(i, 1)[0]); pcBump(S, m.drawn.t); }
+      }
     }
-    var hand = pcHandOf(S, lose);
-    if (hand.length >= 2) { m.drawn = { t: lose, full: 1 }; return; }
+    if (pcHandOf(S, lose).length >= 2) { m.drawn = { t: lose, full: 1 }; return; }
+    m.drawn = { t: lose, owe: 1 };
+    pc.owe.push({ t: lose, m: m.id, at: m.end || now() });
+  }
+  /* antrean ambil kartu: urut waktu match selesai */
+  function pcOwed(S) {
+    return ((S.pc && S.pc.owe) || []).slice().sort(function (a, b) { return (a.at || 0) - (b.at || 0); });
+  }
+  /* tim mengambil kartu yang menjadi haknya (yang paling lama lebih dulu) → { card, z, full, m } atau { err } */
+  function pcDraw(S, tid) {
+    var pc = pcState(S), cd = pc.cd, o = pcOwed(S).filter(function (x) { return x.t === tid; })[0];
+    if (!o) return { err: 'Timmu tidak sedang berhak mengambil kartu' };
+    pc.owe.splice(pc.owe.indexOf(o), 1);
+    var m = findMatch(S, o.m) || {}, hand = pcHandOf(S, tid);
+    if (hand.length >= 2) { m.drawn = { t: tid, full: 1 }; return { full: 1, m: m.id }; }
     var card = pcDrawOne(S);
-    if (!card) { m.drawn = null; return; }
-    if (card.k === 'zonk') { cd.disc.push(card); m.drawn = { t: lose, z: 1, id: card.id }; }
-    else { hand.push(card); m.drawn = { t: lose, id: card.id }; pcBump(S, lose); }
+    if (card.k === 'zonk') { cd.disc.push(card); m.drawn = { t: tid, z: 1, id: card.id }; }
+    else { hand.push(card); m.drawn = { t: tid, id: card.id }; pcBump(S, tid); }
+    return { card: { id: card.id, k: card.k }, z: card.k === 'zonk' ? 1 : 0, m: m.id };
   }
   /* match dibatalkan: tantangannya kembali ke depan antrean pilih court, kartu yang dipakai kembali ke tangan */
   function pcVoid(S, m) {
@@ -1080,10 +1095,47 @@ var Engine = (function () {
     if (pcUsed(x.list, x.ch) || (x.m && x.m.pass && x.m.pass[x.ch])) return true;
     return !pcHandOf(S, x.ch).some(function (c) { return PC_CARDS[c.k] && PC_CARDS[c.k].when === 'pre'; });
   }
-  /* pakai kartu. o: { team, card, ref (match / tantangan), target (tim untuk Pilih Lawan), pid (pemain lawan untuk Switch Hand) }
+  /* tempat dua tim bertemu: tantangan (belum dapat court) atau match Power Cup di court.
+     open = belum dimulai (belum Game start & belum ada poin): lawan masih bisa ditukar, kartu masih bisa dibatalkan */
+  function pcSlot(S, ref) {
+    if (!ref) return null;
+    var p = pcState(S).pend.filter(function (x) { return x.id === ref; })[0];
+    if (p) return { p: p, id: p.id, ch: p.ch, op: p.op, list: p.cards || (p.cards = []), open: true };
+    var m = findMatch(S, ref) || S.matches.filter(function (x) { return x.pc && x.pc.from === ref; })[0];
+    if (!m || !m.pc || m.status !== 'live') return null;
+    return { m: m, id: m.id, ch: m.pc.ch, op: m.tA === m.pc.ch ? m.tB : m.tA, list: m.cards || (m.cards = []), open: !m.go && !tallyPts(m) };
+  }
+  function pcSlotOf(S, tid) {
+    var p = pcState(S).pend.filter(function (x) { return x.ch === tid || x.op === tid; })[0];
+    if (p) return pcSlot(S, p.id);
+    var m = liveMatches(S).filter(function (x) { return x.pc && (x.tA === tid || x.tB === tid); })[0];
+    return m ? pcSlot(S, m.id) : null;
+  }
+  /* isi ulang dua tim di satu tempat; match di court: pemainnya ikut berganti (pool = catatan giliran pemain) */
+  function pcSetSlot(S, sl, ch, op, pool) {
+    sl.ch = ch; sl.op = op;
+    if (sl.p) { sl.p.ch = ch; sl.p.op = op; return; }
+    var m = sl.m, tc = teamById(S, ch), to = teamById(S, op), snap = {};
+    m.A = [tc.a, tc.b]; m.B = [to.a, to.b]; m.tA = ch; m.tB = op; m.pc.ch = ch; m.pc.op = op;
+    delete m.pass;
+    matchPlayers(m).forEach(function (pid) { snap[pid] = pool[pid] || { skips: S.parts[pid].skips, streak: S.parts[pid].streak }; });
+    m.snap = snap;
+  }
+  /* isi dua tempat dengan pasangan baru (t1 / t2 = [penantang, lawan]); kartu yang sudah dipakai ikut pindah bersama timnya */
+  function pcPlace(S, s1, s2, t1, t2) {
+    var pool = {};
+    [s1, s2].forEach(function (s) { if (s.m && s.m.snap) Object.keys(s.m.snap).forEach(function (k) { pool[k] = s.m.snap[k]; }); });
+    pcSetSlot(S, s1, t1[0], t1[1], pool);
+    pcSetSlot(S, s2, t2[0], t2[1], pool);
+    var in2 = function (t) { return t === s2.ch || t === s2.op; };
+    s1.list.filter(function (c) { return in2(c.by); }).forEach(function (c) { s1.list.splice(s1.list.indexOf(c), 1); s2.list.push(c); });
+    s2.list.filter(function (c) { return !in2(c.by); }).forEach(function (c) { s2.list.splice(s2.list.indexOf(c), 1); s1.list.push(c); });
+  }
+  function samePair(sl, a, b) { return (sl.ch === a && sl.op === b) || (sl.ch === b && sl.op === a); }
+  /* pakai kartu. o: { team, card, ref (match / tantangan), target (tim untuk Pilih Lawan) }
      → pesan error, atau null bila berhasil */
   function pcPlay(S, o) {
-    var pc = pcState(S), hand = pcHandOf(S, o.team), idx = hand.map(function (x) { return x.id; }).indexOf(o.card);
+    var hand = pcHandOf(S, o.team), idx = hand.map(function (x) { return x.id; }).indexOf(o.card);
     if (idx < 0) return 'Kartu itu tidak ada di tangan timmu';
     var card = hand[idx], def = PC_CARDS[card.k];
     if (def.when === 'resp') return 'Block dan Reverse dipakai untuk menjawab kartu lawan';
@@ -1094,19 +1146,16 @@ var Engine = (function () {
     var opp = x.teams[0] === o.team ? x.teams[1] : x.teams[0];
     var e = { id: card.id, k: card.k, by: o.team, tg: opp, at: now(), st: 'on' };
     if (def.when === 'draw') {
-      if (!x.p) return 'Pilih Lawan dipakai saat undian lawan, sebelum timmu mendapat court';
-      var tp = pc.pend.filter(function (p) { return p !== x.p && (p.ch === o.target || p.op === o.target); })[0];
-      if (!tp) return 'Pilih tim yang belum mendapat court';
-      tp.cards = tp.cards || [];
-      if (pcUsed(tp.cards, o.target)) return 'Tim itu sudah memakai kartu untuk match berikutnya';
-      var mine = x.p.ch === o.team ? x.p.op : x.p.ch, theirs = tp.ch === o.target ? tp.op : tp.ch;
-      e.tg = o.target; e.p2 = tp.id;
-      e.prev = [x.p.ch, x.p.op, tp.ch, tp.op];
-      x.p.ch = o.team; x.p.op = o.target;                         // pemegang kartu jadi penantang lawan pilihannya
-      tp.ch = theirs; tp.op = mine;                                // lawan lama kedua tim saling bertemu
-      // kartu tim lawan lama yang sudah dipakai ikut pindah ke tantangan barunya
-      (x.p.cards || []).filter(function (c) { return c.by === mine; }).forEach(function (c) { x.p.cards.splice(x.p.cards.indexOf(c), 1); tp.cards.push(c); });
-      (tp.cards || []).filter(function (c) { return c.by === o.target; }).forEach(function (c) { tp.cards.splice(tp.cards.indexOf(c), 1); x.p.cards.push(c); });
+      // Pilih Lawan: tukar lawan dengan tim lain yang sudah punya lawan (tantangan atau court) dan belum mulai main
+      var s1 = pcSlot(S, o.ref), s2 = o.target ? pcSlotOf(S, o.target) : null;
+      if (!s1 || !s1.open) return 'Pilih Lawan dipakai sebelum match timmu dimulai';
+      if (o.target === opp) return 'Tim itu sudah lawanmu';
+      if (!s2 || s2.id === s1.id) return 'Pilih tim lain yang sudah punya lawan';
+      if (!s2.open) return 'Match tim itu sudah dimulai';
+      if (pcUsed(s2.list, o.target)) return 'Tim itu sudah memakai kartu di match-nya';
+      var theirs = s2.ch === o.target ? s2.op : s2.ch;
+      e.tg = o.target; e.p2 = s2.id; e.prev = [s1.ch, s1.op, s2.ch, s2.op];
+      pcPlace(S, s1, s2, [o.team, o.target], [theirs, opp]);       // pemegang kartu menantang tim pilihannya; lawan lama kedua tim saling bertemu
     } else {
       if (!x.m || x.m.status !== 'live') return 'Kartu ini dipakai saat timmu sudah di court';
       var started = !!x.m.go || tallyPts(x.m) > 0;
@@ -1114,24 +1163,17 @@ var Engine = (function () {
         if (started) return 'Kartu ini harus diumumkan sebelum match dimulai';
         if (o.team !== x.ch && !pcChDeclared(S, x)) return 'Penantang mengumumkan kartu lebih dulu';
       }
-      if (def.when === 'live' && !x.m.go) return 'Ambil Semua Poin dipakai saat game berjalan (setelah Game start)';
-      if (card.k === 'swh') {
-        var ot = teamById(S, opp);
-        if (!ot || (o.pid !== ot.a && o.pid !== ot.b)) return 'Pilih satu pemain lawan untuk Switch Hand';
-        e.pid = o.pid;
-      }
       e.n0 = tallyPts(x.m);
-      if (def.dur) { var ts = tallyState(S, x.m); e.g = ts.a + ts.b + 1; }
-      if (card.k === 'steal') (x.m.tally = x.m.tally || []).push('S:' + card.id);
+      if (def.dur) e.g = def.when === 'pre' ? 1 : (function (ts) { return ts.a + ts.b + 1; })(tallyState(S, x.m));
     }
     hand.splice(idx, 1); pcBump(S, o.team);
     x.list.push(e);
     return null;
   }
   /* jawab kartu lawan dengan Block (batal) atau Reverse (efek berbalik); hanya sebelum poin berikutnya,
-     atau sebelum tantangan mendapat court untuk Pilih Lawan */
+     Pilih Lawan: selama kedua match belum dimulai */
   function pcRespond(S, o) {
-    var pc = pcState(S), hand = pcHandOf(S, o.team), idx = hand.map(function (x) { return x.id; }).indexOf(o.card);
+    var hand = pcHandOf(S, o.team), idx = hand.map(function (x) { return x.id; }).indexOf(o.card);
     var card = hand[idx];
     if (!card || (card.k !== 'block' && card.k !== 'reverse')) return 'Pilih kartu Block atau Reverse di tangan timmu';
     var x = pcCtx(S, o.ref);
@@ -1142,18 +1184,12 @@ var Engine = (function () {
     if (card.k === 'reverse' && !PC_CARDS[tc.k].rev) return 'Reverse hanya untuk No Smash, No Glass, Switch Hand, dan Ambil Semua Poin';
     var own = x.list;
     if (tc.k === 'pick') {
-      var p2 = pc.pend.filter(function (p) { return p.id === tc.p2; })[0];
-      if (!p2 || !x.p || pc.pend.indexOf(x.p) < 0) return 'Tantangan itu sudah mendapat court';
-      p2.cards = p2.cards || [];
-      if (pcUsed(x.list.filter(function (c) { return c !== tc; }), o.team) || pcUsed(p2.cards, o.team)) return 'Timmu sudah memakai 1 kartu di match ini';
-      var mine = tc.by;
-      x.p.ch = tc.prev[0]; x.p.op = tc.prev[1]; p2.ch = tc.prev[2]; p2.op = tc.prev[3];
-      // kartu tim yang pindah dikembalikan ke tantangan asalnya
-      var inP2 = function (t) { return t === p2.ch || t === p2.op; };
-      x.p.cards.filter(function (c) { return c !== tc && inP2(c.by); }).forEach(function (c) { x.p.cards.splice(x.p.cards.indexOf(c), 1); p2.cards.push(c); });
-      p2.cards.filter(function (c) { return !inP2(c.by); }).forEach(function (c) { p2.cards.splice(p2.cards.indexOf(c), 1); x.p.cards.push(c); });
-      if (mine !== x.p.ch && mine !== x.p.op) return 'Tantangan berubah';
-      own = p2.cards;
+      var s1 = pcSlot(S, o.ref), s2 = pcSlot(S, tc.p2);
+      if (!s1 || !s2 || !s1.open || !s2.open) return 'Waktu menjawab sudah lewat (match sudah dimulai)';
+      if (!samePair(s1, tc.by, tc.tg)) return 'Tantangan berubah';
+      if (pcUsed(s1.list.filter(function (c) { return c !== tc; }), o.team) || pcUsed(s2.list, o.team)) return 'Timmu sudah memakai 1 kartu di match ini';
+      pcPlace(S, s1, s2, [tc.prev[0], tc.prev[1]], [tc.prev[2], tc.prev[3]]);    // lawan kembali seperti sebelum Pilih Lawan
+      own = s2.list;
     } else {
       if (x.m && (x.m.status !== 'live' || tallyPts(x.m) !== tc.n0)) return 'Waktu menjawab sudah lewat (sudah ada poin baru)';
       if (pcUsed(x.list, o.team)) return 'Timmu sudah memakai 1 kartu di match ini';
@@ -1161,6 +1197,27 @@ var Engine = (function () {
     hand.splice(idx, 1); pcBump(S, o.team);
     tc.st = card.k === 'block' ? 'blocked' : 'reversed';
     own.push({ id: card.id, k: card.k, by: o.team, tg: tc.by, of: tc.id, ofk: tc.k, at: now(), st: 'on' });
+    return null;
+  }
+  /* batalkan kartu yang sudah dipasang (bukan jawaban Block / Reverse) selama match belum dimulai dan kartunya belum
+     dijawab lawan; kartu kembali ke tangan. Pilih Lawan yang dibatalkan: lawan kembali seperti semula */
+  function pcUndo(S, o) {
+    var x = pcCtx(S, o.ref);
+    if (!x) return 'Match tidak ditemukan';
+    var c = x.list.filter(function (q) { return q.id === o.card && q.by === o.team; })[0];
+    if (!c) return 'Kartu itu tidak dipakai timmu di match ini';
+    if (c.of) return 'Jawaban Block / Reverse tidak bisa dibatalkan';
+    var s1 = pcSlot(S, o.ref);
+    if (!s1 || !s1.open) return 'Match sudah dimulai, kartu tidak bisa dibatalkan';
+    if (c.st !== 'on') return 'Kartu ini sudah dijawab lawan, tidak bisa dibatalkan';
+    if (c.k === 'pick') {
+      var s2 = pcSlot(S, c.p2);
+      if (!s2 || !s2.open) return 'Match tim lain sudah dimulai, Pilih Lawan tidak bisa dibatalkan';
+      if (!samePair(s1, c.by, c.tg)) return 'Tantangan berubah';
+      pcPlace(S, s1, s2, [c.prev[0], c.prev[1]], [c.prev[2], c.prev[3]]);
+    }
+    x.list.splice(x.list.indexOf(c), 1);
+    pcReturn(S, [c]);
     return null;
   }
   /* penantang menyatakan tanpa kartu sebelum match, supaya lawan bisa mengumumkan kartunya */
@@ -1172,7 +1229,9 @@ var Engine = (function () {
     return null;
   }
   /* poin court tiap tim, urut waktu selesai: menang +nilai (Double Point ×2), kalah −nilai;
-     Tukar Ranking: pemegang menang & totalnya masih di bawah lawan → total keduanya ditukar */
+     Tukar Ranking: pemegang menang & totalnya masih di bawah lawan → total keduanya ditukar;
+     Ambil Semua Poin: pemegang (atau yang membalik dengan Reverse) menang & poin lawan sebelum match > 0 →
+     poin lawan pindah ke pemegang, lawan jadi 0 lalu −nilai court; pemegang kalah → hangus */
   function pcPoints(S) {
     var tot = {};
     S.teams.forEach(function (t) { tot[t.id] = 0; });
@@ -1181,8 +1240,10 @@ var Engine = (function () {
       .forEach(function (m) {
         var w = m.sA > m.sB ? m.tA : m.tB, l = w === m.tA ? m.tB : m.tA, v = m.val || 1;
         var on = function (k) { return (m.cards || []).some(function (c) { return c.k === k && c.by === w && c.st === 'on'; }); };
-        tot[w] = (tot[w] || 0) + (on('double') ? 2 * v : v);
-        tot[l] = (tot[l] || 0) - v;
+        var steal = (m.cards || []).some(function (c) { return c.k === 'steal' && ((c.st === 'on' && c.by === w) || (c.st === 'reversed' && c.tg === w)); });
+        var took = steal && tot[l] > 0 ? tot[l] : 0;
+        tot[w] = (tot[w] || 0) + (on('double') ? 2 * v : v) + took;
+        tot[l] = took ? -v : (tot[l] || 0) - v;
         if (on('swap') && tot[w] < tot[l]) { var t = tot[w]; tot[w] = tot[l]; tot[l] = t; }
       });
     return tot;
@@ -1213,7 +1274,8 @@ var Engine = (function () {
     tallyState: tallyState, tally: tally, swapCandidates: swapCandidates, swapAcross: swapAcross, swapTeamAcross: swapTeamAcross,
     COURT_COLORS: COURT_COLORS,
     isPC: isPC, courtValue: courtValue, teamById: teamById, pcInit: pcInit, pcAdvance: pcAdvance, pcChoose: pcChoose, pcLists: pcLists, pcSync: pcSync,
-    PC_CARDS: PC_CARDS, pcPlay: pcPlay, pcRespond: pcRespond, pcPass: pcPass, pcPoints: pcPoints, pcHandCount: pcHandCount, pcLastRes: pcLastRes,
+    PC_CARDS: PC_CARDS, pcPlay: pcPlay, pcRespond: pcRespond, pcPass: pcPass, pcUndo: pcUndo, pcDraw: pcDraw, pcOwed: pcOwed, pcSlotOf: pcSlotOf,
+    pcPoints: pcPoints, pcHandCount: pcHandCount, pcLastRes: pcLastRes,
     pcChDeclared: function (S, ref) { var x = pcCtx(S, ref); return !x || pcChDeclared(S, x); }, tallyPts: tallyPts
   };
 })();
