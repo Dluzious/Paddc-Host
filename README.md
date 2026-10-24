@@ -1,4 +1,4 @@
-# Paddoc Host v2.11
+# Paddoc Host v2.12
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -170,7 +170,7 @@ Bila court sempit (mis. 4 court berjajar), foto pindah ke baris sendiri di atas 
 - Kudos tersimpan per orang dan terakumulasi antar sesi. **Profil → Kudos untukmu** menampilkan jumlah per kudos dan
   siapa pemberinya; orang lain tidak bisa melihatnya. Admin melihat semua di **Database → Kudos**.
 
-## Power Cup (v2.11: per ronde + kartu power)
+## Power Cup (v2.11: per ronde + kartu power · v2.12: gambar & animasi kartu)
 
 Format turnamen khusus: pilih **Power Cup** di *Buat rencana sesi*. Aturannya tetap, tidak ikut pengaturan skor,
 rotasi, atau klasemen biasa.
@@ -218,10 +218,23 @@ rotasi, atau klasemen biasa.
 - **Maks 1 kartu per tim per match** (termasuk Block / Reverse). **Penantang mengumumkan lebih dulu** (atau menekan
   *Umumkan: tanpa kartu*), lalu lawan. Kartu sebelum-match ditutup saat Game start.
 - **Kartu di tangan rahasia**: data sesi publik (papan iPad, penonton) hanya berisi jumlah kartu; isi tangan hanya
-  terlihat di HP tim itu sendiri (dan admin/host/host sesi lewat tombol **Kartu**).
-- **Papan iPad**: kartu yang dipakai tampil di court (kiri atas untuk tim kiri, kanan bawah untuk tim kanan) dengan
-  animasi muncul, status *diblok* / *dibalik* / *game n–n+1*, dan jumlah kartu di tangan kedua tim. Riwayat match &
-  papan skor wasit juga menampilkan kartu dan efeknya.
+  terlihat di HP tim itu sendiri (dan admin/host lewat tombol **Kartu**; host sesi yang ikut bermain hanya timnya).
+- **Papan iPad**: kartu yang dipakai tampil sebagai gambar kartu di court (kiri atas untuk tim kiri, kanan bawah untuk
+  tim kanan) dengan cap *diblok* / *dibalik* dan keterangan *game n–n+1* / pemain Switch Hand, plus jumlah kartu di
+  tangan kedua tim. Riwayat match & papan skor wasit menampilkan kartu dan efeknya (label teks).
+
+### Gambar & animasi kartu (v2.12)
+- Gambar dek ada di `img/cards/<kunci>.webp` (600×840): `free15`, `free30`, `golden`, `double`, `pick`, `nosmash`,
+  `noglass`, `swh`, `steal`, `swap`, `block`, `reverse`, `zonk`, dan `back` (sisi belakang). Mengganti desain cukup
+  menimpa file dengan nama yang sama.
+- **Kartu dipakai** (papan iPad): kartu terbalik muncul di tengah layar, dibuka, keterangan "Tim X memakai …", lalu
+  kartunya terbang ke sisi tim itu di court. **Block** menghantam kartu lawan (cap *DIBLOK!*), **Reverse** memutar
+  balik kartu lawan (cap *DIBALIK!*). **Zonk** yang diambil tim kalah ikut tampil (cap *DIBUANG*).
+- **HP pemain**: animasi yang sama untuk kartu yang dipakai oleh / ke timnya, Zonk timnya, dan **kartu baru** yang
+  diambil timnya (rahasia, hanya di HP tim itu; papan iPad tidak menampilkan isi kartu baru).
+- Di tangan (HP) kartu tampil sebagai gambar; ketuk untuk melihat gambar besar & memakainya.
+- Kartu yang sudah ada saat aplikasi dibuka tidak dianimasikan; beberapa kartu sekaligus diputar bergiliran (maks 6
+  antre). Ketuk layar untuk melewati. Perangkat dengan *kurangi gerakan* hanya mendapat animasi pudar.
 - Koreksi skor yang menukar pemenang: kartu yang diambil tim sebelumnya ditarik (bila belum dipakai), tim kalah baru
   mengambil.
 
