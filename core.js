@@ -392,6 +392,49 @@ var Core = (function () {
         body: (res.z ? 'Zonk langsung dibuang, tidak ada efek' : 'Timmu mendapat ' + def.name) + (m.no ? ' (Match #' + m.no + ')' : '') + ', diambil oleh ' + actor.name + '. ' + S.name });
     });
   }
+  /* kartu yang dipakai ke sebuah tim dikabarkan ke HP tim itu (Block / Reverse harus dijawab sebelum poin berikutnya);
+     Pilih Lawan juga mengabari dua tim yang lawannya berubah. Jawaban Block / Reverse dikabarkan ke pemakai kartu asal */
+  function pcCardNotify(S, P, type, cardId) {
+    if (!A.notify) return;
+    var c = null, where = null;
+    S.matches.filter(function (m) { return m.status === 'live'; }).forEach(function (m) { (m.cards || []).forEach(function (x) { if (x.id === cardId) { c = x; where = m; } }); });
+    (S.pc.pend || []).forEach(function (p) { (p.cards || []).forEach(function (x) { if (x.id === cardId) c = x; }); });
+    if (!c) return;
+    var name = function (k) { return (Engine.PC_CARDS[k] || {}).name || k; };
+    var tn = function (tid) { var t = Engine.teamById(S, tid); return t ? [t.a, t.b].map(function (id) { return (P[id] || {}).name || '?'; }).join(' & ') : '?'; };
+    var court = where ? ' di ' + ((S.courts.filter(function (x) { return x.id === where.court; })[0] || {}).name || 'court') : '';
+    var send = function (tid, title, body) {
+      var t = Engine.teamById(S, tid);
+      if (t) [t.a, t.b].forEach(function (pid) { A.notify(pid, { title: title, body: body + ' · ' + S.name, tag: 'pcvs-' + c.id + '-' + tid, url: '/' }); });
+    };
+    if (type === 'pcResp') {
+      send(c.tg, 'Kartu ' + name(c.ofk) + ' ' + (c.k === 'block' ? 'diblok' : 'dibalik'), tn(c.by) + (c.k === 'block' ? ' memblok ' : ' membalik ') + name(c.ofk) + ' timmu' + court + '.');
+      return;
+    }
+    var hand = (S.pc.cd.hand[c.tg] || []), def = Engine.PC_CARDS[c.k] || {};
+    var canBlock = hand.some(function (x) { return x.k === 'block' || (x.k === 'reverse' && def.rev); });
+    var hint = canBlock ? ' Kamu memegang ' + (hand.some(function (x) { return x.k === 'block'; }) ? 'Block' : 'Reverse') + ': jawab di HP sebelum ' + (c.k === 'pick' ? 'match dimulai.' : 'poin berikutnya.') : '';
+    if (c.k === 'pick') {
+      send(c.tg, tn(c.by) + ' memilih timmu jadi lawan', tn(c.by) + ' memakai Pilih Lawan: timmu sekarang melawan mereka' + court + '.' + hint);
+      var pv = c.prev || [], o1 = pv[0] === c.by ? pv[1] : pv[0], o2 = pv[2] === c.tg ? pv[3] : pv[2];
+      if (o1 && o2) {
+        send(o1, 'Lawanmu berubah', tn(c.by) + ' memakai Pilih Lawan. Timmu sekarang melawan ' + tn(o2) + '.');
+        send(o2, 'Lawanmu berubah', tn(c.by) + ' memakai Pilih Lawan. Timmu sekarang melawan ' + tn(o1) + '.');
+      }
+      return;
+    }
+    send(c.tg, 'Lawan memakai ' + name(c.k), tn(c.by) + ' memakai ' + name(c.k) + ' ke timmu' + court + '.' + hint);
+  }
+  /* ronde baru dimulai: tim yang belum mengambil kartu haknya diingatkan sekali */
+  function pcOweRemind(S) {
+    if (!A.notify) return;
+    (S.pc.owe || []).forEach(function (o) {
+      if (o.rem) return;
+      o.rem = 1;
+      var t = Engine.teamById(S, o.t);
+      if (t) [t.a, t.b].forEach(function (pid) { A.notify(pid, { title: 'Kartu power belum diambil', body: 'Ronde ' + S.pc.round + ' dimulai dan timmu belum mengambil kartu. Buka app lalu tekan Ambil kartu. ' + S.name, tag: 'pcowe-' + o.m, url: '/' }); });
+    });
+  }
   /* Pilih Lawan memindahkan tim antar court: panggilan court untuk pemain yang sudah tidak di match itu dihapus */
   function pcFixCalls(S) {
     Object.keys(S.calls || {}).forEach(function (pid) {
@@ -1102,7 +1145,9 @@ var Core = (function () {
       else if (PLAN_ACTIONS[type]) throw err('STALE', 'Sesi sudah dimulai');
       else {
         if (S.status === 'live' && S.avail && applyAvail(S, now()).changed) fill(S, P);
+        var rd0 = S.pc ? S.pc.round || 0 : 0;
         info = apply(S, P, type, d, actor, staff);
+        if (Engine.isPC(S) && S.pc && (S.pc.round || 0) > rd0 && rd0 > 0) pcOweRemind(S);
       }
       saveS(S, P);
       var out = { sid: S.id, v: S.v, S: publicS(S), info: info || null };
@@ -1153,6 +1198,7 @@ var Core = (function () {
           : type === 'pcUndo' ? Engine.pcUndo(S, { team: tm.id, card: d.card, ref: d.ref }) : Engine.pcPass(S, d.ref, tm.id);
         if (pe) throw err('INVALID', pe);
         pcFixCalls(S);
+        if (type === 'pcCard' || type === 'pcResp') pcCardNotify(S, P, type, d.card);
         break;
       case 'pcCourt': // Power Cup: tim penantang memilih court untuk tantangannya (host boleh memilihkan)
         if (!Engine.isPC(S) || S.status !== 'live') throw err('INVALID', 'Hanya untuk sesi Power Cup yang berjalan');

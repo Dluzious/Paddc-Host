@@ -1070,6 +1070,30 @@ button.pkc:focus-visible img { outline: 3px solid var(--accent); outline-offset:
 .pka-stamp { position: absolute; left: 50%; top: 44%; z-index: 3; padding: 4px 14px; border: 4px solid currentColor; border-radius: 10px; background: rgba(255,255,255,0.94); color: #B3261E; font-family: var(--f-display); font-size: clamp(22px, 4.6vh, 40px); font-weight: 900; letter-spacing: 0.06em; white-space: nowrap; opacity: 0; transform: translate(-50%, -50%) rotate(-14deg); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.6); }
 .pka.reverse .pka-stamp { color: #5B3A9E; }
 .pka.zonk .pka-stamp, .pka.roul .pka-stamp { color: #46566B; }
+/* pergantian ronde */
+.pka.round { --rh: clamp(40px, 6.2vh, 54px); }
+.pkr { position: relative; display: grid; justify-items: center; gap: 10px; width: min(640px, 100%); text-align: center; color: #fff; }
+.pkr-k { font-size: 13px; font-weight: 800; letter-spacing: 0.32em; text-transform: uppercase; color: #F2C14E; }
+.pkr-t { font-family: var(--f-display); font-size: clamp(54px, 13vh, 120px); line-height: 0.95; letter-spacing: 0.04em; text-transform: uppercase; text-shadow: 0 6px 30px rgba(0,0,0,0.5); }
+.pkr-s { font-size: clamp(14px, 2.2vh, 18px); opacity: 0.9; min-height: 1.4em; }
+.pkr-list { position: relative; width: 100%; margin: 6px 0 0; padding: 0; list-style: none; }
+.pkr-list li { position: absolute; left: 0; right: 0; top: 0; height: calc(var(--rh) - 8px); display: flex; align-items: center; gap: 10px; padding: 0 14px; border-radius: 12px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.16); font-size: clamp(13px, 2vh, 17px); font-weight: 700; transition: transform 0.16s ease; text-align: left; }
+.pkr-list .no { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #F2C14E; color: #1b1300; font-family: var(--f-display); font-size: 16px; transition: opacity 0.2s; }
+.pkr-list .tm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pkr-list i { font-style: normal; color: #F2C14E; font-family: var(--f-display); padding: 0 4px; }
+.pkr-list .ct { flex: none; font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 6px; background: rgba(0,0,0,0.3); }
+.pka.round.mixing .no { opacity: 0; }
+.pka.round.set li.me { background: rgba(232,144,47,0.35); border-color: #E8902F; box-shadow: 0 0 0 2px rgba(232,144,47,0.5); }
+.pkr small { font-size: 12px; opacity: 0.6; }
+/* court yang baru dipilih menyala */
+.court.pcpick, .cmini.pcpick { animation: pcGlow 1.7s ease-out var(--pk-d, 0ms) 2; }
+@keyframes pcGlow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--court) 85%, transparent); } 45% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--court) 45%, transparent), 0 0 46px 8px color-mix(in srgb, var(--court) 70%, transparent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.pc-picked { position: absolute; left: 50%; top: 50%; z-index: 6; display: flex; align-items: center; gap: 8px; max-width: 92%; padding: 8px 14px; border-radius: 12px; background: rgba(10,22,40,0.88); color: #fff; font-weight: 800; font-size: clamp(12px, calc(var(--pw, 110px) * 0.12), 17px); box-shadow: 0 12px 30px -10px rgba(0,0,0,0.7); pointer-events: none; white-space: nowrap; animation: pcPicked 3.4s ease var(--pk-d, 0ms) both; }
+.pc-picked span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pc-picked b { flex: none; font-family: var(--f-display); color: #F2C14E; }
+.pc-picked .ic { flex: none; width: 16px; height: 16px; color: #F2C14E; }
+@keyframes pcPicked { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } 10% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); } 16%, 82% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) { .court.pcpick, .cmini.pcpick { animation: none; } .pkr-list li { transition: none; } }
 .pc-draw { display: grid; gap: 6px; justify-items: start; padding: 10px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }
 .pka.resp { gap: clamp(40px, 8vh, 64px); }   /* kartu jawaban digeser miring: jangan menutupi keterangan */
 .pka-cap { position: relative; display: grid; gap: 6px; max-width: 560px; text-align: center; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
@@ -2391,7 +2415,14 @@ function MemoryAdapter(store, persist) {
     if (first) { PKA.sid = S.id; PKA.seen = {}; PKA.hseen = null; PKA.q.forEach(pkaRelease); PKA.q = []; }
     if (!PKA.pre) { PKA.pre = true; Object.keys(Engine.PC_CARDS).concat('back').forEach(function (k) { new Image().src = pkSrc(k); }); }
     var u = me(), myT = u && Engine.teamOf(S, u.id), mine = myT ? myT.id : '', board = UI.view === 'board';
-    var who = board ? '' : mine;
+    var who = board ? '' : mine, rd = (S.pc && S.pc.round) || 0, st0 = S.plan && S.plan.startedAt;
+    if (first) {
+      PKA.rd = rd;                                                    // baru dibuka: Ronde 1 hanya bila sesi baru saja dimulai
+      if (rd === 1 && st0 && Date.now() + (LIVE.offset || 0) - st0 < 15000) pkaPush(Object.assign({ type: 'round', rd: 1, mine: who }, pkaRoundRows(1)));
+    } else if (rd > (PKA.rd || 0)) {
+      PKA.rd = rd;
+      if (S.status === 'live') pkaPush(Object.assign({ type: 'round', rd: rd, mine: who }, pkaRoundRows(rd)));
+    }
     S.matches.map(function (m) { return { m: m, list: m.cards || [] }; })
       .concat(pcPend().map(function (p) { return { list: p.cards || [] }; }))
       .forEach(function (x) {
@@ -2436,6 +2467,65 @@ function MemoryAdapter(store, persist) {
     var done = function () { pkaRelease(ev); PKA.run = false; pkaNext(); };
     pkaPlay(ev).then(done, done);
   }
+  /* pergantian ronde: "Ronde N" besar, lalu urutan memilih court diacak di depan mata sebelum berhenti di urutan
+     sebenarnya (papan iPad & HP; di HP baris timku disorot). Court yang langsung terisi otomatis: daftar lawan + court */
+  function pkaRoundRows(rd) {
+    var pend = pcPend().filter(function (p) { return (p.rd || rd) === rd; });
+    if (pend.length) return { pend: true, rows: pend.map(function (p) { return { ch: p.ch, op: p.op }; }) };
+    return { pend: false, rows: Engine.liveMatches(S).filter(function (m) { return m.pc && m.pc.rd === rd; }).map(function (m) { return { ch: m.tA, op: m.tB, court: m.court }; }) };
+  }
+  function pkaRound(ev) {
+    var red = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches), rows = ev.rows, n = rows.length;
+    var mineAt = -1;
+    rows.forEach(function (r, i) { if (ev.mine && (r.ch === ev.mine || r.op === ev.mine)) mineAt = i; });
+    var sub = ev.pend ? 'Urutan memilih court diacak…' : 'Lawan ronde ini';
+    var w = document.createElement('div');
+    w.className = 'pka round';
+    w.setAttribute('role', 'status');
+    w.innerHTML = '<div class="pka-bg"></div><div class="pkr"><span class="pkr-k">Power Cup</span><b class="pkr-t">Ronde ' + ev.rd + '</b><span class="pkr-s">' + sub + '</span>' +
+      '<ol class="pkr-list" style="height:calc(var(--rh) * ' + n + ')">' + rows.map(function (r, i) {
+        return '<li class="' + (i === mineAt ? 'me' : '') + '" style="transform:translateY(calc(var(--rh) * ' + i + '))"><span class="no">' + (i + 1) + '</span><span class="tm">' + teamName(Engine.teamById(S, r.ch)) +
+          ' <i>vs</i> ' + teamName(Engine.teamById(S, r.op)) + '</span>' + (r.court ? '<span class="ct">' + esc(courtName(r.court)) + '</span>' : '') + '</li>';
+      }).join('') + '</ol><small>ketuk untuk melewati</small></div>';
+    document.body.appendChild(w);
+    var q = function (sel) { return $(sel, w); }, lis = $$('.pkr-list li', w), title = q('.pkr-t'), subEl = q('.pkr-s');
+    var skip = false, wake = null;
+    w.addEventListener('click', function () { skip = true; if (wake) wake(); });
+    var wait = function (ms) { return skip ? Promise.resolve() : new Promise(function (r) { var tm = setTimeout(r, ms); wake = function () { clearTimeout(tm); r(); }; }); };
+    var place = function (perm) { lis.forEach(function (li, i) { li.style.transform = 'translateY(calc(var(--rh) * ' + perm[i] + '))'; }); };
+    var shuffle = function () {
+      if (!ev.pend || n < 2 || red) return Promise.resolve();
+      w.classList.add('mixing');
+      var k = 0;
+      return new Promise(function (done) {
+        (function step() {
+          if (skip || k++ >= 8) { place(lis.map(function (x, i) { return i; })); w.classList.remove('mixing'); return done(); }
+          var p = lis.map(function (x, i) { return i; });
+          for (var i = p.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = p[i]; p[i] = p[j]; p[j] = t; }
+          place(p);
+          setTimeout(step, 170);
+        })();
+      });
+    };
+    var intro = red ? pkaAnim(w, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 }) : Promise.all([
+      pkaAnim(q('.pka-bg'), [{ opacity: 0 }, { opacity: 1 }], { duration: 250 }),
+      pkaAnim(title, [{ transform: 'scale(2.4)', opacity: 0, letterSpacing: '0.4em' }, { transform: 'scale(0.94)', opacity: 1, offset: 0.7 }, { transform: 'none', opacity: 1, letterSpacing: '0.04em' }], { duration: 650, easing: 'cubic-bezier(.2,.8,.3,1)' }),
+      pkaAnim(q('.pkr-list'), [{ opacity: 0, transform: 'translateY(16px)' }, { opacity: 1, transform: 'none' }], { duration: 350, delay: 450 })]);
+    return intro.then(shuffle).then(function () {
+      subEl.textContent = ev.pend ? (mineAt >= 0 ? 'Timmu memilih court urutan ke-' + (mineAt + 1) + '. Penantang (kiri) yang memilih.' : 'Urutan memilih court. Penantang (kiri) yang memilih.') : 'Court sudah terisi otomatis.';
+      w.classList.add('set');
+      return wait(mineAt >= 0 ? 3200 : 2600);
+    }).then(function () { return pkaAnim(w, [{ opacity: 1 }, { opacity: 0 }], { duration: red || skip ? 150 : 350 }); })
+      .then(function () { w.remove(); }, function () { w.remove(); });
+  }
+  /* court yang baru dipilih penantang menyala sebentar (lama tampil dihitung dari pertama terlihat, tahan render ulang) */
+  function pcPickAge(m) {
+    var p0 = UI.picked;
+    if (!p0 || p0.sid !== S.id) { UI.picked = p0 = { sid: S.id }; Engine.liveMatches(S).forEach(function (x) { p0[x.id] = 1; }); }
+    if (!p0[m.id]) p0[m.id] = Date.now();
+    var a = Date.now() - p0[m.id];
+    return a < 3400 ? a : -1;
+  }
   function pkaAnim(el, kf, o) {
     return new Promise(function (res) {
       if (!el || !el.animate) return res();
@@ -2444,6 +2534,7 @@ function MemoryAdapter(store, persist) {
     });
   }
   function pkaPlay(ev) {
+    if (ev.type === 'round') return pkaRound(ev);
     var c = ev.c || {}, k = ev.type === 'zonk' ? 'zonk' : c.k, d = pkDef(k), red = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     var nm = function (tid) { return tid && tid === ev.mine ? 'Timmu' : teamName(Engine.teamById(S, tid)); };
     var title, sub = '', stamp = '', front = pkSrc(ev.type === 'resp' ? c.ofk : k), cls = ev.type;
@@ -2763,7 +2854,8 @@ function MemoryAdapter(store, persist) {
     var deal = m && !UI.seen[m.id];
     if (m) UI.seen[m.id] = 1;
     var u = me(), mine = shown && u && shown.A.concat(shown.B).indexOf(u.id) >= 0, myRef = u && c.hostId === u.id;
-    var h = '<article class="cmini ' + (deal ? 'deal ' : '') + (mine || myRef ? 'mine ' : '') + (!c.active ? 'closing' : '') + courtCls(c) + '" data-court="' + c.id + '">' +
+    var pk = isPCS(S) && m && m.pc ? pcPickAge(m) : -1;
+    var h = '<article class="cmini ' + (deal ? 'deal ' : '') + (mine || myRef ? 'mine ' : '') + (!c.active ? 'closing' : '') + (pk >= 0 ? ' pcpick' : '') + courtCls(c) + '" data-court="' + c.id + '"' + (pk >= 0 ? ' style="--pk-d:-' + pk + 'ms"' : '') + '>' +
       '<header><span class="cnum">' + idx + '</span><div class="cm-meta"><b>' + esc(c.name) + '</b>' + (isPCS(S) ? valBadge(c) : '<span class="gpill ' + c.gender + '">' + icon(cgIcon(c.gender)) + cgLabel(c.gender) + '</span>') +
       (mine ? '<span class="youtag">Kamu</span>' : myRef ? '<span class="youtag">Court kamu</span>' : '') + refTag(c) + '</div>' +
       (m ? timerHTML(m) : '') + '</header>' + (m ? waitBanner(m) : '') +
@@ -2829,8 +2921,8 @@ function MemoryAdapter(store, persist) {
     var shown = m || fin;
     var deal = m && !UI.seen[m.id];
     if (m) UI.seen[m.id] = 1;
-    var ref = refBadge(c);
-    var h = '<article class="court ' + (deal ? 'deal ' : '') + (!c.active ? 'closing' : '') + (ref ? ' has-ref' : '') + courtCls(c) + '" data-court="' + c.id + '">' +
+    var ref = refBadge(c), pk = isPCS(S) && m && m.pc ? pcPickAge(m) : -1;
+    var h = '<article class="court ' + (deal ? 'deal ' : '') + (!c.active ? 'closing' : '') + (ref ? ' has-ref' : '') + (pk >= 0 ? ' pcpick' : '') + courtCls(c) + '" data-court="' + c.id + '"' + (pk >= 0 ? ' style="--pk-d:-' + pk + 'ms"' : '') + '>' +
       '<header class="court-h"><div class="ch-l"><span class="cnum">' + idx + '</span><div class="cmeta"><div class="cname">' + esc(c.name) + (isPCS(S) ? valBadge(c) : '') + '</div>' +
       '<div class="ctags">' + (isPCS(S) ? '' : '<span class="gpill ' + c.gender + '">' + icon(cgIcon(c.gender)) + cgLabel(c.gender) + '</span>') + (ref ? '' : refTag(c)) +
       (isPCS(S) && m && m.tA ? '<span class="pctag">' + icon('zap') + '<span>Penantang: ' + teamName(Engine.teamById(S, m.tA)) + '</span></span>' + pcHandTag(m) : '') +
@@ -2840,7 +2932,8 @@ function MemoryAdapter(store, persist) {
       (!c.active ? '<span style="color:var(--warn)">Ditutup setelah match ini</span>' : '') + '</div></div></div>' +
       ref + '<div class="ch-r">' + (m ? timerHTML(m) : '') + '</div></header>';
     var playing = !fin && matchState(m) === 'play';
-    h += '<div class="pitch">' + (playing ? '<div class="rally"><i></i></div>' : '') + (isPCS(S) && shown ? pcUseHTML(shown) : '');
+    h += '<div class="pitch">' + (playing ? '<div class="rally"><i></i></div>' : '') + (isPCS(S) && shown ? pcUseHTML(shown) : '') +
+      (pk >= 0 ? '<div class="pc-picked">' + icon('zap') + '<span>' + teamName(Engine.teamById(S, m.pc.ch)) + ' memilih court ini</span><b>±' + Engine.courtValue(S, c) + '</b></div>' : '');
     if (shown) {
       h += '<div class="side side-a">' + shown.A.map(function (p) { return pcard(p, shown, 'A', !!fin, isPCS(S)); }).join('') + '</div>';
       if (fin) {
@@ -4291,7 +4384,9 @@ function MemoryAdapter(store, persist) {
     var ids = function (r) { return fixed ? [r.team.a, r.team.b] : [r.id]; };
     var dif = function (r) { return (r.diff > 0 ? '+' : '') + r.diff; };
     var pcx = isPCS(S0);
-    var line = function (r) { return pcx ? signed(r.pts) + ' poin · selisih ' + dif(r) : S0.rules.sortBy === 'points' ? r.pf + ' ' + unit + ' · ' + r.w + ' menang' : r.w + ' menang · selisih ' + dif(r); };
+    var used = {};                                                      // Power Cup: jumlah kartu power yang dipakai tiap tim
+    if (pcx) S0.matches.forEach(function (m) { if (m.status === 'done') (m.cards || []).forEach(function (c) { used[c.by] = (used[c.by] || 0) + 1; }); });
+    var line = function (r) { return pcx ? signed(r.pts) + ' poin · selisih ' + dif(r) + (used[r.id] ? ' · ' + used[r.id] + ' kartu' : '') : S0.rules.sortBy === 'points' ? r.pf + ' ' + unit + ' · ' + r.w + ' menang' : r.w + ' menang · selisih ' + dif(r); };
     var podium = rows.slice(0, 3).map(function (r) { return { rank: r.rank, people: ids(r).map(cerPerson), line: line(r) }; });
     var onPod = {};
     podium.forEach(function (s) { s.people.forEach(function (p) { onPod[p.id] = 1; }); });
@@ -4299,9 +4394,9 @@ function MemoryAdapter(store, persist) {
     var v = (S0.plan && S0.plan.venue) || {}, th = Lobby.themeDef((S0.plan && S0.plan.theme) || 'court');
     var tall = window.innerWidth / window.innerHeight < 1.15;
     return { title: S0.name, sub: fmtDate(S0.endedAt || S0.date) + (v.name ? ' · ' + v.name : ''), bg: (tall && th.port ? th.port.img : th.land ? th.land.img : '') || '',
-      podium: podium, crowd: crowd.map(cerPerson), cols: pcx ? 'POIN COURT · SELISIH GAME' : '',
+      podium: podium, crowd: crowd.map(cerPerson), cols: pcx ? 'POIN COURT · SELISIH GAME' : '', kicker: pcx && !/power\s*cup/i.test(S0.name) ? 'P O W E R   C U P' : '',          // nama sesi sudah memuat "Power Cup": cukup PODIUM
       table: rows.map(function (r) {
-        return { rank: r.rank, name: ids(r).map(function (id) { return P(id).name; }).join(' & '), w: pcx ? signed(r.pts) : r.w, diff: r.diff, me: !!(u && ids(r).indexOf(u.id) >= 0),
+        return { rank: r.rank, name: ids(r).map(function (id) { return P(id).name; }).join(' & '), w: pcx ? signed(r.pts) : r.w, wc: pcx ? (r.pts > 0 ? '#7FE3A6' : r.pts < 0 ? '#FF9A8A' : '#FFFFFF') : '', diff: r.diff, me: !!(u && ids(r).indexOf(u.id) >= 0),
           photos: ids(r).map(function (id) { var s = photoSrc(P(id)); return s ? s.src : ''; }).filter(Boolean) };
       }) };
   }

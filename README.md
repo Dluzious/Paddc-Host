@@ -248,6 +248,19 @@ rotasi, atau klasemen biasa.
 - Koreksi skor yang menukar pemenang: kartu yang diambil tim sebelumnya ditarik (bila belum dipakai), tim kalah baru
   mengambil.
 
+### Tahap 3: ronde, court, podium, notifikasi (v2.12)
+- **Pergantian ronde**: "Ronde N" besar di papan iPad & HP, lalu urutan memilih court diacak di depan mata sebelum
+  berhenti di urutan sebenarnya. Di HP baris timmu disorot ("Timmu memilih court urutan ke-1"). Ronde yang court-nya
+  langsung terisi otomatis menampilkan daftar lawan + court. Ronde 1 hanya tampil bila sesi baru saja dimulai.
+- **Court dipilih**: court yang baru dipilih penantang menyala dengan warna court-nya ±3 detik, dengan tulisan
+  "Tim X memilih court ini ±N" (papan iPad; court mini di HP ikut menyala).
+- **Podium Power Cup**: poin court berwarna (hijau plus, merah minus), baris juara memuat jumlah kartu yang dipakai,
+  label "POWER CUP" di atas judul (kecuali nama sesi sudah memuat Power Cup).
+- **Notifikasi kartu lawan**: lawan memakai kartu ke timmu → HP kedua pemain dikabari, plus pengingat bila timmu
+  memegang Block / Reverse. Pilih Lawan mengabari tim yang dipilih dan dua tim yang lawannya berubah. Kartu yang diblok /
+  dibalik dikabarkan ke pemakainya.
+- **Pengingat ambil kartu**: saat ronde baru dimulai, tim yang belum mengambil kartu haknya diingatkan sekali.
+
 ## Lobi: sudah datang & waiting list (v2.11)
 
 - Di daftar *Hadir* tiap pemain punya status **Datang / Belum datang**. Pemain menandai dirinya sendiri (*Saya sudah
