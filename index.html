@@ -872,6 +872,11 @@ button.li:hover { border-color: var(--line-strong); }
 @media (max-width: 1279px) { .top-chips { display: none; } }
 @media (max-width: 900px) { .tbtn .lbl { display: none; } .tbtn { width: 40px; padding: 0; justify-content: center; } }
 .court-f .btn { white-space: nowrap; }
+/* court sempit: status "Siap mulai" / "Menunggu" cukup ikonnya, supaya nama court & penantang tetap terbaca */
+@container (max-width: 330px) {
+  .court-h .ctimer.ready, .court-h .ctimer.wait { font-size: 0; gap: 0; }
+  .court-h .ctimer.ready .ic, .court-h .ctimer.wait .ic { width: 20px; height: 20px; }
+}
 @container (max-width: 270px) {
   .court-f { gap: 6px; padding-inline: 10px; }
   .court-f .btn { padding: 8px 10px; font-size: 13px; gap: 5px; }
@@ -992,7 +997,10 @@ button.cm-p:hover { background: rgba(8,18,34,0.55); }
 .cval { display: inline-flex; align-items: center; padding: 1px 8px; border-radius: 999px; font-family: var(--f-display); font-weight: 900; font-size: 15px; line-height: 1.3; color: #fff; background: var(--court); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.35); letter-spacing: 0.02em; }
 .cname .cval { font-size: 17px; padding: 0 9px; margin-left: 6px; vertical-align: 2px; }
 .pctag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 800; color: var(--accent); white-space: nowrap; }
-.pctag .ic { width: 13px; height: 13px; }
+.pctag .ic { width: 13px; height: 13px; flex: none; }
+.pctag { max-width: 100%; min-width: 0; }                       /* court sempit: nama penantang dipotong, tidak menimpa status match */
+.pctag > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.court .cmeta { grid-template-columns: minmax(0, 1fr); }
 .pc-wait { display: grid; gap: 4px; justify-items: center; text-align: center; padding: 12px 18px; border-radius: 14px; background: rgba(8, 18, 34, 0.78); color: #F2EBDD; box-shadow: 0 8px 22px -10px rgba(0,0,0,0.6); }
 .pc-wait small { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #F2C14E; }
 .pc-wait small .ic { width: 14px; height: 14px; opacity: 1; }
@@ -1027,12 +1035,47 @@ button.cm-p:hover { background: rgba(8,18,34,0.55); }
 .pk small { font-size: 0.92em; font-weight: 700; text-transform: none; letter-spacing: 0; opacity: 0.9; }
 .pk.off { opacity: 0.6; text-decoration: line-through; }
 button.pk { cursor: pointer; font-size: 12.5px; padding: 7px 12px; }
-.pk.new { animation: pkPop 0.8s cubic-bezier(.2,.9,.3,1.4) both; }
-@keyframes pkPop { 0% { transform: scale(0.3) rotateY(90deg); opacity: 0; } 60% { transform: scale(1.18); opacity: 1; } 100% { transform: none; } }
-.pcuse { position: absolute; z-index: 4; display: flex; flex-direction: column; gap: 5px; max-width: 48%; pointer-events: none; }
+/* gambar kartu (img/cards/<kunci>.webp, 600×840) */
+.pkc { position: relative; display: inline-grid; justify-items: center; align-content: start; gap: 4px; width: var(--pkw, 78px); flex: none; padding: 0; border: 0; background: none; color: inherit; font: inherit; }
+.pkc img { display: block; width: 100%; height: auto; aspect-ratio: 600 / 840; border-radius: 7% / 5%; background: #1E4A7A; box-shadow: 0 8px 18px -8px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,0,0,0.15); user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
+.pkc small { max-width: 100%; padding: 2px 6px; border-radius: 6px; background: rgba(10,22,40,0.84); color: #fff; font-size: 11px; font-weight: 800; line-height: 1.25; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pkc-st { position: absolute; left: 50%; top: 36%; transform: translate(-50%, -50%) rotate(-14deg); padding: 1px 6px; border: 2px solid currentColor; border-radius: 6px; background: rgba(255,255,255,0.92); color: #B3261E; font-family: var(--f-display); font-size: clamp(10px, calc(var(--pkw, 78px) * 0.17), 15px); font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.pkc.rev .pkc-st { color: #5B3A9E; }
+.pkc.off img { filter: grayscale(0.85) brightness(0.8); }
+button.pkc { --pkw: 92px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+button.pkc img { transition: transform 0.15s; }
+button.pkc:active img { transform: scale(0.95); }
+button.pkc:focus-visible { outline: none; }
+button.pkc:focus-visible img { outline: 3px solid var(--accent); outline-offset: 2px; }
+.pkc.hold { visibility: hidden; }
+.pkc.land img { animation: pkLand 0.55s cubic-bezier(.2,.9,.3,1.5) both; }
+@keyframes pkLand { 0% { transform: scale(1.3); box-shadow: 0 0 0 6px rgba(255,214,120,0.8); } 100% { transform: none; } }
+.pcuse { position: absolute; z-index: 4; display: flex; gap: 6px; pointer-events: none; --pkw: clamp(44px, calc(var(--pw, 110px) * 0.6), 96px); }
 .pcuse.a { left: 10px; top: 10px; align-items: flex-start; }
-.pcuse.b { right: 10px; bottom: 10px; align-items: flex-end; }
-.pcuse .pk { font-size: 14px; padding: 5px 11px; box-shadow: 0 6px 16px -6px rgba(0,0,0,0.6); }
+.pcuse.b { right: 10px; bottom: 10px; align-items: flex-end; flex-direction: row-reverse; }
+/* court padat (4–6 court): kartu menumpang di sudut kartu pemain, dimiringkan supaya terbaca sebagai kartu yang dimainkan tim */
+.pcuse .pkc small { max-width: none; font-size: clamp(9px, calc(var(--pkw) * 0.17), 11px); padding: 1px 5px; }
+.pcuse.a .pkc { transform: rotate(-5deg); justify-items: start; }
+.pcuse.b .pkc { transform: rotate(5deg); justify-items: end; }
+/* animasi kartu dipakai: kartu terbalik → dibuka besar di tengah → terbang ke court tim */
+.pka { position: fixed; inset: 0; z-index: 85; display: grid; place-items: center; align-content: center; gap: clamp(14px, 3vh, 26px); padding: 24px 16px; cursor: pointer; perspective: 1600px; -webkit-tap-highlight-color: transparent; }
+.pka-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 42%, rgba(30,74,122,0.55), rgba(4,10,20,0.88) 70%); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+.pka-stage { position: relative; width: min(52vw, 36vh, 300px); aspect-ratio: 600 / 840; transform-style: preserve-3d; }
+.pka-glow { position: absolute; inset: -22%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255,214,120,0.6), rgba(255,214,120,0) 70%); opacity: 0; pointer-events: none; }
+.pka.zonk .pka-glow { background: radial-gradient(closest-side, rgba(150,165,185,0.55), rgba(150,165,185,0) 70%); }
+.pka-card { position: absolute; inset: 0; transform-style: preserve-3d; will-change: transform; }
+.pka-card img { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 6% / 4.3%; -webkit-backface-visibility: hidden; backface-visibility: hidden; box-shadow: 0 30px 60px -22px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.12); }
+.pka-card .bk { transform: rotateY(180deg); }
+.pka-card.hit { z-index: 2; opacity: 0; }
+.pka-stamp { position: absolute; left: 50%; top: 44%; z-index: 3; padding: 4px 14px; border: 4px solid currentColor; border-radius: 10px; background: rgba(255,255,255,0.94); color: #B3261E; font-family: var(--f-display); font-size: clamp(22px, 4.6vh, 40px); font-weight: 900; letter-spacing: 0.06em; white-space: nowrap; opacity: 0; transform: translate(-50%, -50%) rotate(-14deg); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.6); }
+.pka.reverse .pka-stamp { color: #5B3A9E; }
+.pka.zonk .pka-stamp, .pka.roul .pka-stamp { color: #46566B; }
+.pc-draw { display: grid; gap: 6px; justify-items: start; padding: 10px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+.pka.resp { gap: clamp(40px, 8vh, 64px); }   /* kartu jawaban digeser miring: jangan menutupi keterangan */
+.pka-cap { position: relative; display: grid; gap: 6px; max-width: 560px; text-align: center; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+.pka-cap b { font-family: var(--f-display); font-size: clamp(20px, 3.6vh, 32px); line-height: 1.15; letter-spacing: 0.01em; }
+.pka-cap span { font-size: clamp(14px, 2.2vh, 18px); line-height: 1.35; opacity: 0.92; }
+.pka-cap small { font-size: 12px; opacity: 0.6; }
 .hcnt { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 6px; background: #1E4A7A; color: #F2EBDD; white-space: nowrap; }
 .pc-hand { display: grid; gap: 8px; margin-top: 8px; }
 .pc-hand-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -1040,6 +1083,9 @@ button.pk { cursor: pointer; font-size: 12.5px; padding: 7px 12px; }
 .cm-cards { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 12px 8px; }
 .pkinfo { display: grid; gap: 10px; }
 .pkinfo > .pk { font-size: 16px; padding: 8px 14px; justify-self: start; }
+.pkbig { justify-self: center; width: min(210px, 58vw); height: auto; aspect-ratio: 600 / 840; border-radius: 6% / 4.3%; box-shadow: 0 18px 40px -18px rgba(0,0,0,0.7); animation: pkFlip 0.6s cubic-bezier(.2,.8,.3,1.2) both; }
+@keyframes pkFlip { 0% { transform: perspective(900px) rotateY(90deg) scale(0.8); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pkbig, .pkc.land img { animation: none; } }
 .pcm-list { display: grid; gap: 10px; margin-top: 10px; }
 .pcm-team { display: grid; gap: 4px; padding: 12px; border-radius: 14px; border: 1px solid var(--line); background: color-mix(in srgb, var(--fg) 4%, var(--surface)); }
 .pcm-team header { display: flex; gap: 10px; align-items: center; }
@@ -1340,7 +1386,7 @@ function MemoryAdapter(store, persist) {
   'use strict';
 
   var LOGO = 'data:image/webp;base64,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';
-  var APP_VERSION = '2.11';
+  var APP_VERSION = '2.12';
   var API_URL = window.PADDOC_API && /^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)[:/]|\/[^/])/.test(window.PADDOC_API) ? window.PADDOC_API : '';
   var LIVE_MODE = !!API_URL && !(location.protocol === 'file:' && API_URL.charAt(0) === '/'); // tersambung ke server Cloudflare
   var OLD_API = window.PADDOC_OLD_API && /^https:\/\/script\.google\.com\//.test(window.PADDOC_OLD_API) ? window.PADDOC_OLD_API : '';
@@ -1620,6 +1666,7 @@ function MemoryAdapter(store, persist) {
     checkMyTurn();
     refreshPay();
     pkSync();
+    pkaScan();
     if (PKH.redraw) PKH.redraw();
     if (UI.view === 'lobby') renderLobby();
     else if (['dash', 'board', 'scoreboard'].indexOf(UI.view) >= 0) render();
@@ -2151,30 +2198,40 @@ function MemoryAdapter(store, persist) {
     free30: ['Sebelum match', 'Tiap game timmu mulai dari 30-0.'],
     golden: ['Sebelum match', 'Setiap 40-40, game langsung untuk timmu tanpa dimainkan.'],
     double: ['Sebelum match', 'Menang: poin court dikali 2. Kalah: dikurangi seperti biasa.'],
-    pick: ['Saat undian lawan', 'Pilih sendiri lawanmu dari tim yang belum mendapat court.'],
+    pick: ['Sebelum match dimulai', 'Tukar lawan: pilih tim lain yang sudah punya lawan. Timmu melawan tim itu, lawan lamamu melawan lawan lama tim itu.'],
     nosmash: ['Sebelum servis sebuah game · 2 game', 'Lawan dilarang smash dan semua pukulan overhead (termasuk bandeja & víbora).'],
     noglass: ['Sebelum servis sebuah game · 2 game', 'Lawan tidak boleh memukul bola yang sudah memantul dari kaca belakang.'],
-    swh: ['Sebelum servis sebuah game · 2 game', 'Satu pemain lawan pilihanmu wajib memakai tangan non-dominan.'],
-    steal: ['Saat game berjalan', 'Skor lawan di game ini jadi skor timmu, skor lawan kembali 0.'],
+    swh: ['Sebelum match · game 1–2', 'Kedua pemain lawan wajib memakai tangan non-dominan di game 1 dan 2.'],
+    steal: ['Sebelum match', 'Menang: semua poin klasemen lawan pindah ke timmu, lawan jadi 0 lalu dikurangi nilai court. Kalah: hangus.'],
     swap: ['Sebelum match', 'Menang dan total poinmu masih di bawah lawan: total poin kalian ditukar.'],
     block: ['Menjawab kartu lawan', 'Membatalkan satu kartu yang dipakai lawan ke timmu.'],
     reverse: ['Menjawab kartu lawan', 'Membalik No Smash, No Glass, Switch Hand, atau Ambil Semua Poin ke lawan.'],
     zonk: ['—', 'Tidak ada efek, langsung dibuang.']
   };
   function pkDef(k) { return Engine.PC_CARDS[k] || { name: k, cat: 'zonk' }; }
-  var pkSeen = {};
+  function pkSrc(k) { return 'img/cards/' + (Engine.PC_CARDS[k] ? k : 'back') + '.webp'; }
+  /* keterangan kartu yang dipakai: game n–n+1, pemain Switch Hand, kartu yang dijawab */
+  function pkNote(c) {
+    var d = pkDef(c.k), x = c.of ? '→ ' + pkDef(c.ofk).name : d.dur && c.g ? 'game ' + c.g + '–' + (c.g + 1) : '';
+    if (c.pid && c.st !== 'blocked') x = (x ? x + ' · ' : '') + P(c.pid).name;
+    return x;
+  }
   function pkChip(c, opt) {
     opt = opt || {};
-    var d = pkDef(c.k), extra = '';
-    if (c.st === 'blocked') extra = 'diblok'; else if (c.st === 'reversed') extra = 'dibalik';
-    else if (c.of) extra = '→ ' + pkDef(c.ofk).name;
-    else if (d.dur && c.g) extra = 'game ' + c.g + '–' + (c.g + 1);
-    if (c.pid && c.st !== 'blocked') extra = (extra ? extra + ' · ' : '') + P(c.pid).name;
-    var key = c.id + (c.st || ''), isNew = opt.anim && !pkSeen[key];
-    if (opt.anim) pkSeen[key] = 1;
+    var d = pkDef(c.k), extra = c.st === 'blocked' ? 'diblok' : c.st === 'reversed' ? 'dibalik' : '', note = pkNote(c);
+    if (note && c.st !== 'blocked') extra = c.st === 'reversed' ? extra + ' · ' + note : note;
     var tag = opt.btn ? 'button type="button" data-act="' + opt.btn + '" data-card="' + c.id + '"' + (opt.data || '') : 'span';
-    return '<' + tag + ' class="pk ' + d.cat + (c.st === 'blocked' ? ' off' : '') + (isNew ? ' new' : '') + '" title="' + esc(d.name + ': ' + (PK_INFO[c.k] || ['', ''])[1]) + '">' +
+    return '<' + tag + ' class="pk ' + d.cat + (c.st === 'blocked' ? ' off' : '') + '" title="' + esc(d.name + ': ' + (PK_INFO[c.k] || ['', ''])[1]) + '">' +
       esc(d.name) + (extra ? ' <small>' + esc(extra) + '</small>' : '') + '</' + tag.split(' ')[0] + '>';
+  }
+  /* kartu bergambar: di court papan iPad dan di tangan (HP); cap = keterangan di bawah gambar */
+  function pkCard(c, opt) {
+    opt = opt || {};
+    var d = pkDef(c.k), st = c.st === 'blocked' ? 'diblok' : c.st === 'reversed' ? 'dibalik' : '', cap = opt.name ? d.name : pkNote(c);
+    var tag = opt.btn ? 'button type="button" data-act="' + opt.btn + '" data-card="' + c.id + '"' + (opt.data || '') : 'span';
+    return '<' + tag + ' class="pkc ' + d.cat + (c.st === 'blocked' ? ' off' : c.st === 'reversed' ? ' rev' : '') + (PKA.hold[c.id] ? ' hold' : '') + '" data-cid="' + c.id + '" title="' + esc(d.name + ': ' + (PK_INFO[c.k] || ['', ''])[1]) + '">' +
+      '<img src="' + pkSrc(c.k) + '" alt="' + esc(d.name) + '" draggable="false">' + (st ? '<b class="pkc-st">' + st + '</b>' : '') + (cap ? '<small>' + esc(cap) + '</small>' : '') +
+      '</' + tag.split(' ')[0] + '>';
   }
   /* kartu di tangan: diambil dari server (pcHand) hanya saat versi tangan tim terkait berubah */
   var PKH = { sig: '', data: null, busy: false, redraw: null };
@@ -2189,6 +2246,7 @@ function MemoryAdapter(store, persist) {
       PKH.busy = false; PKH.sig = sig; PKH.data = r;
       if (['dash', 'board'].indexOf(UI.view) >= 0) render();
       if (PKH.redraw) PKH.redraw();
+      pkaScan();
       pkSync();
     }).catch(function () { PKH.busy = false; });
   }
@@ -2204,15 +2262,22 @@ function MemoryAdapter(store, persist) {
     return { t: t, list: [] };
   }
   /* kartu lawan yang masih bisa dijawab tim ini (sebelum poin berikutnya / sebelum tantangan dapat court) */
+  function pcOpen(ctx) { return !!ctx && (!!ctx.p || (!!ctx.m && !ctx.m.go && !Engine.tallyPts(ctx.m))); }   // belum Game start
   function pcOpenResp(ctx) {
     if (!ctx || !ctx.ref || ctx.list.some(function (c) { return c.by === ctx.t.id; })) return [];
-    return ctx.list.filter(function (c) { return !c.of && c.st === 'on' && c.tg === ctx.t.id && (ctx.p || Engine.tallyPts(ctx.m) === c.n0); });
+    return ctx.list.filter(function (c) { return !c.of && c.st === 'on' && c.tg === ctx.t.id && (c.k === 'pick' ? pcOpen(ctx) : ctx.p || Engine.tallyPts(ctx.m) === c.n0); });
   }
+  function pcOwedOf(tid) { return Engine.pcOwed(S).filter(function (o) { return o.t === tid; })[0] || null; }
   /* panel kartu tim: kartu di tangan (ketuk untuk memakai), jawab kartu lawan, penantang tanpa kartu */
   function pcCardsPanel(ctx, staffTeam) {
     if (!ctx) return '';
-    var tid = ctx.t.id, hand = handOf(tid), cnt = Engine.pcHandCount(S, tid), dt = staffTeam ? ' data-team="' + tid + '"' : '';
+    var tid = ctx.t.id, hand = handOf(tid), cnt = Engine.pcHandCount(S, tid), dt = staffTeam ? ' data-team="' + tid + '"' : '', ow = pcOwedOf(tid);
     var h = '<div class="pc-hand">' + (staffTeam ? '' : '<span class="lbl-sm">Kartu power timmu (' + cnt + '/2)</span>');
+    if (ow) {
+      var om = Engine.findMatch(S, ow.m);
+      h += '<div class="pc-draw"><button class="btn primary" data-act="pkDraw"' + dt + '>' + icon('shuffle') + 'Ambil kartu power</button>' +
+        '<small class="muted">' + (staffTeam ? 'Tim ini' : 'Timmu') + ' kalah' + (om ? ' di Match #' + om.no : '') + '. Kartu diacak lalu berhenti di satu kartu.</small></div>';
+    }
     var resp = pcOpenResp(ctx), def = (hand || []).filter(function (c) { return c.k === 'block' || c.k === 'reverse'; });
     if (resp.length && def.length) {
       h += '<div class="pc-resp"><b>Lawan memakai ' + resp.map(function (c) { return esc(pkDef(c.k).name); }).join(', ') + ' ke ' + (staffTeam ? 'tim ini' : 'timmu') + '</b><div class="pc-hand-row">' +
@@ -2224,7 +2289,10 @@ function MemoryAdapter(store, persist) {
     }
     var used = ctx.list.filter(function (c) { return c.by === tid; });
     if (used.length) h += '<small class="muted">Dipakai di match ini: ' + used.map(function (c) { return pkChip(c); }).join(' ') + '</small>';
-    h += '<div class="pc-hand-row">' + (hand && hand.length ? hand.map(function (c) { return pkChip(c, { btn: 'pkOpen', data: dt }); }).join('')
+    used.filter(function (c) { return !c.of && c.st === 'on' && pcOpen(ctx); }).forEach(function (c) {
+      h += '<button class="btn sm ghost" data-act="pkUndo" data-card="' + c.id + '" data-ref="' + ctx.ref + '"' + dt + '>' + icon('x') + 'Batalkan ' + esc(pkDef(c.k).name) + '</button>';
+    });
+    h += '<div class="pc-hand-row">' + (hand && hand.length ? hand.map(function (c) { return pkCard(c, { btn: 'pkOpen', data: dt, name: 1 }); }).join('')
       : '<small class="muted">' + (cnt ? 'Memuat kartu…' : 'Belum ada kartu. Tim yang kalah mengambil 1 kartu (maks 2 di tangan).') + '</small>') + '</div>';
     var m = ctx.m;
     if (m && ctx.ch === tid && !m.go && !Engine.tallyPts(m) && !used.length && !(m.pass && m.pass[tid]) && (hand || []).some(function (c) { return pkDef(c.k).when === 'pre'; })) {
@@ -2238,7 +2306,7 @@ function MemoryAdapter(store, persist) {
   /* kartu dipakai di court (papan iPad): kiri atas untuk tim kiri, kanan bawah untuk tim kanan */
   function pcUseHTML(m) {
     var cs = m.cards || [];
-    var side = function (tid) { return cs.filter(function (c) { return c.by === tid; }).map(function (c) { return pkChip(c, { anim: true }); }).join(''); };
+    var side = function (tid) { return cs.filter(function (c) { return c.by === tid; }).map(function (c) { return pkCard(c); }).join(''); };
     var a = side(m.tA), b = side(m.tB);
     return (a ? '<div class="pcuse a">' + a + '</div>' : '') + (b ? '<div class="pcuse b">' + b + '</div>' : '');
   }
@@ -2254,8 +2322,8 @@ function MemoryAdapter(store, persist) {
     return '<div class="pc-sbn">' + cs.map(function (c) {
       var who = c.st === 'reversed' ? nm(c.tg) + ' (dibalik)' : nm(c.by);
       var eff = c.st === 'blocked' ? 'diblok, tidak berlaku' : c.k === 'free15' ? 'tiap game mulai 15-0 (otomatis)' : c.k === 'free30' ? 'tiap game mulai 30-0 (otomatis)'
-        : c.k === 'golden' ? '40-40 langsung game (otomatis)' : c.k === 'steal' ? 'skor game diambil (otomatis)' : c.k === 'double' ? 'poin court ×2 bila menang'
-        : c.k === 'swap' ? 'tukar total poin bila menang' : c.k === 'swh' ? (c.pid ? P(c.pid).name + ' tangan non-dominan' : 'tangan non-dominan') + ', game ' + c.g + '–' + (c.g + 1)
+        : c.k === 'golden' ? '40-40 langsung game (otomatis)' : c.k === 'steal' ? 'ambil semua poin klasemen lawan bila menang' : c.k === 'double' ? 'poin court ×2 bila menang'
+        : c.k === 'swap' ? 'tukar total poin bila menang' : c.k === 'swh' ? (c.pid ? P(c.pid).name : 'kedua pemain lawan') + ' tangan non-dominan, game ' + c.g + '–' + (c.g + 1)
         : c.k === 'nosmash' || c.k === 'noglass' ? 'pelanggaran = poin untuk pemegang, game ' + c.g + '–' + (c.g + 1) : PK_INFO[c.k] ? PK_INFO[c.k][1] : '';
       return '<span>' + pkChip(c) + ' <small>' + esc(who) + ': ' + esc(eff) + '</small></span>';
     }).join('') + '</div>';
@@ -2263,20 +2331,23 @@ function MemoryAdapter(store, persist) {
   function openCardInfo(cardId, team) {
     var tid = team || (me() && Engine.teamOf(S, me().id) || {}).id, hand = handOf(tid) || [], c = hand.filter(function (x) { return x.id === cardId; })[0];
     if (!c) { toast('Kartu tidak ditemukan. Data diperbarui', 'err'); return; }
-    var d = pkDef(c.k), info = PK_INFO[c.k] || ['', ''], ctx = pcCtxFor(tid), body = '<div class="pkinfo">' + pkChip(c) + '<p style="margin:0">' + esc(info[1]) + '</p><small class="muted">Waktu pakai: ' + esc(info[0]) + '</small>';
+    var d = pkDef(c.k), info = PK_INFO[c.k] || ['', ''], ctx = pcCtxFor(tid), body = '<div class="pkinfo"><img class="pkbig" src="' + pkSrc(c.k) + '" alt="' + esc(d.name) + '">' + '<p style="margin:0">' + esc(info[1]) + '</p><small class="muted">Waktu pakai: ' + esc(info[0]) + '</small>';
     var foot = '<button class="btn" data-act="close">Tutup</button>', send = null;
     if (d.when === 'resp') body += '<small class="muted">Dipakai untuk menjawab kartu yang dipakai lawan ke ' + (team ? 'tim ini' : 'timmu') + '.</small>';
     else if (!ctx || !ctx.ref) body += '<small class="muted">Bisa dipakai saat ' + (team ? 'tim ini' : 'timmu') + ' mendapat lawan (undian ronde) atau sudah di court.</small>';
     else if (c.k === 'pick') {
-      var others = pcPend().filter(function (p) { return p !== ctx.p; });
-      if (!ctx.p) body += '<small class="muted">Pilih Lawan hanya bisa dipakai sebelum ' + (team ? 'tim ini' : 'timmu') + ' mendapat court.</small>';
-      else if (!others.length) body += '<small class="muted">Tidak ada tim lain yang belum mendapat court.</small>';
-      else body += '<span class="lbl-sm">Pilih lawan</span><div class="list">' + others.map(function (p) {
-        return [p.ch, p.op].map(function (x) { var t = Engine.teamById(S, x); return '<button class="li" data-pkt="' + x + '">' + teamFace(t) + '<span><b>' + teamName(t) + '</b><small>Poin ' + signed(Engine.pcPoints(S)[x] || 0) + '</small></span>' + icon('chevR') + '</button>'; }).join('');
-      }).join('') + '</div>';
-    } else if (c.k === 'swh') {
-      var ot = Engine.teamById(S, ctx.opp);
-      body += '<span class="lbl-sm">Pilih pemain lawan</span><div class="list">' + [ot.a, ot.b].map(function (pid) { return '<button class="li" data-pkp="' + pid + '">' + av(pid) + '<span><b>' + esc(P(pid).name) + '</b></span>' + icon('chevR') + '</button>'; }).join('') + '</div>';
+      // tim lain yang sudah punya lawan dan belum mulai main: tantangan yang menunggu court atau match di court sebelum Game start
+      var pts = Engine.pcPoints(S), slots = pcPend().map(function (p) { return { id: p.id, a: p.ch, b: p.op, where: 'menunggu court' }; })
+        .concat(Engine.liveMatches(S).filter(function (m) { return m.pc && !m.go && !Engine.tallyPts(m); }).map(function (m) { return { id: m.id, a: m.tA, b: m.tB, where: courtName(m.court) }; }))
+        .filter(function (x) { return x.id !== ctx.ref; });
+      if (!pcOpen(ctx)) body += '<small class="muted">Pilih Lawan hanya bisa dipakai sebelum match ' + (team ? 'tim ini' : 'timmu') + ' dimulai.</small>';
+      else if (!slots.length) body += '<small class="muted">Tidak ada tim lain yang belum mulai main.</small>';
+      else body += '<span class="lbl-sm">Pilih lawan baru</span><div class="list">' + slots.map(function (x) {
+        return [[x.a, x.b], [x.b, x.a]].map(function (pr) {
+          var t = Engine.teamById(S, pr[0]);
+          return '<button class="li" data-pkt="' + pr[0] + '">' + teamFace(t) + '<span><b>' + teamName(t) + '</b><small>Poin ' + signed(pts[pr[0]] || 0) + ' · lawannya ' + teamName(Engine.teamById(S, pr[1])) + ' · ' + esc(x.where) + '</small></span>' + icon('chevR') + '</button>';
+        }).join('');
+      }).join('') + '</div><small class="muted">Lawan lamamu akan melawan lawan lama tim yang kamu pilih.</small>';
     } else {
       send = {};
       foot += '<button class="btn primary" id="pk-go">' + icon('check') + 'Pakai sekarang</button>';
@@ -2289,7 +2360,6 @@ function MemoryAdapter(store, persist) {
     };
     if (send) $('#pk-go', w).addEventListener('click', function () { go(); });
     $$('[data-pkt]', w).forEach(function (b) { b.addEventListener('click', function () { go({ target: b.dataset.pkt }); }); });
-    $$('[data-pkp]', w).forEach(function (b) { b.addEventListener('click', function () { go({ vs: b.dataset.pkp }); }); });
   }
   /* host: kelola kartu semua tim (atau dua tim di satu court) atas nama tim yang tidak membuka HP */
   function openCardManager(mid) {
@@ -2309,6 +2379,205 @@ function MemoryAdapter(store, persist) {
     PKH.redraw = draw;
     draw();
   }
+  /* ---------- animasi kartu ----------
+     Papan iPad: setiap kartu yang dipakai dibuka besar di tengah layar lalu terbang ke court tim pemakainya
+     (Block menghantam kartu lawan, Reverse memutar balik kartu lawan); Zonk yang diambil ikut tampil.
+     HP: kartu yang dipakai oleh / ke timmu, Zonk timmu, dan kartu baru di tangan timmu (rahasia, hanya HP tim itu).
+     Kartu yang sudah ada saat aplikasi dibuka tidak dianimasikan. Ketuk layar untuk melewati. */
+  var PKA = { sid: '', seen: {}, hseen: null, q: [], run: false, hold: {}, pre: false, roul: null, mute: {} };
+  function pkaScan() {
+    if (!S || !isPCS(S)) return;
+    var first = PKA.sid !== S.id;
+    if (first) { PKA.sid = S.id; PKA.seen = {}; PKA.hseen = null; PKA.q.forEach(pkaRelease); PKA.q = []; }
+    if (!PKA.pre) { PKA.pre = true; Object.keys(Engine.PC_CARDS).concat('back').forEach(function (k) { new Image().src = pkSrc(k); }); }
+    var u = me(), myT = u && Engine.teamOf(S, u.id), mine = myT ? myT.id : '', board = UI.view === 'board';
+    var who = board ? '' : mine;
+    S.matches.map(function (m) { return { m: m, list: m.cards || [] }; })
+      .concat(pcPend().map(function (p) { return { list: p.cards || [] }; }))
+      .forEach(function (x) {
+        x.list.forEach(function (c) {
+          if (PKA.seen[c.id]) return;
+          PKA.seen[c.id] = 1;
+          if (first || (!board && (!mine || (c.by !== mine && c.tg !== mine)))) return;
+          var court = x.m && x.m.status === 'live' ? x.m.court : '';
+          if (board && court) PKA.hold[c.id] = 1;            // gambar di court disembunyikan sampai kartunya mendarat
+          pkaPush({ type: c.of ? 'resp' : 'play', c: c, court: court, fly: board && !!court, mine: who });
+        });
+        var dr = x.m && x.m.drawn, zk = dr && dr.z && 'z:' + x.m.id + ':' + dr.id;
+        if (zk && !PKA.seen[zk]) {
+          PKA.seen[zk] = 1;
+          if (!first && !(PKA.roul && PKA.roul.t === dr.t) && (board || dr.t === mine)) pkaPush({ type: 'zonk', t: dr.t, mine: who });   // diambil di layar ini: sudah tampil di animasi acak
+        }
+      });
+    if (mine && !board && PKH.data && PKH.data.sid === S.id) {
+      var fresh = !PKA.hseen;
+      PKA.hseen = PKA.hseen || {};
+      (PKH.data.hands[mine] || []).forEach(function (c) {
+        if (PKA.hseen[c.id]) return;
+        PKA.hseen[c.id] = 1;
+        if (!fresh && !PKA.seen[c.id] && !PKA.mute[c.id] && !(PKA.roul && PKA.roul.t === mine)) pkaPush({ type: 'new', c: c, mine: mine });   // kartu kembali dari match batal / diambil di HP ini: bukan animasi kartu baru
+      });
+    }
+    pkaNext();
+  }
+  function pkaPush(ev) {
+    if (PKA.q.length >= 6) pkaRelease(PKA.q.shift());       // terlalu banyak sekaligus: yang paling lama dilewati
+    PKA.q.push(ev);
+  }
+  function pkaRelease(ev) {
+    if (!ev || !ev.c || !PKA.hold[ev.c.id]) return;
+    delete PKA.hold[ev.c.id];
+    $$('.pkc.hold[data-cid="' + ev.c.id + '"]').forEach(function (el) { el.classList.remove('hold'); if (ev.landed) el.classList.add('land'); });
+  }
+  function pkaNext() {
+    if (PKA.run || PKA.roul || !PKA.q.length) return;
+    var ev = PKA.q.shift();
+    PKA.run = true;
+    var done = function () { pkaRelease(ev); PKA.run = false; pkaNext(); };
+    pkaPlay(ev).then(done, done);
+  }
+  function pkaAnim(el, kf, o) {
+    return new Promise(function (res) {
+      if (!el || !el.animate) return res();
+      var a = el.animate(kf, Object.assign({ fill: 'both' }, o));
+      a.onfinish = res; a.oncancel = res;
+    });
+  }
+  function pkaPlay(ev) {
+    var c = ev.c || {}, k = ev.type === 'zonk' ? 'zonk' : c.k, d = pkDef(k), red = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    var nm = function (tid) { return tid && tid === ev.mine ? 'Timmu' : teamName(Engine.teamById(S, tid)); };
+    var title, sub = '', stamp = '', front = pkSrc(ev.type === 'resp' ? c.ofk : k), cls = ev.type;
+    if (ev.type === 'play') {
+      title = nm(c.by) + ' memakai ' + esc(d.name);
+      sub = c.k === 'pick' ? 'Menantang ' + nm(c.tg) + ', lawan lama kedua tim saling bertemu'
+        : c.k === 'swh' ? 'Game ' + c.g + '–' + (c.g + 1) + ': ' + (c.pid ? esc(P(c.pid).name) : 'kedua pemain ' + nm(c.tg)) + ' wajib tangan non-dominan'
+        : d.dur && c.g ? 'Game ' + c.g + '–' + (c.g + 1) + ': ' + esc((PK_INFO[k] || ['', ''])[1]) : esc((PK_INFO[k] || ['', ''])[1]);
+    } else if (ev.type === 'resp') {
+      var od = pkDef(c.ofk);
+      cls += c.k === 'block' ? ' block' : ' reverse';
+      title = nm(c.by) + (c.k === 'block' ? ' memblok ' : ' membalik ') + esc(od.name);
+      sub = c.k === 'block' ? 'Kartu ' + esc(od.name) + ' milik ' + nm(c.tg) + ' dibatalkan' : 'Efek ' + esc(od.name) + ' berbalik ke ' + nm(c.tg);
+      stamp = c.k === 'block' ? 'DIBLOK!' : 'DIBALIK!';
+    } else if (ev.type === 'zonk') {
+      title = nm(ev.t) + ' mengambil Zonk'; sub = 'Tidak ada efek, kartu langsung dibuang'; stamp = 'DIBUANG';
+    } else {
+      title = 'Kartu baru untuk timmu: ' + esc(d.name); sub = esc((PK_INFO[k] || ['', ''])[1]);
+    }
+    var w = document.createElement('div');
+    w.className = 'pka ' + cls;
+    w.setAttribute('role', 'status');
+    w.innerHTML = '<div class="pka-bg"></div><div class="pka-stage"><div class="pka-glow"></div>' +
+      '<div class="pka-card main"><img class="fr" src="' + front + '" alt=""><img class="bk" src="' + pkSrc('back') + '" alt=""></div>' +
+      (ev.type === 'resp' ? '<div class="pka-card hit"><img src="' + pkSrc(c.k) + '" alt=""></div>' : '') +
+      (stamp ? '<div class="pka-stamp">' + stamp + '</div>' : '') + '</div>' +
+      '<div class="pka-cap"><b>' + title + '</b>' + (sub ? '<span>' + sub + '</span>' : '') +
+      '<small>' + (ev.court ? esc(courtName(ev.court)) + ' · ' : '') + 'ketuk untuk melewati</small></div>';
+    document.body.appendChild(w);
+    var q = function (s) { return $(s, w); }, bg = q('.pka-bg'), stage = q('.pka-stage'), main = q('.main'), hit = q('.hit'), glow = q('.pka-glow'), cap = q('.pka-cap'), st = q('.pka-stamp');
+    var skip = false, wake = null;
+    w.addEventListener('click', function () {
+      skip = true;
+      if (wake) wake();
+      if (w.getAnimations) w.getAnimations({ subtree: true }).forEach(function (a) { try { a.finish(); } catch (e) {} });
+    });
+    var wait = function (ms) { return skip ? Promise.resolve() : new Promise(function (res) { var t = setTimeout(res, ms); wake = function () { clearTimeout(t); res(); }; }); };
+    var all = function (list) { return Promise.all(list); };
+    var flipIn = [{ transform: 'translateY(30%) scale(0.35) rotateY(180deg)' }, { transform: 'translateY(0) scale(1.08) rotateY(-12deg)', offset: 0.7 }, { transform: 'none' }];   // tanpa opacity: opacity meratakan 3D, sisi belakang tidak tampil
+    var popIn = [{ transform: 'scale(0.6)', opacity: 0 }, { transform: 'none', opacity: 1 }];
+    var stampIn = [{ transform: 'translate(-50%, -50%) rotate(-14deg) scale(2.6)', opacity: 0 }, { transform: 'translate(-50%, -50%) rotate(-14deg) scale(1)', opacity: 1 }];
+    var shake = [{ transform: 'none' }, { transform: 'translateX(-5%) rotate(-3deg)' }, { transform: 'translateX(5%) rotate(3deg)' }, { transform: 'translateX(-3%) rotate(-2deg)' }, { transform: 'translateX(2%)' }, { transform: 'none' }];
+    var enter;
+    if (red) {
+      enter = all([pkaAnim(w, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 }), st ? pkaAnim(st, [{ opacity: 0 }, { opacity: 1 }], { duration: 200 }) : 0,
+        hit ? pkaAnim(hit, [{ opacity: 1, transform: 'translate(12%, 6%) rotate(-7deg)' }, { opacity: 1, transform: 'translate(12%, 6%) rotate(-7deg)' }], { duration: 1 }) : 0]);
+    } else if (ev.type === 'resp') {
+      enter = all([pkaAnim(bg, [{ opacity: 0 }, { opacity: 1 }], { duration: 250 }), pkaAnim(main, popIn, { duration: 380, easing: 'cubic-bezier(.2,.8,.3,1.2)' }),
+        pkaAnim(cap, [{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 400, delay: 300 })])
+        .then(function () {
+          return c.k === 'block'
+            ? pkaAnim(hit, [{ transform: 'translate(0, -140%) scale(1.6) rotate(-24deg)', opacity: 0 }, { transform: 'translate(12%, 6%) scale(1) rotate(-7deg)', opacity: 1 }], { duration: 420, easing: 'cubic-bezier(.6,0,.9,.4)' })
+              .then(function () { return all([pkaAnim(main, shake, { duration: 420 }), pkaAnim(main, [{ filter: 'none' }, { filter: 'grayscale(1) brightness(0.65)' }], { duration: 420 }), pkaAnim(st, stampIn, { duration: 300, easing: 'cubic-bezier(.3,1.4,.5,1)' })]); })
+            : all([pkaAnim(hit, [{ transform: 'translate(-150%, 10%) rotate(-30deg)', opacity: 0 }, { transform: 'translate(14%, 8%) rotate(8deg)', opacity: 1 }], { duration: 450, easing: 'cubic-bezier(.2,.8,.3,1.1)' }),
+                pkaAnim(main, [{ transform: 'none' }, { transform: 'rotate(180deg) scale(0.92)' }], { duration: 750, delay: 250, easing: 'cubic-bezier(.5,0,.3,1)' })])
+              .then(function () { return pkaAnim(st, stampIn, { duration: 300, easing: 'cubic-bezier(.3,1.4,.5,1)' }); });
+        });
+    } else {
+      enter = all([pkaAnim(bg, [{ opacity: 0 }, { opacity: 1 }], { duration: 250 }), pkaAnim(main, flipIn, { duration: 950, easing: 'cubic-bezier(.2,.8,.3,1)' }),
+        pkaAnim(glow, [{ opacity: 0, transform: 'scale(0.5)' }, { opacity: 1, transform: 'scale(1.1)', offset: 0.6 }, { opacity: 0.75, transform: 'scale(1)' }], { duration: 1100, delay: 250 }),
+        pkaAnim(cap, [{ opacity: 0, transform: 'translateY(14px)' }, { opacity: 1, transform: 'none' }], { duration: 400, delay: 600 })]);
+      if (ev.type === 'zonk') enter = enter.then(function () { return all([pkaAnim(main, shake, { duration: 450 }), pkaAnim(main, [{ filter: 'none' }, { filter: 'grayscale(1) brightness(0.7)' }], { duration: 450 }), pkaAnim(st, stampIn, { duration: 300, delay: 150, easing: 'cubic-bezier(.3,1.4,.5,1)' })]); });
+    }
+    return enter.then(function () { return wait(ev.type === 'new' ? 2600 : ev.type === 'play' ? 1700 : 1300); }).then(function () {
+      var mover = hit || main, tgt = ev.fly && !red && !skip && $('.court[data-court="' + ev.court + '"] .pkc[data-cid="' + c.id + '"] img');
+      var out = function (ms) { return all([pkaAnim(bg, [{ opacity: 1 }, { opacity: 0 }], { duration: ms }), pkaAnim(cap, [{ opacity: 1 }, { opacity: 0 }], { duration: ms * 0.6 }), pkaAnim(glow, [{ opacity: 0.75 }, { opacity: 0 }], { duration: ms * 0.6 })]); };
+      if (tgt && tgt.getBoundingClientRect().width) {
+        var b0 = stage.getBoundingClientRect(), t = tgt.getBoundingClientRect(), from = getComputedStyle(mover).transform;
+        var dx = t.left + t.width / 2 - (b0.left + b0.width / 2), dy = t.top + t.height / 2 - (b0.top + b0.height / 2), s = t.width / b0.width;
+        return all([out(650), st ? pkaAnim(st, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 }) : 0, hit ? pkaAnim(main, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 }) : 0,
+          pkaAnim(mover, [{ transform: from === 'none' ? 'none' : from }, { transform: 'translate(' + dx + 'px, ' + dy + 'px) scale(' + s + ')' }], { duration: 700, easing: 'cubic-bezier(.5,0,.2,1)' })])
+          .then(function () { ev.landed = true; pkaRelease(ev); });
+      }
+      return all([out(red || skip ? 160 : 380), red ? 0 : pkaAnim(stage, [{ transform: 'none', opacity: 1 }, { transform: 'scale(0.6) translateY(12%)', opacity: 0 }], { duration: skip ? 160 : 380, easing: 'ease-in' })]);
+    }).then(function () { w.remove(); }, function () { w.remove(); });
+  }
+  /* ambil kartu: kartu diacak cepat lalu melambat dan berhenti di kartu yang didapat (diundi server).
+     Dari HP: hanya tim itu yang melihat isinya; dari papan iPad (host): kartunya tampil terbuka. Ketuk untuk menutup. */
+  function pkDrawFlow(team) {
+    if (PKA.roul || !S) return;
+    var u = me(), myT = u && Engine.teamOf(S, u.id), tid = team || (myT && myT.id);
+    if (!tid) return;
+    var t = Engine.teamById(S, tid), mineT = !!myT && myT.id === tid, red = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    var who = mineT ? 'Timmu' : teamName(t), keys = Object.keys(Engine.PC_CARDS), i = Math.floor(Math.random() * keys.length), res = null, fail = false, t0 = Date.now();
+    PKA.roul = { t: tid };
+    var w = document.createElement('div');
+    w.className = 'pka roul';
+    w.setAttribute('role', 'status');
+    w.innerHTML = '<div class="pka-bg"></div><div class="pka-stage"><div class="pka-glow"></div><div class="pka-card main"><img class="fr" src="' + pkSrc('back') + '" alt=""></div>' +
+      '<div class="pka-stamp">DIBUANG</div></div><div class="pka-cap"><b>' + (mineT ? 'Mengambil kartu untuk timmu' : who + ' mengambil kartu') + '</b><span>Mengacak kartu…</span></div>';
+    document.body.appendChild(w);
+    var q = function (sel) { return $(sel, w); }, img = q('.main img'), main = q('.main'), cap = q('.pka-cap'), glow = q('.pka-glow'), st = q('.pka-stamp');
+    var skip = false, wake = null;
+    w.addEventListener('click', function () { if (res || fail) { skip = true; if (wake) wake(); } });
+    var wait = function (ms) { return skip ? Promise.resolve() : new Promise(function (r) { var tm = setTimeout(r, ms); wake = function () { clearTimeout(tm); r(); }; }); };
+    var finish = function () { w.remove(); PKA.roul = null; pkaNext(); };
+    pkaAnim(q('.pka-bg'), [{ opacity: 0 }, { opacity: 1 }], { duration: 250 });
+    var spun = new Promise(function (done) {
+      if (red) return done();
+      var iv = 70, slow = 0;
+      (function tick() {
+        if (fail) return done();
+        if (res && Date.now() - t0 > 1400) { slow++; iv *= 1.3; }                // hasil sudah ada: melambat beberapa kartu lagi
+        if (slow > 7) return done();
+        img.src = pkSrc(keys[i++ % keys.length]);
+        setTimeout(tick, iv);
+      })();
+    });
+    var got = act('pcDraw', { team: team || undefined }, { quiet: true }).then(function (r) {
+      res = (r && r.info) || {};
+      if (res.card) PKA.mute[res.card.id] = 1;                                 // tangan timku bertambah: bukan animasi "kartu baru" lagi
+    }, function () { fail = true; });
+    Promise.all([spun, got]).then(function () {
+      if (fail) return finish();
+      var k = res.card && !res.full ? res.card.k : 'back', d = pkDef(k), title, sub;
+      if (res.full) { title = 'Tangan penuh'; sub = who + ' sudah memegang 2 kartu, tidak mengambil kartu.'; }
+      else if (res.z) { title = who + ' mendapat Zonk'; sub = 'Tidak ada efek, kartu langsung dibuang.'; }
+      else { title = mineT ? 'Kartu baru untuk timmu: ' + esc(d.name) : who + ' mendapat ' + esc(d.name); sub = esc((PK_INFO[k] || ['', ''])[1]); }
+      img.src = pkSrc(k);
+      cap.innerHTML = '<b>' + title + '</b><span>' + sub + '</span><small>ketuk untuk menutup</small>';
+      if (red && res.z) st.style.opacity = 1;
+      var land = red ? Promise.resolve() : Promise.all([
+        pkaAnim(main, [{ transform: 'scale(1.25)' }, { transform: 'scale(0.96)', offset: 0.6 }, { transform: 'none' }], { duration: 550, easing: 'cubic-bezier(.2,.8,.3,1.2)' }),
+        res.full ? 0 : pkaAnim(glow, [{ opacity: 0, transform: 'scale(0.5)' }, { opacity: 1, transform: 'scale(1.1)', offset: 0.6 }, { opacity: 0.8, transform: 'scale(1)' }], { duration: 900 }),
+        pkaAnim(cap, [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 350 })]);
+      if (res.z && !red) land = land.then(function () {
+        return Promise.all([pkaAnim(main, [{ transform: 'none' }, { transform: 'translateX(-5%) rotate(-3deg)' }, { transform: 'translateX(5%) rotate(3deg)' }, { transform: 'translateX(-3%) rotate(-2deg)' }, { transform: 'none' }], { duration: 450 }),
+          pkaAnim(main, [{ filter: 'none' }, { filter: 'grayscale(1) brightness(0.7)' }], { duration: 450 }),
+          pkaAnim(st, [{ transform: 'translate(-50%, -50%) rotate(-14deg) scale(2.6)', opacity: 0 }, { transform: 'translate(-50%, -50%) rotate(-14deg) scale(1)', opacity: 1 }], { duration: 300, delay: 150, easing: 'cubic-bezier(.3,1.4,.5,1)' })]);
+      });
+      return land.then(function () { return wait(res.full ? 1800 : 2800); })
+        .then(function () { return pkaAnim(w, [{ opacity: 1 }, { opacity: 0 }], { duration: red || skip ? 150 : 320 }); });
+    }).then(finish, finish);
+  }
   function pcQueueHTML() {
     var L = Engine.pcLists(S), lv = (S.pc && S.pc.lv) || {}, cho = pcChoosing();
     var chip = function (tid, extra, cls) {
@@ -2320,8 +2589,11 @@ function MemoryAdapter(store, persist) {
         (pz ? '<span class="cnt">belum siap</span>' : extra ? '<span class="cnt">' + extra + '</span>' : '') + '</span>';
     };
     var grp = function (lbl, inner) { return inner ? '<div class="pcq-g"><small>' + lbl + '</small><div class="pcq-row">' + inner + '</div></div>' : ''; };
-    var lone = Engine.unpairedPlayers(S);
-    var h = grp('Ronde ' + L.round + ' · urutan pilih court', L.pend.map(function (p, i) { return '<span class="pcvs">' + (i + 1) + '.</span>' + chip(p.ch, cho === p ? 'memilih' : 'penantang', 'ch') + '<span class="pcvs">VS</span>' + chip(p.op); }).join('')) +
+    var lone = Engine.unpairedPlayers(S), owed = Engine.pcOwed(S);
+    var h = grp('Ambil kartu · urut selesai main', owed.map(function (o, i) {
+        return chip(o.t, i ? '' : 'berikutnya', 'draw') + (i === 0 && isStaff() ? '<button class="btn sm primary" data-act="pkDraw" data-team="' + o.t + '">' + icon('shuffle') + 'Ambil kartu</button>' : '');
+      }).join('')) +
+      grp('Ronde ' + L.round + ' · urutan pilih court', L.pend.map(function (p, i) { return '<span class="pcvs">' + (i + 1) + '.</span>' + chip(p.ch, cho === p ? 'memilih' : 'penantang', 'ch') + '<span class="pcvs">VS</span>' + chip(p.op); }).join('')) +
       grp('Selesai, menunggu court lain', L.done.map(function (id) { return chip(id); }).join('')) +
       grp('Istirahat ronde ini', L.out.map(function (id) { return chip(id); }).join('')) +
       grp('Belum berpasangan', lone.map(function (id) { return '<span class="bchip">' + av(id) + '<span>' + esc(P(id).name) + (lv[id] ? ' <span class="lvtag">ATAS</span>' : '') + '</span></span>'; }).join(''));
@@ -2357,7 +2629,7 @@ function MemoryAdapter(store, persist) {
   }
   function timerHTML(m) {
     if (Engine.isWaiting(m)) return '<span class="ctimer wait">' + icon('timer') + 'Menunggu</span>';
-    if (!m.go) return '<span class="ctimer ready">' + icon('play') + 'Siap mulai</span>';
+    if (!m.go) return '<span class="ctimer ready" title="Siap mulai">' + icon('play') + 'Siap mulai</span>';
     return '<span class="ctimer">' + icon('timer') + '<span data-start="' + m.go + '">' + elapsed(m.go) + '</span></span>';
   }
   /* keadaan match di court: 'wait' (menunggu pemain court lain), 'ready' (siap, belum Game start), 'play' (berjalan) */
@@ -2561,7 +2833,7 @@ function MemoryAdapter(store, persist) {
     var h = '<article class="court ' + (deal ? 'deal ' : '') + (!c.active ? 'closing' : '') + (ref ? ' has-ref' : '') + courtCls(c) + '" data-court="' + c.id + '">' +
       '<header class="court-h"><div class="ch-l"><span class="cnum">' + idx + '</span><div class="cmeta"><div class="cname">' + esc(c.name) + (isPCS(S) ? valBadge(c) : '') + '</div>' +
       '<div class="ctags">' + (isPCS(S) ? '' : '<span class="gpill ' + c.gender + '">' + icon(cgIcon(c.gender)) + cgLabel(c.gender) + '</span>') + (ref ? '' : refTag(c)) +
-      (isPCS(S) && m && m.tA ? '<span class="pctag">' + icon('zap') + 'Penantang: ' + teamName(Engine.teamById(S, m.tA)) + '</span>' + pcHandTag(m) : '') +
+      (isPCS(S) && m && m.tA ? '<span class="pctag">' + icon('zap') + '<span>Penantang: ' + teamName(Engine.teamById(S, m.tA)) + '</span></span>' + pcHandTag(m) : '') +
       (shown ? '<span>Match #' + shown.no + '</span>' : '') +
       (fin && fin.sA !== fin.sB ? '<span class="wintag">' + icon('trophy') + esc((fin.sA > fin.sB ? fin.A : fin.B).map(function (x) { return P(x).name; }).join(' & ')) + ' menang' + (fin.val ? ' +' + fin.val : '') + '</span>' : '') +
       (fin && fin.sA === fin.sB ? '<span class="wintag">Seri</span>' : '') +
@@ -5284,6 +5556,10 @@ function MemoryAdapter(store, persist) {
     pkOpen: function (el) { openCardInfo(el.dataset.card, el.dataset.team || null); },
     pkResp: function (el) {
       act('pcResp', { card: el.dataset.card, of: el.dataset.of, ref: el.dataset.ref, team: el.dataset.team || undefined }, { quiet: true }).then(function () { toast('Kartu lawan dijawab'); }).catch(function () {});
+    },
+    pkDraw: function (el) { pkDrawFlow(el.dataset.team || null); },
+    pkUndo: function (el) {
+      act('pcUndo', { card: el.dataset.card, ref: el.dataset.ref, team: el.dataset.team || undefined }, { quiet: true }).then(function () { toast('Kartu dibatalkan, kembali ke tangan'); }).catch(function () {});
     },
     pkPass: function (el) {
       act('pcPass', { ref: el.dataset.ref, team: el.dataset.team || undefined }, { quiet: true }).then(function () { toast('Diumumkan: tanpa kartu'); }).catch(function () {});
