@@ -136,7 +136,7 @@ var Ceremony = (function () {
     function drawTitle(L, t) {
       var a = ease(t / 0.6), x = L.sc.x + L.sc.w / 2, fs = clamp(L.sc.h * 0.075, 22, 54);
       c.save(); c.globalAlpha = a; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
-      c.fillStyle = '#F2C14E'; c.font = '800 ' + Math.round(fs * 0.38) + 'px ' + BODY; c.fillText('P O D I U M', x, L.sc.y + fs * 0.95);
+      c.fillStyle = '#F2C14E'; c.font = '800 ' + Math.round(fs * 0.38) + 'px ' + BODY; c.fillText(D.kicker || 'P O D I U M', x, L.sc.y + fs * 0.95);
       c.fillStyle = '#FFFFFF'; c.font = '900 ' + Math.round(fs) + 'px ' + DISPLAY; c.fillText(fitText(c, String(D.title).toUpperCase(), L.sc.w - 120), x, L.sc.y + fs * 1.95);
       c.fillStyle = 'rgba(242,235,221,0.75)'; c.font = '600 ' + Math.round(fs * 0.34) + 'px ' + BODY; c.fillText(fitText(c, D.sub || '', L.sc.w - 120), x, L.sc.y + fs * 2.5);
       c.restore();
@@ -244,7 +244,7 @@ var Ceremony = (function () {
         c.textAlign = 'right'; c.fillStyle = r.diff > 0 ? '#7FE3A6' : r.diff < 0 ? '#FF9A8A' : 'rgba(242,235,221,0.6)'; c.font = '700 ' + Math.round(fs * 0.9) + 'px ' + BODY;
         var dtx = (r.diff > 0 ? '+' : '') + r.diff; c.fillText(dtx, x1, mid);
         var dw = Math.max(c.measureText('+00').width, c.measureText(dtx).width) + 10;
-        c.fillStyle = '#FFFFFF'; c.font = '900 ' + Math.round(fs * 1.25) + 'px ' + DISPLAY; c.fillText(String(r.w), x1 - dw, mid + 1);
+        c.fillStyle = r.wc || '#FFFFFF'; c.font = '900 ' + Math.round(fs * 1.25) + 'px ' + DISPLAY; c.fillText(String(r.w), x1 - dw, mid + 1);
         var ww = Math.max(c.measureText('00').width, c.measureText(String(r.w)).width) + 8;
         c.textAlign = 'left'; c.fillStyle = '#F2EBDD'; c.font = (r.me ? '800 ' : '600 ') + Math.round(fs) + 'px ' + BODY;
         c.fillText(fitText(c, r.name, x1 - dw - ww - nx - 4), nx, mid);
