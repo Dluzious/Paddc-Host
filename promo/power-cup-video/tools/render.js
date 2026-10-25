@@ -10,7 +10,7 @@ const fs = require('fs');
   await p.goto(process.env.VIDEO_URL || 'http://127.0.0.1:8765/video.html');
   await p.evaluate(() => window.READY);
   const dur = await p.evaluate(() => window.DURATION);
-  if (wi === 0) fs.writeFileSync(out + '/events.json', JSON.stringify(await p.evaluate(() => ({ duration: window.DURATION, events: window.EVENTS, scenes: window.SCENES_T }))));
+  if (wi === 0) fs.writeFileSync(out + '/events.json', JSON.stringify(await p.evaluate(() => ({ duration: window.DURATION, speed: window.SPEED, events: window.EVENTS, scenes: window.SCENES_T }))));
   const total = Math.round(dur * 30);
   const per = Math.ceil(total / wn), f0 = wi * per, f1 = Math.min(total, f0 + per);
   const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', '30', '-c:v', 'mjpeg', '-i', '-',

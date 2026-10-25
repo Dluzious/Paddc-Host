@@ -1,6 +1,7 @@
 /* Paddoc Host · Power Cup — motion graphic 1080×1920, digambar deterministik: draw(t) */
 'use strict';
 const W = 1080, H = 1920, FPS = 30;
+const SPEED = 1.15;   // >1 = semua gerak lebih cepat (durasi video = timeline / SPEED)
 const cv = document.getElementById('c');
 const X = cv.getContext('2d');
 
@@ -514,37 +515,35 @@ function bullet(lt, t0, y, ico, s, o = {}) {
 }
 
 /* 4. Pasangan diundi */
-const S4_TOP = ['lulu', 'herry', 'farid', 'max', 'sisil', 'dianty'];
-const S4_BOT = ['rezaerlangga', 'nina', 'wuluh', 'yeninila', 'aria', 'dani'];
+const S4_L = ['lulu', 'herry', 'farid', 'max', 'sisil', 'dianty'];
+const S4_R = ['rezaerlangga', 'nina', 'wuluh', 'yeninila', 'aria', 'dani'];
 const S4_TEAMS = ['LR', 'HN', 'FW', 'MY', 'SA', 'DD'];
 function s4(lt) {
   title(lt, 'PASANGAN DIUNDI', 245);
-  sub(lt, '[[Level atas]] + [[level bawah]], dipasangkan acak', 345);
+  sub(lt, 'Aplikasi mengundi pasangan secara [[acak]]', 345);
   const ph1 = 1 - P(lt, 4.9, .4);
   if (ph1 > 0) {
     X.save(); X.globalAlpha *= ph1;
     const lx = 300, rx = 780;
-    pill('LEVEL ATAS', lx, 470, { sz: 28, bg: C.gold, col: C.ink, a: enter(lt, .4), ls: 2 });
-    pill('LEVEL BAWAH', rx, 470, { sz: 28, bg: C.blue, col: C.ink, a: enter(lt, .5), ls: 2 });
     const phase = 18 * E.out(P(lt, 1.6, 2.2));
     for (let i = 0; i < 6; i++) {
       const y = 600 + i * 165;
       const k = enter(lt, .6 + i * .1, .5);
-      head(S4_TOP[i], lx - (1 - k) * 80, y, 64, { a: k, ring: C.gold });
-      txt(NM[S4_TOP[i]], lx - 100 - (1 - k) * 80, y, { sz: 32, al: 'right', a: k, w: 800 });
+      head(S4_L[i], lx - (1 - k) * 80, y, 64, { a: k, ring: C.acc });
+      txt(NM[S4_L[i]], lx - 100 - (1 - k) * 80, y, { sz: 32, al: 'right', a: k, w: 800 });
       // slot berputar
       const kb = enter(lt, .7 + i * .1, .5);
       const base = Math.floor(phase), fr = phase - base;
       X.save();
       X.globalAlpha *= kb;
       X.beginPath(); X.arc(rx, y, 64, 0, 7); X.fillStyle = C.surf2; X.fill(); X.clip();
-      const ka = S4_BOT[(i + base) % 6], kb2 = S4_BOT[(i + base + 1) % 6];
-      head(ka, rx, y - fr * 130, 64, { ring: C.blue });
-      if (fr > .01) head(kb2, rx, y + 130 - fr * 130, 64, { ring: C.blue });
+      const ka = S4_R[(i + base) % 6], kb2 = S4_R[(i + base + 1) % 6];
+      head(ka, rx, y - fr * 130, 64, { ring: C.acc });
+      if (fr > .01) head(kb2, rx, y + 130 - fr * 130, 64, { ring: C.acc });
       X.restore();
-      X.save(); X.globalAlpha *= kb; X.beginPath(); X.arc(rx, y, 64, 0, 7); X.lineWidth = 6; X.strokeStyle = C.blue; X.stroke(); X.restore();
+      X.save(); X.globalAlpha *= kb; X.beginPath(); X.arc(rx, y, 64, 0, 7); X.lineWidth = 6; X.strokeStyle = C.acc; X.stroke(); X.restore();
       const settled = P(lt, 3.8, .3);
-      txt(NM[S4_BOT[i]], rx + 100, y, { sz: 32, al: 'left', a: kb * settled, w: 800 });
+      txt(NM[S4_R[i]], rx + 100, y, { sz: 32, al: 'left', a: kb * settled, w: 800 });
       // garis pasangan
       const lp = E.out(P(lt, 3.9 + i * .08, .4));
       if (lp > 0) {
@@ -1327,10 +1326,12 @@ function draw(t) {
   if (blk > 0) { X.globalAlpha = blk; X.fillStyle = '#000'; X.fillRect(0, 0, W, H); X.globalAlpha = 1; }
 }
 
-window.DURATION = DURATION;
-window.EVENTS = EVENTS;
-window.SCENES_T = SCENES.map((s) => ({ t0: s.t0, d: s.d, ch: s.ch }));
-window.draw = draw;
+window.DURATION = DURATION / SPEED;
+window.SPEED = SPEED;
+window.EVENTS = EVENTS.map((e) => ({ t: e.t / SPEED, k: e.k }));
+window.SCENES_T = SCENES.map((s) => ({ t0: s.t0 / SPEED, d: s.d / SPEED, ch: s.ch }));
+const drawTimeline = draw;   // fungsi draw global = window.draw, simpan sebelum diganti
+window.draw = (t) => drawTimeline(t * SPEED);
 window.READY = (async () => {
   const jobs = [load('logo', 'assets/logo.png'), load('court', 'assets/court.webp')];
   CARD_KEYS.forEach((k) => jobs.push(load('k_' + k, 'assets/cards/' + k + '.webp')));
@@ -1341,6 +1342,6 @@ window.READY = (async () => {
   await document.fonts.load('700 40px PJS');
   await document.fonts.load('800 40px PJS');
   await document.fonts.ready;
-  draw(0);
+  drawTimeline(0);
   return true;
 })();

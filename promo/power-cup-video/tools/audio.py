@@ -1,4 +1,4 @@
-"""Musik latar 120 BPM + efek suara yang disinkronkan dengan EVENTS animasi.
+"""Musik latar 120 BPM × SPEED + efek suara yang disinkronkan dengan EVENTS animasi.
 python3 audio.py events.json out.wav"""
 import json, sys
 import numpy as np
@@ -8,6 +8,7 @@ from scipy.io import wavfile
 SR = 44100
 ev = json.load(open(sys.argv[1]))
 DUR = ev['duration']
+SPD = ev.get('speed', 1)   # timeline animasi dipercepat; musik ikut supaya adegan tetap jatuh di ketukan
 N = int(SR * (DUR + 1.0))
 rng = np.random.default_rng(7)
 
@@ -40,12 +41,13 @@ def reverb(x, secs=1.2, mix=.25):
     ir = lp(ir, 5000); ir /= np.sqrt(np.sum(ir ** 2))
     return x * (1 - mix) + fftconvolve(x, ir)[:len(x)] * mix
 
-BPM = 120; BEAT = 60 / BPM; BAR = 4 * BEAT
+BPM = 120 * SPD; BEAT = 60 / BPM; BAR = 4 * BEAT
 # C – G – Am – F
 CHORDS = [[48, 55, 60, 64, 67], [43, 55, 59, 62, 67], [45, 57, 60, 64, 69], [41, 53, 57, 60, 65]]
 ARP = [0, 2, 3, 4, 3, 2, 3, 4]
 
 def section_level(t):
+    t = t * SPD   # bandingkan dalam detik timeline
     """intensitas per bagian (kick, clap, hat, bass, arp, pad)"""
     if t < 2.4: return dict(k=0, c=0, h=0, b=0, a=.5, p=1)
     if t < 8: return dict(k=1, c=0, h=.6, b=.8, a=.8, p=1)
@@ -131,8 +133,8 @@ for n in CHORDS[0]:
     for det in (-.1, .1):
         fin += saw(midi(n + 12) * 2 ** (det / 12), t)
 fin = lp(fin, 2200) * np.exp(-t * 1.3) * .05
-add(pad_b, fin, 174.0)
-add(kick_b, kick, 174.0, 1.0)
+add(pad_b, fin, 174.0 / SPD)
+add(kick_b, kick, 174.0 / SPD, 1.0)
 
 music = kick_b + clap_b + hat_b + (bass_b + pad_b) * duck + reverb(arp_b, .9, .3) * (.6 + .4 * duck)
 music = reverb(music, .6, .08)

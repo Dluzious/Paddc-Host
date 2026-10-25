@@ -1,6 +1,6 @@
 # Video promosi Power Cup
 
-Motion graphic vertikal 1080×1920, 30 fps, ±2:56, bahasa Indonesia: ajakan main, cara main Power Cup (lobi, pasangan,
+Motion graphic vertikal 1080×1920, 30 fps, ±2:33, bahasa Indonesia: ajakan main, cara main Power Cup (lobi, pasangan,
 nilai court, match 5 game, ronde & penantang), ambil kartu, katalog 13 kartu (28 di dek), contoh match dengan kartu
 (Steal All Points dibalas Reverse), aturan kartu, klasemen & podium, fitur lain, ajakan bergabung.
 
@@ -22,5 +22,5 @@ ffmpeg -f concat -safe 0 -i out/list.txt -i out/audio.wav -map 0:v -map 1:a -c:v
   -movflags +faststart -shortest out/PowerCup_PaddocHost.mp4
 ```
 
-Pratinjau frame: `node tools/preview.js prev 12 40.5 110` (detik). Mengubah jumlah pemain di teks: `PLAYER_COUNT`
+Pratinjau frame: `node tools/preview.js prev 12 40.5 110` (detik video). Tempo seluruh gerak diatur `SPEED` di `anim.js` (1,15 = timeline 176 dtk diputar dalam ±153 dtk); musik ikut (120 × SPEED BPM) supaya pergantian adegan tetap di ketukan. Mengubah jumlah pemain di teks: `PLAYER_COUNT`
 di `anim.js`; tim contoh di `TEAM`.
