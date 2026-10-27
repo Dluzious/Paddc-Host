@@ -1,4 +1,4 @@
-# Paddoc Host v2.13
+# Paddoc Host v2.13.1
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -260,6 +260,17 @@ rotasi, atau klasemen biasa.
   memegang Block / Reverse. Pilih Lawan mengabari tim yang dipilih dan dua tim yang lawannya berubah. Kartu yang diblok /
   dibalik dikabarkan ke pemakainya.
 - **Pengingat ambil kartu**: saat ronde baru dimulai, tim yang belum mengambil kartu haknya diingatkan sekali.
+
+## HP Huawei / Honor & browser tanpa PWA (v2.13.1)
+
+- Browser Huawei (dan browser lain seperti Mi Browser, Vivo, Oppo/HeyTap, UC) membuat *Tambahkan ke layar utama*
+  sebagai **pintasan biasa**, bukan aplikasi terpasang, sehingga gerbang *Pasang aplikasi* dulu tidak pernah lolos.
+- Di browser seperti itu, layar *Pasang aplikasi* menampilkan langkah khusus Huawei dan tombol **Lanjut pakai di
+  browser ini**. Pilihan ini diingat di perangkat itu; setelahnya login berjalan normal.
+- `start_url` di manifest sekarang `./?src=home`. Bila browser memakai manifest untuk pintasan, membuka dari layar
+  utama langsung masuk tanpa gerbang. Parameternya dihapus dari alamat.
+- Android Chrome dan iPhone tetap memakai gerbang pasang seperti sebelumnya. Di browser non-PWA, notifikasi push
+  mungkin tidak tersedia.
 
 ## Lobi: bagikan dengan foto ajakan (v2.13)
 

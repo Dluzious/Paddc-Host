@@ -3,7 +3,7 @@
   "name": "Paddoc Host",
   "short_name": "Paddoc Host",
   "description": "Undian dan rotasi pemain padel Americano/Mexicano untuk Paddoc.",
-  "start_url": "./",
+  "start_url": "./?src=home",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
