@@ -1,4 +1,4 @@
-# Paddoc Host v2.12
+# Paddoc Host v2.13
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -260,6 +260,20 @@ rotasi, atau klasemen biasa.
   memegang Block / Reverse. Pilih Lawan mengabari tim yang dipilih dan dua tim yang lawannya berubah. Kartu yang diblok /
   dibalik dikabarkan ke pemakainya.
 - **Pengingat ambil kartu**: saat ronde baru dimulai, tim yang belum mengambil kartu haknya diingatkan sekali.
+
+## Lobi: bagikan dengan foto ajakan (v2.13)
+
+- Tombol **Bagikan lobi** (host, pemain, juga yang belum login) langsung **menyalin kalimat ajakan** (nama sesi, jadwal,
+  tempat, biaya, link lobi) untuk ditempel di grup WhatsApp.
+- Bila **sudah ada pemain yang bergabung**, terbuka pratinjau **foto ajakan 16:9 (1920×1080)**: latar tema lobi,
+  nama sesi, jadwal & tempat, jumlah yang sudah gabung (+ sisa slot / penuh untuk Power Cup), dan **karakter semua
+  yang bergabung berjejer**, masing-masing dengan gelembung ajakan ("Ayo gabung!", "Main bareng yuk!", …; lobi besar
+  memakai kalimat lebih pendek, gelembung bertingkat dengan garis penunjuk). Panel kanan **Gabung sekarang**: (1) sudah
+  pasang aplikasi → buka aplikasinya, lobi ada di Home; (2) belum → **scan QR code** atau buka link di bawahnya.
+- Tombol **Simpan gambar** (HP: lembar bagikan → Simpan gambar / WhatsApp; laptop: unduh `Ajakan <nama sesi>.jpg`) dan
+  **Salin teks**. Belum ada pemain bergabung → hanya kalimat ajakan yang disalin, foto tidak dibuat.
+- QR code dibuat di perangkat dengan `qrcode.js` (qrcode-generator 1.4.4, Kazuhiko Arase, lisensi MIT), dimuat hanya
+  saat membagikan.
 
 ## Lobi: sudah datang & waiting list (v2.11)
 

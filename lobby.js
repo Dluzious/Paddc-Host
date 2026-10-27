@@ -994,7 +994,7 @@ var Lobby = (function () {
       audio();                                          // ketukan pertama membuka izin suara HP
       if (a === 'box') { var n = b.dataset.box; open[n] = !open[n]; lsSet('paddoc_lb_' + n, open[n] ? '1' : '0'); syncBoxes(); if (n === 'chat' && open.chat) el.msgs.scrollTop = 0; }
       else if (a === 'music') { var on = musicOn(!music); b.setAttribute('aria-pressed', String(on)); lsSet('paddoc_lb_music', on ? '1' : '0'); }
-      else if (a === 'share') { if (handlers.share) handlers.share(); else copyShare(S.session || {}, (S.session && S.session.url) || location.href); }
+      else if (a === 'share') { if (!handlers.share || handlers.share() === false) copyShare(S.session || {}, (S.session && S.session.url) || location.href); }
       else if (a === 'start') confirmStart();
       else if (a === 'play') { if (NETS.off) toast(OFF_TXT); else if (!NETS.up && !playing) toast('Mode main sedang menyambung, coba lagi sebentar.'); else setPlaying(!playing); }
       else if (a === 'remove') { var p = people().filter(function (x) { return x.id === b.dataset.pid; })[0]; if (p && handlers.remove) handlers.remove(p.id); }
