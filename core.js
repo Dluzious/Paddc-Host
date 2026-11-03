@@ -260,6 +260,11 @@ var Core = (function () {
         p.photoId = f; p.photoPref = 'asli';
       }
       if (r.photoPref) p.photoPref = r.photoPref === 'asli' ? 'asli' : 'pro';
+      if (r.name != null) {                                             // nama tampil diubah sendiri dari Profil; username tetap
+        var nm = String(r.name).replace(/\s+/g, ' ').trim().slice(0, 40);
+        if (nm.length < 2) throw err('INVALID', 'Nama minimal 2 huruf');
+        p.name = nm;
+      }
       p.updated = now();
       A.savePerson(p); bumpPeople();
       return fullPerson(p);
@@ -666,6 +671,7 @@ var Core = (function () {
       if (f.when !== p.when) p.reminded = {};
       var moved = f.when !== p.when || f.until !== p.until;
       p.when = f.when; p.until = f.until; p.whenText = f.whenText; p.venue = f.venue; p.theme = f.theme;
+      rememberVenue(f.venue, S.courts.filter(function (c) { return c.active; }));
       if (moved) p.rsvp.forEach(function (x) { delete x.from; delete x.to; });   // jadwal berubah: jam hadir sebagian kembali ke full
       if (d.name) S.name = String(d.name).trim().slice(0, 60) || S.name;
       return null;
@@ -708,6 +714,46 @@ var Core = (function () {
   }
   /* ---------------- tema ruang tunggu: gambar + kalibrasi 4 sudut lantai, diatur admin ---------------- */
   var BUILTIN_THEMES = ['court', 'lounge', 'beach'];
+  /* ---------------- data tersimpan: lapangan & template pembayaran (dipakai ulang saat membuat sesi) ---------------- */
+  function savedList(k) { try { var l = JSON.parse(A.prop(k) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } }
+  function putSaved(k, item, same, max) {
+    var list = savedList(k), old = list.filter(same)[0];
+    item.id = old ? old.id : 't_' + A.uuid().replace(/-/g, '').slice(0, 10); item.used = now();
+    list = [item].concat(list.filter(function (x) { return !same(x); })).slice(0, max);
+    A.setProp(k, JSON.stringify(list));
+  }
+  function vkey(n) { return String(n || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+  /* lapangan diingat per nama venue, beserta susunan court (nama & warna) */
+  function rememberVenue(v, courts) {
+    if (!v || !vkey(v.name)) return;
+    var item = { name: v.name, address: v.address || '', maps: v.maps || '', lat: v.lat == null ? null : v.lat, lng: v.lng == null ? null : v.lng };
+    var old = savedList('SAVED_VENUES').filter(function (x) { return vkey(x.name) === vkey(v.name); })[0];
+    item.courts = courts && courts.length ? courts.map(function (c) { return { name: String(c.name || 'Court').slice(0, 30), color: c.color || 'blue', gender: c.gender || 'mix' }; }) : (old && old.courts) || [];
+    putSaved('SAVED_VENUES', item, function (x) { return vkey(x.name) === vkey(v.name); }, 30);
+  }
+  /* template pembayaran: collector + rekening (+ biaya terakhir), diingat per collector & nomor rekening */
+  function rememberPay(pay) {
+    if (!pay || !pay.collector || !pay.bank) return;
+    var num = String(pay.bank.number || '').replace(/\D/g, '');
+    var same = function (x) { return x.collector === pay.collector && String((x.bank || {}).number || '').replace(/\D/g, '') === num; };
+    var old = savedList('SAVED_PAY').filter(same)[0];
+    putSaved('SAVED_PAY', { collector: pay.collector, bank: pay.bank, amount: pay.amount || (old && old.amount) || null }, same, 20);
+  }
+  function savedTemplates(r) {
+    auth(r.token, ['admin', 'host']);
+    var live = {};
+    people().forEach(function (p) { if (!p.archived) live[p.id] = 1; });
+    return { venues: savedList('SAVED_VENUES'), pays: savedList('SAVED_PAY').filter(function (x) { return live[x.collector]; }) };
+  }
+  function deleteTemplate(r) {
+    auth(r.token, ['admin', 'host']);
+    var k = r.kind === 'pay' ? 'SAVED_PAY' : r.kind === 'venue' ? 'SAVED_VENUES' : null;
+    if (!k) throw err('INVALID', 'Jenis data tidak dikenal');
+    return A.lock(function () {
+      A.setProp(k, JSON.stringify(savedList(k).filter(function (x) { return x.id !== r.id; })));
+      return savedTemplates(r);
+    });
+  }
   function themesRaw() { try { return JSON.parse(A.prop('LOBBY_THEMES') || '[]'); } catch (e) { return []; } }
   function themeView(t) {
     var side = function (x) { return x && x.img ? { url: A.photoUrl(x.img), size: x.size, floor: x.floor, host: x.host || null } : null; };
@@ -887,7 +933,10 @@ var Core = (function () {
       S.calls = {}; S.lastDone = {};
       if (st.pay) {                                                   // biaya per orang (opsional) diisi saat membuat sesi
         var amt0 = Math.round(Number(st.pay.amount) || 0), col0 = st.pay.collector ? person(st.pay.collector) : null;
-        S.pay = { collector: col0 && !col0.archived ? col0.id : null, amount: amt0 > 0 ? Math.min(amt0, 100000000) : null, bank: col0 && !col0.archived ? col0.bank || null : null, st: {} };
+        var bank0 = null;
+        if (col0 && !col0.archived) { try { bank0 = st.pay.bank ? cleanBank(st.pay.bank) : col0.bank || null; } catch (e) { bank0 = col0.bank || null; } }
+        S.pay = { collector: col0 && !col0.archived ? col0.id : null, amount: amt0 > 0 ? Math.min(amt0, 100000000) : null, bank: bank0, st: {} };
+        rememberPay(S.pay);
       }
       if (st.plan) {
         // rencana: buka ruang tunggu dulu; pemain yang dipilih host langsung tercatat hadir
@@ -898,6 +947,7 @@ var Core = (function () {
           teams: S.teamMode === 'fixed' ? (st.teams || []).filter(function (t) { return ids.indexOf(t.a) >= 0 && ids.indexOf(t.b) >= 0; }) : [],
           levels: Engine.isPC(S) ? levelMap(ids, st.levels) : {},                // Power Cup: level atas yang sudah ditandai saat membuat rencana
           rsvp: ids.map(function (pid) { return { pid: pid, role: 'player', at: now(), by: actor.id }; }) };
+        rememberVenue(f.venue, S.courts);
         saveS(S, P);
         if (A.notify) all.forEach(function (x) {
           if (x.archived || x.id === actor.id) return;
@@ -1013,12 +1063,15 @@ var Core = (function () {
         }
       } else if (d.pid === null || d.pid === '') { pay.collector = null; pay.bank = null; }
       if (d.amount !== undefined) { var amt = Math.round(Number(d.amount) || 0); pay.amount = amt > 0 ? Math.min(amt, 100000000) : null; }
+      if (d.bank && pay.collector) pay.bank = cleanBank(d.bank);                  // dari template pembayaran: rekening ikut terisi
+      rememberPay(pay);
       return null;
     }
     if (type === 'payBank') {
       if (!isCollector && !staff) throw err('FORBIDDEN', 'Hanya payment collector yang bisa mengisi rekening');
       if (!pay.collector) throw err('INVALID', 'Belum ada payment collector');
       pay.bank = cleanBank(d);
+      rememberPay(pay);
       if (isCollector) { var self = person(actor.id); self.bank = pay.bank; A.savePerson(self); A.cachePut('PEOPLE', null); } // dipakai lagi di sesi berikutnya
       return null;
     }
@@ -1352,7 +1405,8 @@ var Core = (function () {
     createSession: createSession, act: act, importPerson: importPerson, importSession: importSession, markMigrated: markMigrated,
     pushSubscribe: pushSubscribe, venueSearch: venueSearch, generateChibi: generateChibi, saveSprite: saveSprite,
     saveTheme: saveTheme, deleteTheme: deleteTheme, kudosForm: kudosForm, giveKudos: giveKudos, myKudos: myKudos, kudosAdmin: kudosAdmin,
-    payInfo: payInfo, pastSessions: pastSessions, pastSession: pastSession, pcHand: pcHand
+    payInfo: payInfo, pastSessions: pastSessions, pastSession: pastSession, pcHand: pcHand,
+    savedTemplates: savedTemplates, deleteTemplate: deleteTemplate
   };
   function call(fn, req) {
     var f = PUBLIC[fn] || PRIVATE[fn];
