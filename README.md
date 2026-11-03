@@ -1,4 +1,4 @@
-# Paddoc Host v2.13.1
+# Paddoc Host v2.14
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -260,6 +260,22 @@ rotasi, atau klasemen biasa.
   memegang Block / Reverse. Pilih Lawan mengabari tim yang dipilih dan dua tim yang lawannya berubah. Kartu yang diblok /
   dibalik dikabarkan ke pemakainya.
 - **Pengingat ambil kartu**: saat ronde baru dimulai, tim yang belum mengambil kartu haknya diingatkan sekali.
+
+## Data tersimpan: lapangan, template pembayaran, ubah nama (v2.14)
+
+- **Lapangan tersimpan**: venue yang pernah dipakai (nama, alamat, link Maps, titik lokasi, dan susunan court:
+  nama, warna, putra/putri) tersimpan otomatis saat rencana dibuat atau diubah. Di *Buat rencana sesi* dan *Ubah
+  rencana* ada pilihan **Lapangan tersimpan**: pilih satu, semua isian venue (dan court, di Buat rencana) langsung
+  terisi dan masih bisa diubah. Nama venue yang sama tidak tersimpan dobel. Maksimal 30, yang terakhir dipakai di atas.
+- **Template pembayaran**: setiap kombinasi payment collector + rekening (+ biaya per orang terakhir) tersimpan otomatis,
+  termasuk rekening yang diisikan host untuk collector. Dipakai di:
+  - *Buat rencana sesi* / *Ubah rencana*: pilihan **Template pembayaran** mengisi biaya, lalu collector dan rekening
+    langsung terpasang di sesi;
+  - panel **Pembayaran**: daftar *Template tersimpan* dengan tombol **Pakai** (yang aktif bertanda *Dipakai*).
+  Template dan lapangan bisa dihapus dari daftar (ikon tempat sampah). Hanya admin/host yang bisa melihatnya, karena
+  berisi nomor rekening. Template milik akun yang diarsipkan tidak ditampilkan. Maksimal 20.
+- **Ubah nama di Profil**: pemain, host, dan admin bisa mengganti **nama tampil** sendiri (Menu → Profil saya → Nama
+  tampil). Username untuk masuk tidak berubah.
 
 ## HP Huawei / Honor & browser tanpa PWA (v2.13.1)
 
