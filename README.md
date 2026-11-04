@@ -1,4 +1,4 @@
-# Paddoc Host v2.14
+# Paddoc Host v2.15
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -14,6 +14,8 @@ per lobi untuk mode main (analog & bola).
 - `sw.js` – service worker: menerima notifikasi panggilan di HP (tombol Siap / Skip dulu)
 - `config.js` – alamat API (`/api`), nomor WhatsApp admin, dan URL Apps Script lama (hanya untuk pindahan data)
 - `wrangler.jsonc` – konfigurasi Worker
+- `tests/` – semua uji (logika, mode demo, browser): `sh tests/run.sh`, petunjuk di [tests/README.md](tests/README.md)
+- `docs/REKAP.md` – rekap sistem, tampilan, fitur, risiko, dan riwayat versi
 
 ## Pasang / perbarui di Cloudflare
 
@@ -260,6 +262,16 @@ rotasi, atau klasemen biasa.
   memegang Block / Reverse. Pilih Lawan mengabari tim yang dipilih dan dua tim yang lawannya berubah. Kartu yang diblok /
   dibalik dikabarkan ke pemakainya.
 - **Pengingat ambil kartu**: saat ronde baru dimulai, tim yang belum mengambil kartu haknya diingatkan sekali.
+
+## Pengingat ganti PIN & uji di repo (v2.15)
+
+- Akun dengan PIN `123456` (baru atau direset admin) **tidak diwajibkan** mengganti PIN. Sebagai gantinya:
+  - Home menampilkan pengingat dengan tombol **Ganti PIN sekarang** (ke Profil) dan **Nanti saja** (disembunyikan 7 hari);
+  - sambutan saat login ikut menyebutnya.
+  Pengingat hilang setelah PIN diganti. PIN baru harus 4–8 angka, bukan `123456`, dan berbeda dari PIN lama.
+- Semua uji kini ada di `tests/`: 7 file logika, 2 mode demo, 13 uji browser (607 pengecekan). Server uji memakai
+  `wrangler dev` dengan OpenAI dan pencarian alamat tiruan. Jalankan `sh tests/run.sh` sebelum merge perubahan besar,
+  atau `sh tests/run.sh unit` (±10 detik) untuk cek cepat.
 
 ## Data tersimpan: lapangan, template pembayaran, ubah nama (v2.14)
 
