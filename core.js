@@ -134,6 +134,8 @@ var Core = (function () {
     var p = auth(r.token);
     if (hashPin(p.salt, r.old) !== p.pinHash) throw err('PIN_WRONG', 'PIN lama salah');
     if (!/^\d{4,8}$/.test(String(r.pin || ''))) throw err('INVALID', 'PIN baru harus 4–8 angka');
+    if (String(r.pin) === DEFAULT_PIN) throw err('INVALID', 'PIN baru tidak boleh 123456');
+    if (String(r.pin) === String(r.old)) throw err('INVALID', 'PIN baru harus berbeda dari PIN lama');
     setPin(p, r.pin); A.savePerson(p); A.cachePut('PEOPLE', null);
     return fullPerson(p);
   }
