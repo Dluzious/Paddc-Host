@@ -9,11 +9,11 @@ exports.fixture = (f) => path.join(__dirname, 'fixtures', f);
 // catatan panggilan ke OpenAI tiruan (ditulis tests/mock/openai.mjs)
 exports.openaiLog = path.join(OUT, 'openai.log');
 
-/* Akun uji dibuat dengan PIN bawaan 123456 dan dipakai berulang kali, jadi gerbang "wajib ganti PIN" dilewati di
-   browser uji dengan mengubah pinDefault di jawaban /api. Gerbang itu sendiri diuji di e2e/15-wajib-pin.js tanpa ini. */
-exports.ctx = async (browser, opts, keepPinGate) => {
+/* Akun uji dibuat dengan PIN bawaan 123456. Kartu pengingat "ganti PIN" di Home disembunyikan di browser uji (pinDefault
+   diubah di jawaban /api) supaya tampilan sama dengan akun biasa. Pengingatnya diuji tersendiri di e2e/15-pengingat-pin.js. */
+exports.ctx = async (browser, opts, keepPinDefault) => {
   const c = await browser.newContext(opts);
-  if (!keepPinGate) await c.route('**/api', async (route) => {
+  if (!keepPinDefault) await c.route('**/api', async (route) => {
     const res = await route.fetch();
     const body = (await res.text()).replace(/"pinDefault":true/g, '"pinDefault":false');
     await route.fulfill({ response: res, body });

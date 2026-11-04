@@ -3113,20 +3113,10 @@ function MemoryAdapter(store, persist) {
       (!LIVE_MODE ? '<div class="demo-note">' + icon('info') + '<div>Demo: masuk sebagai <b>admin</b>, <b>rudi</b> (host), atau <b>andi</b> (pemain). Semua PIN <b>123456</b>.</div></div>' : '') +
       '<span class="muted" style="font-size:12px">v' + APP_VERSION + '</span></form>';
   }
-  /* PIN masih 123456 (akun baru atau baru direset admin): wajib buat PIN sendiri sebelum memakai aplikasi */
-  function pinGate() {
-    var u = me();
-    return !!(LIVE_MODE && u && u.pinDefault) && UI.view !== 'install' && UI.view !== 'notify';
-  }
-  function viewSetPin() {
-    var u = me();
-    return '<form class="auth" id="setpinf"><img src="' + LOGO + '" alt="Logo Padel Doc"><h1 class="wordmark">Buat <b>PIN</b></h1>' +
-      '<p class="muted">Halo <b>' + esc(u.name) + '</b>. PIN kamu masih <b>123456</b>, jadi siapa pun yang tahu username <b>@' + esc(u.username) + '</b> bisa masuk sebagai kamu. Buat PIN sendiri dulu sebelum lanjut.</p>' +
-      '<div class="field"><label for="sp-new">PIN baru (4–8 angka)</label><input id="sp-new" class="input pin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="••••••"></div>' +
-      '<div class="field"><label for="sp-again">Ulangi PIN baru</label><input id="sp-again" class="input pin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" placeholder="••••••"></div>' +
-      '<button class="btn primary lg block" type="submit">' + icon('check') + 'Simpan PIN & lanjut</button>' +
-      '<p class="muted" style="margin:0;font-size:13px">Ingat PIN ini untuk masuk berikutnya. Lupa PIN? Minta admin mereset.</p>' +
-      '<button class="btn ghost block" type="button" data-act="logout">' + icon('logout') + 'Keluar</button></form>';
+  /* PIN masih 123456 (akun baru atau baru direset admin): pengingat di Home, bisa ditunda 7 hari. Ganti PIN di Profil. */
+  function pinRemind() {
+    var u = me(), later = Number(lsGet('paddoc_pin_later') || 0);
+    return !!(LIVE_MODE && u && u.pinDefault) && Date.now() - later > 7 * 864e5;
   }
   function viewFirstRun() {
     var st = DB.status || {};
@@ -3163,6 +3153,9 @@ function MemoryAdapter(store, persist) {
       h += '<div class="demo-note">' + icon('info') + '<div><b>Data lama masih di Google Sheet.</b> Pindahkan sekali ke Cloudflare supaya pemain, foto, dan riwayat sesi muncul di sini.' +
         '<div class="row" style="margin-top:8px"><button class="btn" data-act="migrate">' + icon('cloud') + 'Pindahkan data dari Google Sheet</button></div></div></div>';
     }
+    if (pinRemind()) h += '<div class="demo-note pin-remind">' + icon('key') + '<div><b>PIN kamu masih 123456.</b> Siapa pun yang tahu username <b>@' + esc(u.username) + '</b> bisa masuk sebagai kamu. ' +
+      'Kamu bisa menggantinya kapan saja di <b>Menu → Profil saya</b>.<div class="row" style="margin-top:8px"><button class="btn primary sm" data-act="pinChange">' + icon('key') + 'Ganti PIN sekarang</button>' +
+      '<button class="btn ghost sm" data-act="pinLater">Nanti saja</button></div></div></div>';
     h += planCards();
     var cards = staff ? live.map(sessCard) : myLive ? [liveCard(S)] : [];
     h += '<section><h2 class="sec-title">' + icon('play') + 'Sesi berjalan</h2>' +
@@ -4735,15 +4728,13 @@ function MemoryAdapter(store, persist) {
 
   /* ---------- render ---------- */
   function render() {
-    var gate = pinGate();
-    if (UI.view === 'lobby' && !gate) { renderLobby(); return; }
+    if (UI.view === 'lobby') { renderLobby(); return; }
     destroyLobby();
     var flip = {};
     $$('.srow[data-id]').forEach(function (el) { flip[el.dataset.id] = el.getBoundingClientRect().top; });
     var listEl = $('.stand-list'), scrollTop = listEl ? listEl.scrollTop : 0;
     var v = UI.view, body;
-    if (gate) body = viewSetPin();
-    else if (v === 'firstrun') body = viewFirstRun();
+    if (v === 'firstrun') body = viewFirstRun();
     else if (v === 'login') body = viewLogin();
     else if (v === 'board' && S && isAdmin()) body = viewBoard();
     else if (v === 'setup' && isStaff()) body = viewSetup();
@@ -4757,8 +4748,8 @@ function MemoryAdapter(store, persist) {
     else if (v === 'install') body = viewInstall();
     else if (v === 'notify') body = viewNotify();
     else { UI.view = v = 'dash'; body = viewDash(); }
-    var bare = gate || v === 'firstrun' || v === 'login' || v === 'scoreboard' || v === 'install' || v === 'notify';
-    $('#app').innerHTML = (bare ? '' : topbar()) + '<main id="view" class="v-' + (gate ? 'setpin' : v) + (canRun() ? ' staff' : '') + '">' + body + '</main>';
+    var bare = v === 'firstrun' || v === 'login' || v === 'scoreboard' || v === 'install' || v === 'notify';
+    $('#app').innerHTML = (bare ? '' : topbar()) + '<main id="view" class="v-' + v + (canRun() ? ' staff' : '') + '">' + body + '</main>';
     $('#app').classList.toggle('board-app', v === 'board' && !!S && fitMode());
     fitCourts();
     var nl = $('.stand-list'); if (nl) nl.scrollTop = scrollTop;
@@ -4818,7 +4809,7 @@ function MemoryAdapter(store, persist) {
       if (!u || !pin) { toast('Isi username dan PIN', 'err'); return; }
       withBusy(api('login', { username: u, pin: pin, token: '' })).then(function (r) {
         AUTH = { token: r.token, me: r.me }; saveAuth();
-        toast('Halo, ' + r.me.name);
+        toast('Halo, ' + r.me.name + (LIVE_MODE && r.me.pinDefault ? '. PIN masih 123456, bisa diganti di Profil.' : ''));
         afterLogin();
       }).catch(function (er) { toast(errMsg(er), 'err'); });
     });
@@ -4837,17 +4828,6 @@ function MemoryAdapter(store, persist) {
         }).catch(function (er) { toast(errMsg(er), 'err'); });
       });
     }
-    var spf = $('#setpinf');
-    if (spf) spf.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var a = $('#sp-new').value.trim(), b = $('#sp-again').value.trim();
-      if (!/^\d{4,8}$/.test(a)) { toast('PIN harus 4–8 angka', 'err'); return; }
-      if (a === '123456') { toast('Pilih PIN selain 123456', 'err'); return; }
-      if (a !== b) { toast('PIN yang diulang tidak sama', 'err'); return; }
-      withBusy(api('changePin', { old: '123456', pin: a })).then(function (p) {
-        AUTH.me = p; saveAuth(); DB.full[p.id] = p; toast('PIN tersimpan'); render(); window.scrollTo(0, 0);
-      }).catch(function (er) { toast(errMsg(er), 'err'); });
-    });
     var nf = $('#namef');
     if (nf) nf.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -5992,6 +5972,11 @@ function MemoryAdapter(store, persist) {
       try { navigator.clipboard.writeText(location.href).then(function () { toast('Link disalin. Tempel di Chrome atau Safari.'); }, function () { toast(location.href); }); }
       catch (e) { toast(location.href); }
     },
+    pinChange: function () {
+      go('profile');
+      setTimeout(function () { var f = $('#pinf'); if (f) { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); var o = $('#pin-old'); if (o) o.focus({ preventScroll: true }); } }, 60);
+    },
+    pinLater: function () { lsSet('paddoc_pin_later', Date.now()); toast('Diingatkan lagi minggu depan. PIN bisa diganti di Profil.'); render(); },
     useBrowser: function () { lsSet('paddoc_browser_ok', true); startApp(); },
     doInstall: function () {
       if (!installEvt) return;
