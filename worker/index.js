@@ -7,6 +7,9 @@
    GET  /ws              ->  WebSocket: server mengirim data terbaru setiap ada perubahan
                             (HP yang login mengirim "auth <token>" supaya ikut menerima chat lobi)
    GET  /photo/<id>.jpg  ->  file foto
+   Sejak v2.17 server utama ("paddoc-asia") ada di Asia (petunjuk lokasi apac). Server lama ("paddoc") berada di luar Asia
+   sehingga setiap aksi dari Indonesia menempuh ±180 ms ekstra; datanya disalin sekali ke server baru (lihat migrate()),
+   lalu server lama berhenti menerima perubahan dan datanya tetap utuh sebagai cadangan.
    GET  /play?lobby=<id> ->  WebSocket mode main lobi (analog & bola), dilayani Durable Object kecil per lobi
                             ("PaddocPlay"), terpisah dari skor & chat. Pemakaiannya dibatasi bersama untuk semua lobi
                             (PLAY_BUDGET, bawaan 7,5% kuota harian gratis); bila habis, mode main berhenti sampai 07.00 WIB.
@@ -26,7 +29,34 @@ const MAX_B64 = 1900000; // batas baris SQLite Durable Object 2 MB
 const PLAY_BUDGET = 150000;
 const PLAY_REPORT = 1000;
 // siaran ke semua HP paling sering sekali per 300 ms: ketukan poin beruntun digabung jadi satu kiriman
-const CAST_GAP = 300;   // pemakaian dilaporkan ke server utama tiap 1.000 satuan (≈2% tambahan)
+const CAST_GAP = 300;
+const MAIN = 'paddoc-asia', OLD = 'paddoc';
+const MIG_TABLES = ['props', 'people', 'sessions', 'kudos', 'push_subs', 'photos'];
+const MIG_WAIT = 20000;     // permintaan pertama setelah pindah menunggu salinan data paling lama 20 detik
+function mainDO(env) { return env.PADDOC.get(env.PADDOC.idFromName(MAIN), { locationHint: 'apac' }); }
+
+/* foto pemain (ID tidak pernah berubah isinya) disimpan di memori Worker di titik Cloudflare terdekat, jadi permintaan
+   berulang tidak perlu ke server utama. Maks ±24 MB per isolate, yang paling lama tidak dipakai dibuang dulu. */
+const PHOTO_MEM = new Map();
+let photoBytes = 0;
+const PHOTO_MAX = 24 * 1024 * 1024;
+async function photo(request, env) {
+  const key = new URL(request.url).pathname.replace(/\.jpg$/, '');
+  const hit = PHOTO_MEM.get(key);
+  if (hit) { PHOTO_MEM.delete(key); PHOTO_MEM.set(key, hit); return new Response(hit.body, { headers: hit.headers }); }
+  const res = await mainDO(env).fetch(request);
+  if (res.status !== 200) return res;
+  const body = await res.arrayBuffer();
+  const headers = { 'Content-Type': res.headers.get('Content-Type') || 'image/jpeg', 'Cache-Control': 'public, max-age=31536000, immutable', 'Access-Control-Allow-Origin': '*' };
+  if (body.byteLength < 3 * 1024 * 1024) {
+    PHOTO_MEM.set(key, { body, headers }); photoBytes += body.byteLength;
+    while (photoBytes > PHOTO_MAX && PHOTO_MEM.size) {
+      const [k, v] = PHOTO_MEM.entries().next().value;
+      PHOTO_MEM.delete(k); photoBytes -= v.body.byteLength;
+    }
+  }
+  return new Response(body, { headers });
+}   // pemakaian dilaporkan ke server utama tiap 1.000 satuan (≈2% tambahan)
 
 export default {
   async fetch(request, env) {
@@ -37,9 +67,10 @@ export default {
       if (!/^[A-Za-z0-9_-]{1,40}$/.test(sid)) return new Response('Lobi tidak valid', { status: 400 });
       return env.PLAY.get(env.PLAY.idFromName('play:' + sid)).fetch(request);
     }
-    if (p === '/api' || p === '/api/' || p === '/ws' || /^\/photo\/ph_[a-f0-9]{32}(\.jpg)?$/.test(p)) {
+    if (/^\/photo\/ph_[a-f0-9]{32}(\.jpg)?$/.test(p) && request.method === 'GET') return photo(request, env);
+    if (p === '/api' || p === '/api/' || p === '/ws') {
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors() });
-      return env.PADDOC.get(env.PADDOC.idFromName('paddoc')).fetch(request);
+      return mainDO(env).fetch(request);
     }
     return env.ASSETS.fetch(request);
   }
@@ -110,12 +141,21 @@ export class PaddocHost extends DurableObject {
     this.dirty = false;
     this.lastCast = 0; this.castT = null; this.castPv = null;
     this.A = this.adapter();
+    this.isOld = ctx.id.equals(env.PADDOC.idFromName(OLD));
+    this.migP = null;
     // ping dari HP dijawab tanpa membangunkan Durable Object
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
   }
 
   async fetch(request) {
     const url = new URL(request.url);
+    // dari server baru: salin data (bukan dari internet: Worker hanya meneruskan /api, /ws, /photo ke sini)
+    if (url.pathname === '/internal/export') return json(this.exportRows(await request.json().catch(() => ({}))));
+    if (this.isOld && this.prop('RETIRED')) return this.movedAway(url);
+    if (!this.isOld && !(this.migDone || (this.migDone = !!this.prop('MIG_DONE')))) {
+      const ok = await Promise.race([this.migrate().then(() => true, () => false), new Promise((r) => setTimeout(r, MIG_WAIT, false))]);
+      if (!ok) return this.movedAway(url);
+    }
     // dari Durable Object mode main (bukan dari internet: Worker hanya meneruskan /api, /ws, /photo ke sini)
     if (url.pathname === '/internal/play') return json(this.playInternal(await request.json().catch(() => ({}))));
     if (this.origin !== url.origin) {           // dipakai alarm pengingat (tanpa request) untuk identitas VAPID
@@ -201,7 +241,68 @@ export class PaddocHost extends DurableObject {
       else if (!next && cur) await this.ctx.storage.deleteAlarm();
     } catch (e) { console.error('reminders', e && e.stack || e); }
   }
+  /* ---------- pindah server (v2.17): salin data dari server lama, bertahap & bisa dilanjutkan ---------- */
+  prop(k) { const r = this.sql.exec('SELECT v FROM props WHERE k = ?', k).toArray()[0]; return r ? r.v : null; }
+  setPropRaw(k, v) { this.sql.exec('INSERT INTO props (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v', k, String(v)); }
+  movedAway(url) {
+    const msg = 'MIGRATING: Server sedang dipindahkan ke Asia supaya lebih cepat. Coba lagi beberapa detik lagi.';
+    if (url.pathname === '/ws') return new Response(msg, { status: 503 });
+    if (url.pathname.indexOf('/photo/') === 0) return new Response('Coba lagi', { status: 503, headers: { 'Retry-After': '5', 'Cache-Control': 'no-store' } });
+    return json({ ok: false, error: msg });
+  }
+  /* server lama: kirim baris tabel setelah rowid `after`, paling banyak ±3,5 MB per jawaban; sejak itu menolak perubahan */
+  exportRows(b) {
+    if (!this.isOld) return { ok: false, error: 'Bukan server lama' };
+    if (MIG_TABLES.indexOf(b.table) < 0) return { ok: false, error: 'Tabel tidak dikenal' };
+    if (!this.prop('RETIRED')) {
+      this.setPropRaw('RETIRED', Date.now());
+      this.ctx.storage.deleteAlarm().catch(() => {});                    // pengingat dikirim server baru
+      this.ctx.getWebSockets().forEach((ws) => { try { ws.close(1012, 'pindah server'); } catch (e) { /* sudah tertutup */ } });
+    }
+    const after = Number(b.after) || 0, rows = [];
+    let size = 0, next = after, done = true;
+    for (const row of this.sql.exec(`SELECT rowid AS _r, * FROM ${b.table} WHERE rowid > ? ORDER BY rowid LIMIT 400`, after)) {
+      if (b.table === 'props' && (row.k === 'RETIRED' || /^MIG_/.test(row.k))) { next = row._r; continue; }
+      const n = JSON.stringify(row).length;
+      if (rows.length && size + n > 3.5e6) { done = false; break; }
+      next = row._r; size += n; delete row._r; rows.push(row);
+    }
+    if (done && this.sql.exec(`SELECT rowid FROM ${b.table} WHERE rowid > ? LIMIT 1`, next).toArray().length) done = false;
+    return { ok: true, rows, next, done };
+  }
+  /* server baru: ambil semua tabel dari server lama. Kemajuan per tabel disimpan (MIG_<tabel>), jadi bila terputus
+     dilanjutkan dari tempat terakhir; satu potong ditulis dalam satu transaksi. */
+  migrate() {
+    if (this.prop('MIG_DONE')) return Promise.resolve();
+    if (this.migP) return this.migP;
+    this.migP = (async () => {
+      const old = this.env.PADDOC.get(this.env.PADDOC.idFromName(OLD));
+      for (const t of MIG_TABLES) {
+        let after = Number(this.prop('MIG_' + t) || 0);
+        while (after >= 0) {
+          const res = await old.fetch('https://paddoc.internal/internal/export', { method: 'POST', body: JSON.stringify({ table: t, after }) });
+          const j = await res.json();
+          if (!j.ok) throw new Error('pindah server: ' + j.error);
+          this.ctx.storage.transactionSync(() => {
+            j.rows.forEach((row) => {
+              const cols = Object.keys(row);
+              this.sql.exec(`INSERT OR REPLACE INTO ${t} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, ...cols.map((c) => row[c]));
+            });
+            this.setPropRaw('MIG_' + t, j.done ? -1 : j.next);
+          });
+          after = j.done ? -1 : j.next;
+        }
+      }
+      this.setPropRaw('MIG_DONE', Date.now());
+      this.cache.clear();
+      console.log('pindah server selesai');
+      this.origin = this.prop('ORIGIN') || this.origin;
+      await this.planReminders();                                       // pengingat sesi dijadwalkan di server baru
+    })().catch((e) => { console.error('pindah server', e && e.stack || e); throw e; }).finally(() => { this.migP = null; });
+    return this.migP;
+  }
   async alarm() {
+    if (this.isOld && this.prop('RETIRED')) return;
     if (!this.origin) this.origin = (this.sql.exec("SELECT v FROM props WHERE k = 'ORIGIN'").toArray()[0] || {}).v || '';
     this.outbox = []; this.dirty = false;
     await this.planReminders();
@@ -424,7 +525,7 @@ export class PaddocPlay extends DurableObject {
     try {
       const body = { used };
       if (token) { body.token = token; body.sid = sid; }
-      const res = await this.env.PADDOC.get(this.env.PADDOC.idFromName('paddoc')).fetch('https://paddoc.internal/internal/play',
+      const res = await mainDO(this.env).fetch('https://paddoc.internal/internal/play',
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await res.json();
       this.left = Number(j.left); this.leftDay = this.day();

@@ -8,11 +8,12 @@
 var CACHE = 'paddoc-shell-1';
 var WAIT = 4000;
 var SHELL = /\.(?:js|css|png|webp|svg|ico|webmanifest)$/;
+var PHOTOS = 'paddoc-photo-1', PHOTO_MAX = 400;
 
 self.addEventListener('install', function () { self.skipWaiting(); });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (ks) {
-    return Promise.all(ks.filter(function (k) { return k.indexOf('paddoc-shell-') === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+    return Promise.all(ks.filter(function (k) { return (k.indexOf('paddoc-shell-') === 0 && k !== CACHE) || (k.indexOf('paddoc-photo-') === 0 && k !== PHOTOS); }).map(function (k) { return caches.delete(k); }));
   }).then(function () { return self.clients.claim(); }));
 });
 
@@ -34,6 +35,24 @@ function netFirst(e, req, key) {
     .then(function (r) { return r || Promise.reject(new Error('offline')); });
 }
 
+function photoFirst(e, req) {
+  return caches.open(PHOTOS).then(function (c) {
+    return c.match(req).then(function (hit) {
+      if (hit) return hit;
+      return fetch(req).then(function (res) {
+        if (res && res.ok) {
+          var copy = res.clone();
+          e.waitUntil(c.put(req, copy).then(function () { return c.keys(); }).then(function (ks) {
+            // paling banyak PHOTO_MAX foto; yang paling lama disimpan dibuang dulu
+            return Promise.all(ks.slice(0, Math.max(0, ks.length - PHOTO_MAX)).map(function (k) { return c.delete(k); }));
+          }).catch(function () {}));
+        }
+        return res;
+      });
+    });
+  });
+}
+
 function offlinePage() {
   return new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<title>Paddoc Host</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#0A1628;color:#fff;font:16px system-ui;text-align:center;padding:16px">' +
@@ -53,6 +72,8 @@ self.addEventListener('fetch', function (e) {
     e.respondWith(netFirst(e, req, new URL('./', self.registration.scope).href).catch(offlinePage));
     return;
   }
+  // foto pemain: ID tidak pernah berubah isinya, jadi cukup diunduh sekali lalu dipakai dari simpanan HP
+  if (/^\/photo\/ph_[a-f0-9]{32}\.jpg$/.test(url.pathname)) { e.respondWith(photoFirst(e, req)); return; }
   if (/^\/(api|ws|play|photo)\b/.test(url.pathname) || url.pathname.endsWith('/sw.js')) return;
   if (SHELL.test(url.pathname) && !url.search) e.respondWith(netFirst(e, req, req.url).catch(function () { return fetch(req); }));
 });

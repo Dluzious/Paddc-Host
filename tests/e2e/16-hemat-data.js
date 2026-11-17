@@ -69,6 +69,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await pg.reload(); await pg.waitForSelector('#view', { timeout: 15000 });
   await sleep(1500);
   ok(await pg.evaluate(() => caches.keys().then((k) => k.some((x) => /^paddoc-shell-/.test(x)))), 'file aplikasi tersimpan di HP');
+
+  step('foto pemain: diunduh sekali, berikutnya dari simpanan HP');
+  await api('savePerson', { token, person: { id: pl[0].id, name: pl[0].name, gender: 'L' }, photoData: 'data:image/jpeg;base64,' + require('fs').readFileSync(L.fixture('asli.jpg')).toString('base64') });
+  await sleep(1500); await pg.reload(); await pg.waitForSelector('#view', { timeout: 15000 }); await sleep(2000);
+  const net = [], sw = [];
+  pg.on('response', (res) => { if (/\/photo\/ph_/.test(res.url())) (res.fromServiceWorker() ? sw : net).push(res.url()); });
+  const hasPhoto = await pg.evaluate(() => document.querySelectorAll('img[src*="/photo/ph_"]').length);
+  await pg.reload(); await pg.waitForSelector('#view', { timeout: 15000 }); await sleep(2500);
+  ok(hasPhoto > 0 && sw.length > 0, 'foto tampil (' + hasPhoto + ' gambar) dan dibuka ulang dari simpanan HP (' + sw.length + ')');
+  ok(net.length === 0, 'tanpa unduh ulang foto dari server (' + net.length + ')');
+  ok(await pg.evaluate(() => caches.keys().then((k) => k.includes('paddoc-photo-1'))), 'simpanan foto terpisah dari file aplikasi');
   // server dimatikan sungguhan (run.sh menyalakannya lagi untuk uji berikutnya)
   require('child_process').execSync('for p in $(ps -eo pid,args | grep -E "[w]orkerd serve|[w]rangler[^ ]* dev --port 8789" | awk \'{print $1}\'); do kill $p; done; sleep 2');
   const down = await fetch(B + '/').then(() => false, () => true);
