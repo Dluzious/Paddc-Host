@@ -24,7 +24,9 @@ const MAX_B64 = 1900000; // batas baris SQLite Durable Object 2 MB
 // mode main: satuan pemakaian = 1 pesan WebSocket masuk; 1 request (sambungan baru / cek ke server utama) = 20 satuan,
 // sama dengan cara Cloudflare menghitung (20 pesan = 1 request). 150.000 satuan = 7.500 request = 7,5% dari 100.000/hari.
 const PLAY_BUDGET = 150000;
-const PLAY_REPORT = 1000;   // pemakaian dilaporkan ke server utama tiap 1.000 satuan (≈2% tambahan)
+const PLAY_REPORT = 1000;
+// siaran ke semua HP paling sering sekali per 300 ms: ketukan poin beruntun digabung jadi satu kiriman
+const CAST_GAP = 300;   // pemakaian dilaporkan ke server utama tiap 1.000 satuan (≈2% tambahan)
 
 export default {
   async fetch(request, env) {
@@ -106,6 +108,7 @@ export class PaddocHost extends DurableObject {
     this.cache = new Map();
     this.origin = '';
     this.dirty = false;
+    this.lastCast = 0; this.castT = null; this.castPv = null;
     this.A = this.adapter();
     // ping dari HP dijawab tanpa membangunkan Durable Object
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
@@ -142,7 +145,8 @@ export class PaddocHost extends DurableObject {
       let data = Core.call(body.fn, body.req || {});
       if (data && typeof data.then === 'function') data = await data;
       if (this.dirty) { this.broadcast(); await this.planReminders(); }
-      if (this.outbox.length) await this.flushPush();
+      // notifikasi push dikirim setelah jawaban: penekan tombol tidak menunggu server notifikasi Google/Apple
+      if (this.outbox.length) this.later(this.flushPush());
       return json({ ok: true, data: data === undefined ? null : data });
     } catch (e) {
       if (this.dirty) this.broadcast();
@@ -151,20 +155,37 @@ export class PaddocHost extends DurableObject {
     }
   }
 
-  /* kirim data terbaru (sama dengan hasil poll tanpa versi) ke semua HP yang tersambung */
+  later(p) {
+    const q = Promise.resolve(p).catch((e) => console.error('later', e && e.stack || e));
+    try { if (this.ctx.waitUntil) this.ctx.waitUntil(q); } catch (e) { /* tetap jalan tanpa waitUntil */ }
+  }
+  /* kirim data terbaru ke semua HP yang tersambung, hemat data:
+     - paling sering sekali per CAST_GAP (perubahan beruntun digabung, yang terakhir selalu terkirim)
+     - daftar orang hanya ikut bila berubah sejak siaran sebelumnya
+     - match yang sudah selesai cukup id-nya (HP mengisi dari data yang sudah ia punya, lihat Engine.slimMatches) */
   broadcast() {
-    const socks = this.ctx.getWebSockets();
     this.dirty = false;
+    const socks = this.ctx.getWebSockets();
     if (!socks.length) return;
-    let pub, mem;
+    const wait = this.lastCast + CAST_GAP - Date.now();
+    if (wait > 0) {
+      if (!this.castT) this.castT = setTimeout(() => { this.castT = null; this.broadcast(); }, wait);
+      return;
+    }
+    this.lastCast = Date.now();
+    let pub, mem, pv;
     try {
       Core.init(this.A);
-      pub = JSON.stringify({ type: 'poll', data: Core.pollAs(false) });
+      const d = Core.pollAs(false, { pv: this.castPv, slim: true });
+      pv = d.pv;
+      pub = JSON.stringify({ type: 'poll', data: d });
     } catch (e) { console.error('broadcast', e); return; }
+    const prevPv = this.castPv;
+    this.castPv = pv;
     socks.forEach((ws) => {
       try {
         const member = !!(ws.deserializeAttachment() || {}).member;
-        if (member && !mem) mem = JSON.stringify({ type: 'poll', data: Core.pollAs(true) }); // dengan chat lobi
+        if (member && !mem) mem = JSON.stringify({ type: 'poll', data: Core.pollAs(true, { pv: prevPv, slim: true }) }); // dengan chat lobi
         ws.send(member ? mem : pub);
       } catch (e) { /* koneksi sudah putus */ }
     });

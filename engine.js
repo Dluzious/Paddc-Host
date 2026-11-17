@@ -1262,7 +1262,43 @@ var Engine = (function () {
     };
   }
 
+  /* ---------- siaran hemat: match yang sudah lama selesai cukup dikirim id-nya ----------
+     Server mengganti match selesai (kecuali `keep` yang terakhir) dengan { id, z: 1 } dan menyertakan sidik (hash) semua
+     match selesai. HP mengisi ulang dari match selesai yang sudah ia simpan lalu mencocokkan sidiknya; bila tidak cocok
+     (mis. skor lama dikoreksi atau HP baru tersambung), HP mengambil data lengkap lewat poll biasa. */
+  function doneSig(matches) {
+    var s = JSON.stringify((matches || []).filter(function (m) { return m.status === 'done'; })), h = 0x811c9dc5;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(36) + '.' + s.length;
+  }
+  function slimMatches(S, keep) {
+    if (!S || !S.matches) return S;
+    var doneIdx = [];
+    S.matches.forEach(function (m, i) { if (m.status === 'done') doneIdx.push(i); });
+    var full = {};
+    doneIdx.slice(-(keep == null ? 6 : keep)).forEach(function (i) { full[i] = 1; });
+    var out = Object.assign({}, S);
+    out.mSig = doneSig(S.matches);
+    out.matches = S.matches.map(function (m, i) { return m.status === 'done' && !full[i] ? { id: m.id, z: 1 } : m; });
+    return out;
+  }
+  /* kebalikan slimMatches. byId = match selesai yang sudah disimpan HP. Hasil null bila tidak bisa dipulihkan persis. */
+  function fatMatches(S, byId) {
+    if (!S || !S.mSig) return S;
+    var miss = false;
+    var ms = S.matches.map(function (m) { if (!m.z) return m; var d = byId && byId[m.id]; if (!d) miss = true; return d; });
+    if (miss || doneSig(ms) !== S.mSig) return null;
+    var out = Object.assign({}, S); delete out.mSig; out.matches = ms;
+    return out;
+  }
+  function doneById(S) {
+    var o = {};
+    ((S && S.matches) || []).forEach(function (m) { if (m.status === 'done') o[m.id] = m; });
+    return o;
+  }
+
   return {
+    doneSig: doneSig, slimMatches: slimMatches, fatMatches: fatMatches, doneById: doneById,
     uid: uid, newSession: newSession, stats: stats, standings: standings,
     fillCourts: fillCourts, courtLive: courtLive, voidMatch: voidMatch, reshuffle: reshuffle,
     swapPlayer: swapPlayer, swapTeam: swapTeam, submitScore: submitScore, validateScore: validateScore,

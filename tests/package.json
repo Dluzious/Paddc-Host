@@ -1,0 +1,15 @@
+{
+  "name": "paddoc-host-tests",
+  "private": true,
+  "description": "Uji Paddoc Host: logika (node), mode demo dan browser (Playwright + wrangler dev)",
+  "scripts": {
+    "test": "sh run.sh",
+    "unit": "sh run.sh unit",
+    "e2e": "sh run.sh e2e",
+    "demo": "sh run.sh demo"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1",
+    "wrangler": "4.151.1"
+  }
+}

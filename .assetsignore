@@ -9,3 +9,5 @@ wrangler.jsonc
 package.json
 package-lock.json
 *.md
+tests
+docs

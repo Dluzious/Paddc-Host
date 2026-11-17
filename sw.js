@@ -2,18 +2,59 @@
    Paddoc Host — service worker
    - menerima notifikasi push "Giliran kamu main" dari server (Durable Object)
    - tombol di notifikasi: Siap / Skip dulu → membuka aplikasi dengan ?call=<match>&do=<aksi>
-   - halaman cadangan saat tidak ada koneksi
+   - menyimpan file aplikasi di HP: dibuka dari jaringan bila cepat (maks. 4 detik), selain itu dari simpanan, jadi
+     aplikasi tetap terbuka saat jaringan venue padat atau sedang putus. Data (/api, /ws) selalu langsung ke server.
    ============================================================ */
+var CACHE = 'paddoc-shell-1';
+var WAIT = 4000;
+var SHELL = /\.(?:js|css|png|webp|svg|ico|webmanifest)$/;
+
 self.addEventListener('install', function () { self.skipWaiting(); });
-self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
+self.addEventListener('activate', function (e) {
+  e.waitUntil(caches.keys().then(function (ks) {
+    return Promise.all(ks.filter(function (k) { return k.indexOf('paddoc-shell-') === 0 && k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+  }).then(function () { return self.clients.claim(); }));
+});
+
+/* jaringan dulu; bila gagal atau lebih dari WAIT, pakai simpanan. Jawaban jaringan yang datang belakangan tetap disimpan. */
+function netFirst(e, req, key) {
+  var net = fetch(req).then(function (res) {
+    if (res && res.ok && res.type === 'basic') {
+      var copy = res.clone();
+      e.waitUntil(caches.open(CACHE).then(function (c) { return c.put(key, copy); }).catch(function () {}));
+    }
+    return res;
+  });
+  e.waitUntil(net.catch(function () {}));
+  var timer;
+  var slow = new Promise(function (r) { timer = setTimeout(r, WAIT); });
+  var cached = function () { return caches.match(key).then(function (hit) { return hit || net; }); };
+  return Promise.race([net.then(function (r) { clearTimeout(timer); return r; }), slow.then(cached)])
+    .catch(function () { return caches.match(key); })
+    .then(function (r) { return r || Promise.reject(new Error('offline')); });
+}
+
+function offlinePage() {
+  return new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Paddoc Host</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#0A1628;color:#fff;font:16px system-ui;text-align:center;padding:16px">' +
+    '<div style="max-width:340px"><b>Tidak bisa terhubung ke Paddoc Host.</b><p style="opacity:.8;font-size:14px">Bila internet lain lancar, jaringan ini mungkin sedang padat ' +
+    'atau memblokir alamat aplikasi. Coba pindah WiFi ↔ data seluler, lalu tekan Coba lagi.</p>' +
+    '<button onclick="location.reload()" style="font:600 16px system-ui;padding:12px 20px;border-radius:12px;border:0;background:#E8A33D;color:#0A1628">Coba lagi</button></div>',
+    { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+}
 
 self.addEventListener('fetch', function (e) {
-  if (e.request.mode !== 'navigate') return;
-  e.respondWith(fetch(e.request).catch(function () {
-    return new Response('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-      '<title>Paddoc Host</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#0A1628;color:#fff;font:16px system-ui;text-align:center;padding:16px">' +
-      '<div><b>Tidak ada koneksi internet.</b><br>Sambungkan HP ke internet lalu buka lagi Paddoc Host.</div>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-  }));
+  var req = e.request;
+  if (req.method !== 'GET') return;
+  var url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
+  if (req.mode === 'navigate') {
+    // semua halaman aplikasi (?lobby=, ?pay=, ?src=home, …) memakai index.html yang sama
+    e.respondWith(netFirst(e, req, new URL('./', self.registration.scope).href).catch(offlinePage));
+    return;
+  }
+  if (/^\/(api|ws|play|photo)\b/.test(url.pathname) || url.pathname.endsWith('/sw.js')) return;
+  if (SHELL.test(url.pathname) && !url.search) e.respondWith(netFirst(e, req, req.url).catch(function () { return fetch(req); }));
 });
 
 self.addEventListener('push', function (e) {
