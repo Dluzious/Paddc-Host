@@ -1427,6 +1427,12 @@ var Core = (function () {
 
   // pollAs, reminders & playCheck hanya dipanggil server (siaran WebSocket, alarm, mode main), tidak lewat API
   return { init: init, call: call, DEFAULT_PIN: DEFAULT_PIN, apply: apply, rowsFor: rowsFor,
-    pollAs: function (member) { return poll({}, !!member); }, reminders: reminders, playCheck: playCheck };
+    // siaran: o.pv = versi data orang di siaran sebelumnya (daftar orang hanya dikirim bila berubah), o.slim = match selesai cukup id-nya
+    pollAs: function (member, o) {
+      o = o || {};
+      var out = poll(o.pv != null ? { pv: o.pv } : {}, !!member);
+      if (o.slim && out.S) out.S = Engine.slimMatches(out.S);
+      return out;
+    }, reminders: reminders, playCheck: playCheck };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = Core;

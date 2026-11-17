@@ -14,7 +14,9 @@ exports.openaiLog = path.join(OUT, 'openai.log');
 exports.ctx = async (browser, opts, keepPinDefault) => {
   const c = await browser.newContext(opts);
   if (!keepPinDefault) await c.route('**/api', async (route) => {
-    const res = await route.fetch();
+    let res;
+    try { res = await route.fetch(); } catch (e) { return route.abort('connectionrefused').catch(() => {}); }   // server mati
+
     const body = (await res.text()).replace(/"pinDefault":true/g, '"pinDefault":false');
     await route.fulfill({ response: res, body });
   });
