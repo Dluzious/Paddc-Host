@@ -19,7 +19,7 @@ sh run.sh unit                    # logika saja (±10 detik)
 sh run.sh e2e power               # hanya uji browser yang namanya memuat "power"
 ```
 
-Setiap file punya satu baris hasil. Di akhir ada total, misalnya `Total: 607 lulus, 0 gagal`. Kalau ada yang gagal, runner keluar dengan kode 1.
+Setiap file punya satu baris hasil. Di akhir ada total, misalnya `Total: 619 lulus, 0 gagal`. Kalau ada yang gagal, runner keluar dengan kode 1.
 
 - **Hasil uji:** screenshot, video podium, dan log per file disimpan di `/tmp/paddoc-tests`. Lokasinya bisa diganti dengan `PADDOC_TEST_OUT`.
 - **Kenapa di luar repo:** `wrangler dev` memuat ulang server setiap ada file baru di folder aplikasi.
@@ -49,6 +49,7 @@ Setiap file punya satu baris hasil. Di akhir ada total, misalnya `Total: 607 lul
 | `13-foto-ajakan` | Bagikan lobi: salin teks & foto ajakan 16:9 + QR |
 | `13b-huawei` | Browser Huawei: lanjut di browser, `?src=home` |
 | `14-data-tersimpan` | Lapangan tersimpan, template pembayaran, ubah nama |
+| `16-hemat-data` | Siaran hemat & digabung, HP mengisi match lama sendiri, aplikasi tetap terbuka saat server tak terjangkau |
 | `15-pengingat-pin` | Pengingat ganti PIN di Home (tidak wajib), Nanti saja 7 hari, ganti di Profil |
 
 ## Menambah uji

@@ -1,4 +1,4 @@
-# Rekap Paddoc Host v2.15
+# Rekap Paddoc Host v2.16
 
 Aplikasi undian dan rotasi pemain padel untuk komunitas Paddoc. Alamat live: <https://paddoc-host.lulunurulula.workers.dev>
 
@@ -14,9 +14,9 @@ Isi dokumen: [1. Sistem](#1-sistem) · [2. Tampilan](#2-tampilan) · [3. Fitur](
 | Data | Satu Durable Object berbasis SQLite menyimpan semua data: orang, sesi, foto, login, tema, template. Mode main lobi memakai Durable Object kecil per lobi yang hanya meneruskan pesan. |
 | Kode | `index.html` (aplikasi, ±525 KB), `engine.js` (mesin undian & klasemen), `core.js` (aturan peran & semua aksi), `worker/` (API, WebSocket, foto, push, AI), `lobby.js` + `lobby.css` (ruang tunggu), `play.js` (mode main), `ceremony.js` (podium), `invite.js` + `qrcode.js` (foto ajakan), `sw.js` (notifikasi). |
 | Logika bersama | `engine.js` dan `core.js` dipakai server **dan** mode demo di browser, jadi aturannya selalu sama. |
-| Sinkron | Perubahan dikirim ke semua perangkat lewat WebSocket begitu terjadi. Cadangan: cek berkala tiap 30 detik, atau 3–4 detik saat WebSocket putus. |
+| Sinkron | Perubahan dikirim ke semua perangkat lewat WebSocket, digabung paling sering sekali per 300 ms. Match yang sudah lama selesai cukup dikirim id-nya (v2.16). Cadangan: cek berkala tiap 30 detik, atau 3–4 detik saat WebSocket putus. |
 | Notifikasi | Web Push lewat service worker, dengan tombol **Siap** / **Skip dulu**. Kunci VAPID dibuat otomatis. |
-| Bentuk aplikasi | Web app yang dipasang ke layar utama. HP wajib memasangnya; browser tanpa dukungan pemasangan (Huawei dsb.) bisa lanjut di browser. Laptop tidak wajib. |
+| Bentuk aplikasi | Web app yang dipasang ke layar utama. File aplikasi disimpan di HP (v2.16), jadi tetap terbuka saat jaringan lambat atau putus. HP wajib memasangnya; browser tanpa dukungan pemasangan (Huawei dsb.) bisa lanjut di browser. Laptop tidak wajib. |
 | AI | OpenAI untuk foto pro dan avatar chibi. Opsional, butuh secret `OPENAI_API_KEY`. |
 | Biaya | Cloudflare Rp 0. Biaya hanya dari OpenAI bila foto AI dipakai. |
 | Rahasia (Cloudflare) | `APP_PIN` (kode pemasangan admin pertama), `OPENAI_API_KEY`. |
@@ -126,7 +126,7 @@ Mulai v2.15 semua uji tersimpan di repo, di folder [`tests/`](../tests/README.md
 |---|---|---|
 | Logika (`tests/unit`) | 7 | `sh tests/run.sh unit` (±10 detik) |
 | Mode demo (`tests/demo`) | 2 | `sh tests/run.sh demo` |
-| Browser (`tests/e2e`) | 13 | `sh tests/run.sh e2e` (±25 menit) |
+| Browser (`tests/e2e`) | 14 | `sh tests/run.sh e2e` (±25 menit) |
 
 Server uji memakai `wrangler dev` dengan OpenAI dan pencarian alamat tiruan, jadi tidak ada biaya dan tidak butuh internet selain untuk memasang alat. Petunjuk lengkap ada di `tests/README.md`.
 
@@ -140,6 +140,7 @@ Server uji memakai `wrangler dev` dengan OpenAI dan pencarian alamat tiruan, jad
 | PIN bawaan 123456 bisa dipakai siapa pun yang tahu username | **Diputuskan: tidak diwajibkan.** v2.15 hanya mengingatkan di Home dan saat login. | Risiko tetap ada selama pemain tidak mengganti PIN. Bila ada kejadian akun dipakai orang lain, aktifkan lagi kewajiban ganti PIN. |
 | Uji belum jalan otomatis di GitHub | Terbuka | Tambah GitHub Actions yang menjalankan `sh tests/run.sh unit` di setiap PR (cepat, tanpa browser). |
 | Semua data di satu Durable Object, tanpa backup di luar Cloudflare | Terbuka | Tambah tombol **Ekspor data (JSON)** untuk admin. |
+| Gambar ulang papan iPad ±70 ms per pembaruan (lebih lama di iPad) | Terbuka | v2.16 mengurangi jumlahnya. Bila masih berat: perbarui hanya court yang berubah. |
 | Check "Workers Builds" di branch PR selalu merah | Terbuka | Build pratinjau branch; deploy `main` tetap sukses. Cek log di dashboard Cloudflare atau matikan build pratinjau. |
 | Alamat memuat "lulunurulula" | Menunggu keputusan | Ganti subdomain akun Cloudflare atau pakai domain sendiri. |
 | Browser Huawei | Belum diuji di HP asli | Notifikasi kemungkinan tidak masuk; pemain Huawei perlu membuka aplikasi saat menunggu giliran. |
@@ -161,3 +162,4 @@ Server uji memakai `wrangler dev` dengan OpenAI dan pencarian alamat tiruan, jad
 | v2.13 / v2.13.1 | Foto ajakan lobi + QR; perbaikan HP Huawei/Honor |
 | v2.14 | Lapangan tersimpan, template pembayaran, ubah nama di Profil |
 | v2.15 | Pengingat ganti PIN (tidak wajib); seluruh uji disimpan di `tests/` |
+| v2.16 | Lebih ringan saat sesi ramai (siaran hemat & digabung, notifikasi tidak menahan tombol); aplikasi disimpan di HP sehingga tetap terbuka saat jaringan lemah |

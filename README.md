@@ -1,4 +1,4 @@
-# Paddoc Host v2.15
+# Paddoc Host v2.16
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -263,13 +263,42 @@ rotasi, atau klasemen biasa.
   dibalik dikabarkan ke pemakainya.
 - **Pengingat ambil kartu**: saat ronde baru dimulai, tim yang belum mengambil kartu haknya diingatkan sekali.
 
+## Lebih ringan saat sesi ramai (v2.16)
+
+Laporan lapangan: banyak HP tidak bisa masuk ("Tidak ada koneksi") padahal sinyal bagus, dan input skor serta perpindahan
+pemain terasa makin lambat. Hasil pengukuran (24 pemain, 4 court, 40–80 match):
+
+- Setiap ketukan poin di *Hitung skor* dikirim ke **semua** HP dan iPad sebagai data sesi lengkap (±25–30 KB; 80% berupa
+  match yang sudah selesai dan tidak berubah), lalu semua layar menggambar ulang. Ukurannya terus membesar sepanjang sesi.
+- Pesan "Tidak ada koneksi internet" berasal dari service worker setiap kali halaman aplikasi gagal diunduh, termasuk
+  bila jaringan hanya lambat. Aplikasi tidak disimpan di HP, jadi setiap kali dibuka harus diunduh ulang.
+- Notifikasi panggilan dikirim **sebelum** server menjawab, jadi tombol Panggil menunggu server notifikasi Google/Apple.
+
+Perbaikan:
+
+- **Siaran hemat**: match yang sudah lama selesai cukup dikirim id-nya. HP mengisi dari simpanannya sendiri dan
+  mencocokkan sidik datanya; bila tidak cocok (mis. skor lama dikoreksi), HP mengambil data lengkap sekali. Daftar orang
+  hanya ikut bila berubah. Contoh 40 match: dari ±25 KB menjadi ±7 KB per kiriman.
+- **Digabung**: perubahan beruntun dikirim paling sering sekali per 300 ms (12 ketukan poin → 2 kiriman). Layar HP
+  menggambar ulang paling sering ±4× per detik, tidak menggambar ulang bila tampilannya sama, dan tidak saat aplikasi
+  di latar belakang.
+- **Notifikasi push dikirim setelah jawaban**, jadi tombol Panggil / kartu langsung selesai.
+- **Aplikasi disimpan di HP** (service worker): dibuka dari jaringan bila cepat (maks. 4 detik), selain itu dari simpanan.
+  Bila server tidak terjangkau, aplikasi tetap terbuka, menampilkan "Gagal memuat data", dan mencoba lagi sendiri tiap
+  8 detik. Halaman "Tidak bisa terhubung" hanya muncul di HP yang belum pernah membuka aplikasi, dengan saran pindah
+  WiFi ↔ data seluler.
+- Permintaan ke server dibatasi 20 detik (unggah foto & AI 3 menit), dengan pesan yang jelas bila jaringan bermasalah.
+
+Belum diperbaiki: satu kali gambar ulang papan iPad tetap ±70 ms di komputer uji (lebih lama di iPad); yang berkurang
+adalah jumlahnya. Bila masih terasa berat, langkah berikutnya memperbarui hanya bagian court yang berubah.
+
 ## Pengingat ganti PIN & uji di repo (v2.15)
 
 - Akun dengan PIN `123456` (baru atau direset admin) **tidak diwajibkan** mengganti PIN. Sebagai gantinya:
   - Home menampilkan pengingat dengan tombol **Ganti PIN sekarang** (ke Profil) dan **Nanti saja** (disembunyikan 7 hari);
   - sambutan saat login ikut menyebutnya.
   Pengingat hilang setelah PIN diganti. PIN baru harus 4–8 angka, bukan `123456`, dan berbeda dari PIN lama.
-- Semua uji kini ada di `tests/`: 7 file logika, 2 mode demo, 13 uji browser (607 pengecekan). Server uji memakai
+- Semua uji kini ada di `tests/`: 7 file logika, 2 mode demo, 13 uji browser (607 pengecekan; v2.16: 14 uji browser, 619 pengecekan). Server uji memakai
   `wrangler dev` dengan OpenAI dan pencarian alamat tiruan. Jalankan `sh tests/run.sh` sebelum merge perubahan besar,
   atau `sh tests/run.sh unit` (±10 detik) untuk cek cepat.
 
