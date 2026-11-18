@@ -1,4 +1,4 @@
-# Paddoc Host v2.16
+# Paddoc Host v2.17
 
 Aplikasi undian dan rotasi pemain padel untuk Paddoc: akun admin/host/pemain, dashboard publik, sinkron langsung
 antar perangkat, notifikasi giliran, dan foto pro AI. Semua berjalan di **Cloudflare** (gratis): satu Worker untuk
@@ -262,6 +262,33 @@ rotasi, atau klasemen biasa.
   memegang Block / Reverse. Pilih Lawan mengabari tim yang dipilih dan dua tim yang lawannya berubah. Kartu yang diblok /
   dibalik dikabarkan ke pemakainya.
 - **Pengingat ambil kartu**: saat ronde baru dimulai, tim yang belum mengambil kartu haknya diingatkan sekali.
+
+## Server di Asia & foto disimpan di HP (v2.17)
+
+Metrik Cloudflare sesi Selasa 17 Nov (16.00–22.30 WIB, dari Workers Observability):
+
+- Server utama (Durable Object) hanya butuh **±1 ms** per aksi (maks 32 ms). Tetapi setiap permintaan dari Indonesia,
+  yang masuk lewat Cloudflare Singapura, butuh **±180 ms** tambahan untuk sampai ke lokasi server utama yang berada di
+  luar Asia. Ditambah jaringan HP (Telkomsel median 54 ms), satu aksi butuh ±250–400 ms.
+- Operator tidak memblokir: Telkomsel, XL, Telkom, Biznet, iForte, dan IOH semuanya tersambung.
+- ±6.000 dari ±8.600 permintaan adalah **foto pemain**: iPhone mengunduh ulang foto setiap kali layar digambar ulang.
+
+Perbaikan:
+
+- **Server utama pindah ke Asia** (`paddoc-asia`, petunjuk lokasi `apac`). Permintaan pertama setelah update menyalin
+  semua data dari server lama: orang, sesi, login, PIN, foto, langganan notifikasi, kudos, dan pengaturan.
+  - Penyalinan bertahap, paling banyak 3,5 MB per potong. Satu potong ditulis dalam satu transaksi, dan kemajuannya
+    disimpan, jadi bila terputus dilanjutkan dari tempat terakhir.
+  - Selama penyalinan, aplikasi menunggu maks. 20 detik, lalu menampilkan "Server sedang dipindahkan" dan mencoba lagi
+    sendiri.
+  - Sejak penyalinan dimulai, server lama menolak perubahan dan mematikan pengingat, supaya tidak ada notifikasi dobel.
+    Datanya tetap utuh sebagai cadangan: kembali ke versi sebelumnya membuka data seperti saat pindah.
+- **Foto disimpan di HP** (service worker, maks. 400 foto) dan di memori titik Cloudflare terdekat (±24 MB). Foto
+  pemain tidak pernah berubah isinya, karena foto baru selalu mendapat ID baru.
+
+Diuji di komputer sendiri dengan kode lama → kode baru pada data yang sama: poll, daftar orang, sesi, template,
+pembayaran, riwayat, dan foto sama persis; login lama dan PIN yang diganti tetap berlaku. 30 foto besar (±38 MB) tersalin
+utuh. Penyalinan yang dipotong paksa di tengah jalan dilanjutkan tanpa data dobel. Kembali ke kode lama tetap jalan.
 
 ## Lebih ringan saat sesi ramai (v2.16)
 
