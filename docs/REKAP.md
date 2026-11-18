@@ -1,4 +1,4 @@
-# Rekap Paddoc Host v2.16
+# Rekap Paddoc Host v2.17
 
 Aplikasi undian dan rotasi pemain padel untuk komunitas Paddoc. Alamat live: <https://paddoc-host.lulunurulula.workers.dev>
 
@@ -11,7 +11,7 @@ Isi dokumen: [1. Sistem](#1-sistem) · [2. Tampilan](#2-tampilan) · [3. Fitur](
 | Bagian | Isi |
 |---|---|
 | Hosting | Cloudflare Workers (paket gratis). Merge ke `main` langsung ter-deploy otomatis dalam ±1 menit. |
-| Data | Satu Durable Object berbasis SQLite menyimpan semua data: orang, sesi, foto, login, tema, template. Mode main lobi memakai Durable Object kecil per lobi yang hanya meneruskan pesan. |
+| Data | Satu Durable Object berbasis SQLite di Asia (`paddoc-asia`, sejak v2.17) menyimpan semua data: orang, sesi, foto, login, tema, template. Mode main lobi memakai Durable Object kecil per lobi yang hanya meneruskan pesan. |
 | Kode | `index.html` (aplikasi, ±525 KB), `engine.js` (mesin undian & klasemen), `core.js` (aturan peran & semua aksi), `worker/` (API, WebSocket, foto, push, AI), `lobby.js` + `lobby.css` (ruang tunggu), `play.js` (mode main), `ceremony.js` (podium), `invite.js` + `qrcode.js` (foto ajakan), `sw.js` (notifikasi). |
 | Logika bersama | `engine.js` dan `core.js` dipakai server **dan** mode demo di browser, jadi aturannya selalu sama. |
 | Sinkron | Perubahan dikirim ke semua perangkat lewat WebSocket, digabung paling sering sekali per 300 ms. Match yang sudah lama selesai cukup dikirim id-nya (v2.16). Cadangan: cek berkala tiap 30 detik, atau 3–4 detik saat WebSocket putus. |
@@ -162,4 +162,5 @@ Server uji memakai `wrangler dev` dengan OpenAI dan pencarian alamat tiruan, jad
 | v2.13 / v2.13.1 | Foto ajakan lobi + QR; perbaikan HP Huawei/Honor |
 | v2.14 | Lapangan tersimpan, template pembayaran, ubah nama di Profil |
 | v2.15 | Pengingat ganti PIN (tidak wajib); seluruh uji disimpan di `tests/` |
+| v2.17 | Server utama pindah ke Asia (±180 ms lebih cepat per aksi); foto pemain disimpan di HP |
 | v2.16 | Lebih ringan saat sesi ramai (siaran hemat & digabung, notifikasi tidak menahan tombol); aplikasi disimpan di HP sehingga tetap terbuka saat jaringan lemah |
